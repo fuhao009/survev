@@ -79,8 +79,6 @@ export class ApiServer {
         const data: SiteInfoRes = {
             modes: this.modes,
             pops: {},
-            youtube: { name: "", link: "" },
-            twitch: [],
             country: "US",
             gitRevision: GIT_VERSION,
             captchaEnabled: this.captchaEnabled,

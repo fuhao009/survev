@@ -46,6 +46,7 @@ export type FindGameError =
     | "invalid_protocol"
     | "invalid_region"
     | "join_game_failed"
+    | "login_required"
     | "mode_disabled"
     | "rate_limited";
 
@@ -99,16 +100,6 @@ export interface SiteInfoRes {
             l10n: string;
         }
     >;
-    youtube: {
-        name: string;
-        link: string;
-    };
-    twitch: Array<{
-        name: string;
-        viewers: number;
-        url: string;
-        img: string;
-    }>;
 }
 
 export interface ProxyDef {
@@ -116,5 +107,6 @@ export interface ProxyDef {
     google?: boolean;
     discord?: boolean;
     mock?: boolean;
+    local?: boolean;
     all?: boolean;
 }

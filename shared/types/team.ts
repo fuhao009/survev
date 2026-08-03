@@ -10,6 +10,7 @@ export type TeamMenuErrorType =
     | "create_failed"
     | "lost_conn"
     | "join_game_failed"
+    | "login_required"
     | "find_game_error"
     | "find_game_full"
     | "find_game_invalid_protocol"

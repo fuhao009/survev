@@ -135,6 +135,10 @@ app.post("/api/find_game_v2", validateParams(zFindGameBody), async (c) => {
         }
     }
 
+    if (!user) {
+        return c.json<FindGameResponse>({ type: "error", error: "login_required" }, 401);
+    }
+
     if (await isBehindProxy(ip, !user)) {
         return c.json<FindGameResponse>({ type: "error", error: "behind_proxy" });
     }

@@ -32,6 +32,7 @@ function errorTypeToString(type: TeamMenuErrorType, localization: Localization) 
         find_game_full: localization.translate("index-failed-finding-game"),
         find_game_invalid_protocol: localization.translate("index-invalid-protocol"),
         find_game_invalid_captcha: localization.translate("index-invalid-captcha"),
+        login_required: localization.translate("index-login-required"),
         kicked: localization.translate("index-team-kicked"),
         banned: localization.translate("index-ip-banned"),
         behind_proxy: "behind_proxy", // this will get passed to the main app to show a modal
@@ -88,6 +89,7 @@ export class TeamMenu {
         public audioManager: AudioManager,
         public joinGameCb: (data: FindGameMatchData) => void,
         public leaveCb: (err?: string) => void,
+        public ensureLoggedIn: () => boolean,
     ) {
         // Listen for ui modifications
         this.serverSelect.on("change", () => {
@@ -108,14 +110,16 @@ export class TeamMenu {
             this.setRoomProperty("autoFill", false);
         });
         this.playBtn.on("click", () => {
-            SDK.requestMidGameAd(() => {
-                this.tryStartGame();
-            });
+            if (this.ensureLoggedIn()) {
+                SDK.requestMidGameAd(() => {
+                    this.tryStartGame();
+                });
+            }
         });
         $("#team-copy-url, #team-desc-text").on("click", (e) => {
             const t = $("<div/>", {
                 class: "copy-toast",
-                html: "Copied!",
+                html: "已复制！",
             });
             $("#start-menu-wrapper").append(t);
             t.css({
@@ -404,7 +408,6 @@ export class TeamMenu {
         $("#team-menu").css("display", this.active ? "block" : "none");
         $("#start-menu").css("display", this.active ? "none" : "block");
         $("#right-column").css("display", this.active ? "none" : "block");
-        $("#social-share-block").css("display", this.active ? "none" : "block");
 
         // Error text
         const errorTxt = this.roomData.lastError

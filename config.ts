@@ -122,6 +122,7 @@ export function getConfig(isProduction: boolean, dir: string) {
         google: googleLogin,
         discord: discordLogin,
         mock: config.debug.allowMockAccount,
+        local: true,
         ...config.proxies[baseUrl.hostname],
     };
 

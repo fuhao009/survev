@@ -30,6 +30,8 @@ export type SessionTableSelect = typeof sessionTable.$inferSelect;
 export const usersTable = pgTable("users", {
     id: text("id").notNull().primaryKey(),
     authId: text("auth_id").notNull(),
+    loginUsername: text("login_username").unique(),
+    passwordHash: text("password_hash"),
     slug: text("slug").notNull().unique(),
     banned: boolean("banned").notNull().default(false),
     banReason: text("ban_reason").notNull().default(""),

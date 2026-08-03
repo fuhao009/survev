@@ -95,7 +95,6 @@ export class Application {
     wasPlayingVideo = false;
     checkedPingTest = false;
     hasFocus = true;
-    newsDisplayed = true;
 
     updateLogoBasedOnLanguage(lang: string) {
         const header = $("#start-row-header");
@@ -123,6 +122,7 @@ export class Application {
             this.audioManager,
             this.onTeamMenuJoinGame.bind(this),
             this.onTeamMenuLeave.bind(this),
+            this.ensureLoggedIn.bind(this),
         );
 
         const onLoadComplete = () => {
@@ -165,18 +165,24 @@ export class Application {
             this.nameInput.attr("maxLength", net.Constants.PlayerNameMaxLen);
 
             this.playMode0Btn.on("click", () => {
-                SDK.requestMidGameAd(() => {
-                    this.tryQuickStartGame(0);
+                this.runWhenLoggedIn(() => {
+                    SDK.requestMidGameAd(() => {
+                        this.tryQuickStartGame(0);
+                    });
                 });
             });
             this.playMode1Btn.on("click", () => {
-                SDK.requestMidGameAd(() => {
-                    this.tryQuickStartGame(1);
+                this.runWhenLoggedIn(() => {
+                    SDK.requestMidGameAd(() => {
+                        this.tryQuickStartGame(1);
+                    });
                 });
             });
             this.playMode2Btn.on("click", () => {
-                SDK.requestMidGameAd(() => {
-                    this.tryQuickStartGame(2);
+                this.runWhenLoggedIn(() => {
+                    SDK.requestMidGameAd(() => {
+                        this.tryQuickStartGame(2);
+                    });
                 });
             });
 
@@ -261,42 +267,11 @@ export class Application {
                 if (window.history) {
                     window.history.replaceState("", "", "/");
                 }
-                $("#news-block").css("display", "block");
                 this.game?.free();
                 this.teamMenu.leave();
             });
 
-            // hide pass and show news by default if login is unsupported
-            const loginSupported = !SDK.isAnySDK && proxy.anyLoginSupported();
-            if (loginSupported) {
-                $("#news-wrapper").hide();
-                $("#pass-wrapper").show();
-                this.newsDisplayed = false;
-            } else {
-                $(".right-column-toggle").hide();
-                $("#news-wrapper").show();
-                $("#pass-wrapper").hide();
-                this.newsDisplayed = true;
-            }
-
-            const currentNews = $("#news-current").data("date");
-            const currentNewsTime = new Date(currentNews).getTime();
-            $(".right-column-toggle").on("click", () => {
-                if (this.newsDisplayed) {
-                    $("#news-wrapper").fadeOut(250);
-                    $("#pass-wrapper").fadeIn(250);
-                } else {
-                    this.config.set("lastNewsTimestamp", currentNewsTime);
-                    $(".news-toggle").find(".account-alert").css("display", "none");
-                    $("#news-wrapper").fadeIn(250);
-                    $("#pass-wrapper").fadeOut(250);
-                }
-                this.newsDisplayed = !this.newsDisplayed;
-            });
-            const lastSeenNewsTime = this.config.get("lastNewsTimestamp")!;
-            if (currentNewsTime > lastSeenNewsTime) {
-                $(".news-toggle").find(".account-alert").css("display", "block");
-            }
+            $("#pass-wrapper").show();
             this.setDOMFromConfig();
             this.setAppActive(true);
             const domCanvas = document.querySelector<HTMLCanvasElement>("#cvs")!;
@@ -618,18 +593,36 @@ export class Application {
         }
     }
 
-    tryJoinTeam(create: boolean, url?: string) {
-        if (this.active && this.quickPlayPendingModeIdx === -1) {
-            // Join team if the url contains a team address
-            let roomUrl = url || window.location.hash.slice(1);
+    ensureLoggedIn() {
+        if (this.account.loggedIn) {
+            return true;
+        }
+        this.profileUi.showLoginMenu({ modal: true });
+        return false;
+    }
 
-            const sdkRoom = SDK.getRoomInviteParam();
-            if (sdkRoom) {
-                roomUrl = sdkRoom;
-                create = false;
+    runWhenLoggedIn(cb: () => void) {
+        this.waitOnAccount(() => {
+            if (this.ensureLoggedIn()) {
+                cb();
             }
+        });
+    }
 
-            if (create || roomUrl != "") {
+    tryJoinTeam(create: boolean, url?: string) {
+        let roomUrl = url || window.location.hash.slice(1);
+        const sdkRoom = SDK.getRoomInviteParam();
+        if (sdkRoom) {
+            roomUrl = sdkRoom;
+            create = false;
+        }
+
+        if (!create && roomUrl == "") {
+            return;
+        }
+
+        this.runWhenLoggedIn(() => {
+            if (this.active && this.quickPlayPendingModeIdx === -1) {
                 // The main menu and squad menus have separate
                 // DOM elements for input, such as player name and
                 // selected region. We will stash the menu values
@@ -638,10 +631,13 @@ export class Application {
                 this.teamMenu.connect(create, roomUrl);
                 this.refreshUi();
             }
-        }
+        });
     }
 
     tryQuickStartGame(gameModeIdx: number) {
+        if (!this.ensureLoggedIn()) {
+            return;
+        }
         if (this.quickPlayPendingModeIdx === -1) {
             // Update UI to display a spinner on the play button
             this.errorMessage = "";
@@ -805,6 +801,7 @@ export class Application {
             invalid_captcha: this.localization.translate("index-invalid-captcha"),
             invalid_packet: this.localization.translate("index-invalid-packet"),
             invalid_protocol: this.localization.translate("index-invalid-protocol"),
+            login_required: this.localization.translate("index-login-required"),
             ip_banned: this.localization.translate("index-ip-banned"),
             join_game_failed: this.localization.translate("index-failed-joining-game"),
             rate_limited: this.localization.translate("index-rate-limited"),
@@ -815,6 +812,9 @@ export class Application {
     }
 
     onJoinGameError(err: FindGameError) {
+        if (err === "login_required") {
+            this.profileUi.showLoginMenu({ modal: true });
+        }
         if (err == "invalid_protocol") {
             this.showInvalidProtocolModal();
         }
@@ -840,9 +840,9 @@ export class Application {
     }
 
     showIpBanModal(ban: FindGameResponse & { type: "banned" }) {
-        $("#modal-ip-banned-reason").text(`Reason: ${ban.reason}`);
+        $("#modal-ip-banned-reason").text(`原因：${ban.reason}`);
 
-        let expiration = "Duration: indefinite";
+        let expiration = "期限：永久";
         if (!ban.permanent) {
             const expiresIn = new Date(ban.expiresIn);
             const timeLeft = expiresIn.getTime() - Date.now();
@@ -851,11 +851,11 @@ export class Application {
             const hoursLeft = Math.round(timeLeft / (1000 * 60 * 60));
 
             if (daysLeft > 1) {
-                expiration = `Expires in: ${daysLeft} days`;
+                expiration = `${daysLeft}天后到期`;
             } else if (hoursLeft > 1) {
-                expiration = `Expires in: ${hoursLeft} hours`;
+                expiration = `${hoursLeft}小时后到期`;
             } else {
-                expiration = `Expires in: less than an hour`;
+                expiration = "一小时内到期";
             }
         }
 
@@ -953,7 +953,7 @@ window.addEventListener("hashchange", () => {
 window.addEventListener("beforeunload", (e) => {
     if (App.game?.warnPageReload()) {
         // In new browsers, dialogText is overridden by a generic string
-        const dialogText = "Do you want to reload the game?";
+        const dialogText = "确定要重新加载游戏吗？";
         e.returnValue = dialogText;
         return dialogText;
     }

@@ -440,7 +440,7 @@ export class Pass {
                     },
                     250,
                 );
-                quest.elems.desc.html("QUEST COMPLETE!");
+                quest.elems.desc.html("任务完成！");
                 $(el).dequeue();
             })
             .delay(1000)

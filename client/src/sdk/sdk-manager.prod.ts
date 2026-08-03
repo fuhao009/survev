@@ -124,30 +124,7 @@ export class SDKManager implements BaseSDKManager {
     async init(app: Application) {
         if (this.isAnySDK) {
             $("#btn-start-fullscreen").hide();
-
-            $("#left-column").hide();
-            if (!this.isSpellSync) $("#btn-discord-top-right").show();
-            $(".surviv-shirts")
-                .css("background-image", "url(./img/discord-promo.png)")
-                .html(`<a href="https://discord.gg/6uRdCdkTPt" target="_blank"></a>`);
-
-            if (this.isSpellSync) {
-                $("a[href='changelogRec.html']").hide();
-                $("a[href='changelog.html']").hide();
-                $("a[href='proxy.txt']").hide();
-                $("a[href='privacy.html']").hide();
-                $("a[data-l10n='index-privacy']").hide();
-                $("a[data-l10n='index-attributions']").hide();
-                $("a[data-l10n='index-hof']").hide();
-                $("#news-block").hide();
-                $("#start-top-left").hide();
-            }
         } else {
-            $(".btn-kofi").show();
-            $(".surviv-shirts")
-                .css("background-image", "url(./img/survev-kofi.png)")
-                .html(`<a href="https://ko-fi.com/survev" target="_blank"></a>`);
-
             await this.initNitro();
         }
 

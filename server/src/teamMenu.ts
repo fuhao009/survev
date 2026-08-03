@@ -439,6 +439,10 @@ export class TeamMenu {
                     }
                 }
 
+                if (!closeReason && !userId) {
+                    closeReason = "login_required";
+                }
+
                 if (!closeReason && (await isBehindProxy(ip!, !userId))) {
                     closeReason = "behind_proxy";
                 }

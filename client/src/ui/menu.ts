@@ -54,8 +54,6 @@ function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
     const teamMobileLinkDesc = $("#team-mobile-link-desc");
     const teamMobileLinkWarning = $("#team-mobile-link-warning");
     const teamMobileLinkInput = $("#team-link-input");
-    const socialShareBlock = $("#social-share-block");
-    const newsBlock = $("#news-block");
 
     // Team mobile link
     $("#btn-join-team").on("click", () => {
@@ -65,8 +63,6 @@ function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
         teamMobileLinkDesc.css("display", "block");
         teamMobileLinkWarning.css("display", "none");
         startMenuWrapper.css("display", "none");
-        newsBlock.css("display", "none");
-        socialShareBlock.css("display", "none");
         $("#right-column").css("display", "none");
         return false;
     });
@@ -74,8 +70,6 @@ function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
         teamMobileLink.css("display", "none");
         teamMobileLinkInput.val("");
         startMenuWrapper.css("display", "block");
-        newsBlock.css("display", "block");
-        socialShareBlock.css("display", "block");
         $("#right-column").css("display", "block");
         return false;
     });
@@ -151,7 +145,7 @@ function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
 
     // Copy keybind code
     $("#keybind-link, #keybind-copy").on("click", (e) => {
-        createToast("Copied!", modalKeybind.selector, $("#keybind-link"), e);
+        createToast("已复制！", modalKeybind.selector, $("#keybind-link"), e);
         const t = $("#keybind-link").html();
         helpers.copyTextToClipboard(t);
     });
@@ -163,7 +157,7 @@ function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
         const success = inputBinds.fromBase64(String(code));
         $("#keybind-warning").css("display", success ? "none" : "block");
         if (success) {
-            createToast("Loaded!", modalKeybind.selector, $("#btn-keybind-code-load"), e);
+            createToast("已加载！", modalKeybind.selector, $("#btn-keybind-code-load"), e);
             inputBinds.saveBinds();
         }
         inputBindUi.refresh();
@@ -231,11 +225,6 @@ function onResize() {
                 });
             }
         }
-    }
-    if (device.tablet) {
-        // Temporarily remove the youtube links
-        $("#featured-youtuber").remove();
-        $(".btn-youtube").remove();
     }
     if (device.touch) {
         // Remove full screen option from main menu

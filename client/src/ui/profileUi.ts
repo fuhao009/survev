@@ -29,54 +29,110 @@ function createLoginOptions(
             ),
         );
     }
-    const buttonParentElem = $("<div/>", {
-        class: "account-buttons",
+    const form = $("<form/>", { class: "account-auth-form" });
+    const modeRow = $("<div/>", { class: "account-auth-mode" });
+    const loginMode = $("<button/>", {
+        type: "button",
+        class: "menu-option btn-hollow btn-hollow-selected account-auth-mode-button",
+        text: localization.translate("index-account-login"),
     });
-    contentsElem.append(buttonParentElem);
-    const addLoginOption = function(method: string, onClick: () => void) {
-        const el = $("<div/>", {
-            class: `menu-option btn-darken btn-standard btn-login-${method}`,
-        });
-        el.append(
-            $("<span/>", {
-                class: "login-button-name",
-            })
-                .append(
-                    $("<span/>", {
-                        html: localization.translate(`index-${method}`),
-                    }),
-                )
-                .append(
-                    $("<div/>", {
-                        class: "icon",
-                    }),
-                ),
+    const registerMode = $("<button/>", {
+        type: "button",
+        class: "menu-option btn-hollow account-auth-mode-button",
+        text: localization.translate("index-account-register"),
+    });
+    const usernameInput = $("<input/>", {
+        type: "text",
+        class: "menu-option account-auth-input",
+        autocomplete: "username",
+        placeholder: localization.translate("index-account-username-placeholder"),
+        "aria-label": localization.translate("index-account-username"),
+        minlength: 3,
+        maxlength: 24,
+        required: true,
+    });
+    const passwordInput = $("<input/>", {
+        type: "password",
+        class: "menu-option account-auth-input",
+        autocomplete: "current-password",
+        placeholder: localization.translate("index-account-password-placeholder"),
+        "aria-label": localization.translate("index-account-password"),
+        minlength: 8,
+        maxlength: 128,
+        required: true,
+    });
+    const submitButton = $("<button/>", {
+        type: "submit",
+        class: "menu-option btn-green btn-darken account-auth-submit",
+        text: localization.translate("index-account-login"),
+    });
+    const errorMessage = $("<div/>", { class: "account-auth-error" });
+
+    modeRow.append(loginMode, registerMode);
+    form.append(modeRow, usernameInput, passwordInput, submitButton, errorMessage);
+    contentsElem.append(form);
+
+    let mode: "login" | "register" = "login";
+    const setMode = (nextMode: "login" | "register") => {
+        mode = nextMode;
+        loginMode.toggleClass("btn-hollow-selected", mode === "login");
+        registerMode.toggleClass("btn-hollow-selected", mode === "register");
+        submitButton.text(
+            localization.translate(mode === "login" ? "index-account-login" : "index-account-register"),
         );
-
-        el.on("click", (_e) => {
-            onClick();
-        });
-
-        buttonParentElem.append(el);
+        passwordInput.attr(
+            "autocomplete",
+            mode === "login" ? "current-password" : "new-password",
+        );
+        errorMessage.empty();
     };
 
-    // Define the available login methods
-    if (proxy.loginSupported("google")) {
-        addLoginOption("google", () => {
-            window.location.href = api.resolveUrl("/api/auth/google");
-        });
-    }
-    if (proxy.loginSupported("discord")) {
-        addLoginOption("discord", () => {
-            window.location.href = api.resolveUrl("/api/auth/discord");
-        });
-    }
-
-    if (proxy.loginSupported("mock")) {
-        addLoginOption("mock", () => {
-            window.location.href = api.resolveUrl("/api/auth/mock");
-        });
-    }
+    loginMode.on("click", () => setMode("login"));
+    registerMode.on("click", () => setMode("register"));
+    form.on("submit", async (event) => {
+        event.preventDefault();
+        const username = String(usernameInput.val() ?? "").trim();
+        const password = String(passwordInput.val() ?? "");
+        if (mode === "register") {
+            if (username.length < 3 || !/^[\p{L}\p{N}_.-]+$/u.test(username)) {
+                errorMessage.text(localization.translate("index-account-username-invalid"));
+                return;
+            }
+            if (password.length < 8) {
+                errorMessage.text(localization.translate("index-account-password-invalid"));
+                return;
+            }
+        }
+        submitButton.prop("disabled", true);
+        errorMessage.empty();
+        try {
+            const response = await fetch(api.resolveUrl("/api/auth/local"), {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    mode,
+                    username,
+                    password,
+                }),
+            });
+            const data = await response.json() as { result?: string };
+            if (response.ok && data.result === "success") {
+                window.location.reload();
+                return;
+            }
+            const errorKey = data.result === "username_taken"
+                ? "index-account-username-taken"
+                : mode === "login"
+                ? "index-account-login-failed"
+                : "index-account-invalid";
+            errorMessage.text(localization.translate(errorKey));
+        } catch (_error) {
+            errorMessage.text(localization.translate("index-account-network-error"));
+        } finally {
+            submitButton.prop("disabled", false);
+        }
+    });
 }
 
 export class ProfileUi {
@@ -86,6 +142,7 @@ export class ProfileUi {
     userSettingsModal: MenuModal | null = null;
     loginOptionsModal: MenuModal | null = null;
     createAccountModal: MenuModal | null = null;
+    userCenterModal: MenuModal | null = null;
 
     loginOptionsModalMobile!: MenuModal;
     modalMobileAccount!: MenuModal;
@@ -120,10 +177,10 @@ export class ProfileUi {
             this.account.setUsername(name, (error?: string) => {
                 if (error) {
                     const ERROR_CODE_TO_LOCALIZATION = {
-                        failed: "Failed setting username.",
-                        invalid: "Invalid username.",
-                        taken: "Name already taken!",
-                        change_time_not_expired: "Username has already been set recently.",
+                        failed: "设置用户名失败。",
+                        invalid: "用户名无效。",
+                        taken: "用户名已被使用！",
+                        change_time_not_expired: "用户名最近已设置过。",
                     };
                     const message = ERROR_CODE_TO_LOCALIZATION[
                         error as keyof typeof ERROR_CODE_TO_LOCALIZATION
@@ -150,7 +207,10 @@ export class ProfileUi {
         });
         $("#modal-account-reset-stats-finish").on("click", (t) => {
             t.stopPropagation();
-            if ($("#modal-account-reset-stats-input").val() == "RESET STATS") {
+            if (
+                String($("#modal-account-reset-stats-input").val() ?? "")
+                    === this.localization.translate("index-reset-stats-confirmation")
+            ) {
                 this.account.resetStats();
                 this.resetStatsModal!.hide();
             }
@@ -168,7 +228,10 @@ export class ProfileUi {
         });
         $("#modal-account-delete-finish").on("click", (t) => {
             t.stopPropagation();
-            if ($("#modal-account-delete-input").val() == "DELETE") {
+            if (
+                String($("#modal-account-delete-input").val() ?? "")
+                    === this.localization.translate("index-delete-account-confirmation")
+            ) {
                 this.account.deleteAccount();
                 this.deleteAccountModal!.hide();
             }
@@ -218,6 +281,11 @@ export class ProfileUi {
             this.loadoutMenu.hide();
         });
 
+        this.userCenterModal = new MenuModal($("#modal-user-center"));
+        this.userCenterModal.onShow(() => {
+            this.renderUserCenter();
+        });
+
         // Mobile Accounts Modal
         this.modalMobileAccount = new MenuModal($("#modal-mobile-account"));
         this.modalMobileAccount.onShow(() => {
@@ -261,27 +329,18 @@ export class ProfileUi {
             return false;
         });
         $(".account-details-user").on("click", () => {
-            if (
-                this.userSettingsModal!.isVisible()
-                || this.loginOptionsModal!.isVisible()
-            ) {
-                this.userSettingsModal!.hide();
-                this.loginOptionsModal!.hide();
-            } else {
-                this.waitOnLogin(() => {
-                    if (device.mobile) {
-                        this.modalMobileAccount.show();
-                    }
-                    if (this.account.loggedIn) {
-                        this.loginOptionsModal!.hide();
-                        this.userSettingsModal!.show();
-                    } else {
-                        this.showLoginMenu({
-                            modal: false,
-                        });
-                    }
-                });
-            }
+            this.waitOnLogin(() => {
+                if (this.account.loggedIn) {
+                    this.renderUserCenter();
+                    this.userCenterModal!.show(true);
+                } else {
+                    this.showLoginMenu({ modal: true });
+                }
+            });
+            return false;
+        });
+        $("#home-login-primary").on("click", () => {
+            this.showLoginMenu({ modal: true });
             return false;
         });
         $(".btn-account-link").on("click", () => {
@@ -295,6 +354,7 @@ export class ProfileUi {
         $(".btn-account-change-name").on("click", () => {
             if (this.account.profile.usernameChangeTime <= 0) {
                 this.userSettingsModal!.hide();
+                this.userCenterModal!.hide();
                 this.modalMobileAccount.hide();
                 $("#modal-account-name-title").html(
                     this.localization.translate("index-change-account-name"),
@@ -305,11 +365,13 @@ export class ProfileUi {
         });
         $(".btn-account-reset-stats").on("click", () => {
             this.userSettingsModal!.hide();
+            this.userCenterModal!.hide();
             this.resetStatsModal!.show();
             return false;
         });
         $(".btn-account-delete").on("click", () => {
             this.userSettingsModal!.hide();
+            this.userCenterModal!.hide();
             this.deleteAccountModal!.show();
             return false;
         });
@@ -331,13 +393,13 @@ export class ProfileUi {
 
     onError(type: string, data?: string) {
         const typeText = {
-            server_error: "Operation failed, please try again later.",
-            facebook_account_in_use: "Failed linking Facebook account.<br/>Account already in use!",
-            google_account_in_use: "Failed linking Google account.<br/>Account already in use!",
-            twitch_account_in_use: "Failed linking Twitch account.<br/>Account already in use!",
-            discord_account_in_use: "Failed linking Discord account.<br/>Account already in use!",
-            account_banned: `Account banned: ${data}`,
-            login_failed: "Login failed.",
+            server_error: "操作失败，请稍后重试。",
+            facebook_account_in_use: "关联账号失败，账号已被使用！",
+            google_account_in_use: "关联账号失败，账号已被使用！",
+            twitch_account_in_use: "关联账号失败，账号已被使用！",
+            discord_account_in_use: "关联账号失败，账号已被使用！",
+            account_banned: `账号已封禁：${data}`,
+            login_failed: "登录失败。",
         };
         const text = typeText[type as keyof typeof typeText];
         if (text) {
@@ -348,8 +410,10 @@ export class ProfileUi {
 
     onLogin() {
         this.createAccountModal!.hide();
+        this.userCenterModal!.hide();
         this.loginOptionsModalMobile.hide();
         this.loginOptionsModal!.hide();
+        this.render();
         if (!this.account.profile.usernameSet) {
             this.setNameModal!.show(true);
         }
@@ -414,10 +478,18 @@ export class ProfileUi {
     updateUserIcon() {
         const icon = helpers.getSvgFromGameType(this.account.loadout.player_icon)
             || "img/gui/player-gui.svg";
-        $(".account-details-user .account-avatar").css(
+        $(".account-details-user .account-avatar, .user-center-avatar").css(
             "background-image",
             `url(${icon})`,
         );
+    }
+
+    renderUserCenter() {
+        const username = this.account.profile.username || this.localization.translate("index-log-in-desc");
+        const accountId = this.account.profile.slug || "本地账号";
+        $("#user-center-username").text(username);
+        $("#user-center-id").text(`ID · ${accountId}`);
+        this.updateUserIcon();
     }
 
     render() {
@@ -437,7 +509,23 @@ export class ProfileUi {
             this.account.loggedIn ? "block" : "none",
         );
         $("#account-login").css("display", this.account.loggedIn ? "none" : "block");
+        $("#start-menu").toggleClass("is-logged-in", this.account.loggedIn);
+        $("#start-top-right").toggleClass("home-account-visible", this.account.loggedIn);
+        $("#home-nav-loadout").toggleClass("home-nav-account-visible", this.account.loggedIn);
+        $("#home-nav-stats").toggleClass("home-nav-account-visible", this.account.loggedIn);
+        this.renderUserCenter();
         this.updateUserIcon();
+        $("#home-menu-title").text(
+            this.localization.translate(this.account.loggedIn ? "home-menu-title-logged-in" : "home-menu-title"),
+        );
+        $("#home-login-desc").text(
+            this.localization.translate(this.account.loggedIn ? "home-login-desc-logged-in" : "home-login-desc"),
+        );
+        $("#home-brief-access-value").text(
+            this.localization.translate(
+                this.account.loggedIn ? "home-brief-access-value-logged-in" : "home-brief-access-value",
+            ),
+        );
         if (this.account.profile.usernameChangeTime <= 0) {
             $(".btn-account-change-name").removeClass("btn-account-disabled");
         } else {

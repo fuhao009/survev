@@ -4,7 +4,6 @@ import { GameConfig } from "../../shared/gameConfig.ts";
 import type { SiteInfoRes } from "../../shared/types/api.ts";
 import { api } from "./api.ts";
 import type { ConfigManager } from "./config.ts";
-import { device } from "./device.ts";
 import type { Localization } from "./ui/localization.ts";
 
 export class SiteInfo {
@@ -32,11 +31,23 @@ export class SiteInfo {
         }
 
         const siteInfoUrl = api.resolveUrl(`/api/site_info?language=${locale}`);
-        fetch(siteInfoUrl).then(res => res.json()).then((data: SiteInfoRes) => {
-            this.info = data || {};
-            this.loaded = true;
-            this.updatePageFromInfo();
-        });
+        fetch(siteInfoUrl)
+            .then(async (res) => {
+                if (!res.ok) return null;
+                const body = await res.text();
+                return body.trim() ? JSON.parse(body) as SiteInfoRes : null;
+            })
+            .then((data) => {
+                this.loaded = true;
+                if (data) {
+                    this.info = data;
+                    this.updatePageFromInfo();
+                }
+            })
+            .catch(() => {
+                // Keep the static homepage usable when the optional status endpoint is unavailable.
+                this.loaded = true;
+            });
     }
 
     getGameModeStyles() {
@@ -110,44 +121,6 @@ export class SiteInfo {
                     sel.text(`${sel.data("label")} [${data.playerCount} ${players}]`);
                 }
             }
-            let hasTwitchStreamers = false;
-            const featuredStreamersElem = $("#featured-streamers");
-            const streamerList = $(".streamer-list");
-            if (!device.mobile && this.info.twitch) {
-                streamerList.empty();
-                for (let i = 0; i < this.info.twitch.length; i++) {
-                    const streamer = this.info.twitch[i];
-                    const template = $("#featured-streamer-template").clone();
-                    template
-                        .attr("class", "featured-streamer streamer-tooltip")
-                        .attr("id", "");
-                    const link = template.find("a");
-                    const text = this.localization.translate(
-                        streamer.viewers == 1 ? "index-viewer" : "index-viewers",
-                    );
-                    link.html(
-                        `${streamer.name} <span>${streamer.viewers} ${text}</span>`,
-                    );
-                    link.css("background-image", `url(${streamer.img})`);
-                    link.attr("href", streamer.url);
-                    streamerList.append(template);
-                    hasTwitchStreamers = true;
-                }
-            }
-            featuredStreamersElem.css(
-                "visibility",
-                hasTwitchStreamers ? "visible" : "hidden",
-            );
-
-            const featuredYoutuberElem = $("#featured-youtuber");
-            const displayYoutuber = this.info.youtube;
-            if (displayYoutuber) {
-                $(".btn-youtuber")
-                    .attr("href", this.info.youtube.link)
-                    .html(this.info.youtube.name);
-            }
-            featuredYoutuberElem.css("display", displayYoutuber ? "block" : "none");
-
             const mapDef = MapDefs[this.info.clientTheme];
             if (mapDef) {
                 this.config.set("cachedBgImg", mapDef.desc.backgroundImg);

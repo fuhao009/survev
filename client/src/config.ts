@@ -105,18 +105,17 @@ const defaultConfig = {
     region: "na",
     gameModeIdx: 2,
     teamAutoFill: true,
-    language: "en" as Locale,
+    language: "zh-cn" as Locale,
     prerollGamesPlayed: 0,
     totalGamesPlayed: 0,
     promptAppRate: true,
     regionSelected: false,
-    lastNewsTimestamp: 0,
     perkModeRole: "",
     loadout: loadout.defaultLoadout(),
     sessionCookie: "" as string | null,
     binds: "",
     cachedBgImg: "img/main_splash.png",
-    version: 1,
+    version: 2,
     /* STRIP_FROM_PROD_CLIENT:START */
     debugTools: debugToolsConfig,
     debugRenderer: debugRenderConfig,
@@ -211,6 +210,13 @@ export class ConfigManager {
     checkUpgradeConfig() {
         // validation logic
         this.config.loadout = loadout.validate(this.config.loadout);
+
+        // Existing installs predate the Chinese default requested for this build.
+        if (this.config.version < 2) {
+            this.config.language = "zh-cn";
+            this.config.version = 2;
+            this.store();
+        }
 
         // seem not to be implemeted yet
         // this.get("version");

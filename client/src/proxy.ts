@@ -27,9 +27,7 @@ export const proxy = {
 
     anyLoginSupported() {
         return (
-            proxy.loginSupported("google")
-            || proxy.loginSupported("discord")
-            || proxy.loginSupported("mock")
+            proxy.loginSupported("local")
         );
     },
 };
