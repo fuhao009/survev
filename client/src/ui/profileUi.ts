@@ -157,6 +157,7 @@ export class ProfileUi {
         account.addEventListener("login", this.onLogin.bind(this));
         account.addEventListener("loadout", this.onLoadoutUpdated.bind(this));
         account.addEventListener("items", this.onItemsUpdated.bind(this));
+        account.addEventListener("wallet", this.onWalletUpdated.bind(this));
         account.addEventListener("request", this.render.bind(this));
         this.initUi();
         this.render();
@@ -308,6 +309,7 @@ export class ProfileUi {
             return false;
         });
         $(".account-stats-link").on("click", () => {
+            this.userCenterModal!.hide();
             this.waitOnLogin(() => {
                 if (this.account.loggedIn) {
                     if (this.account.profile.usernameSet) {
@@ -325,8 +327,12 @@ export class ProfileUi {
             return false;
         });
         $(".account-loadout-link, #btn-customize").on("click", () => {
+            this.userCenterModal!.hide();
             this.loadoutMenu.show();
             return false;
+        });
+        $(".user-center-world-link").on("click", () => {
+            this.userCenterModal!.hide();
         });
         $(".account-details-user").on("click", () => {
             this.waitOnLogin(() => {
@@ -445,6 +451,11 @@ export class ProfileUi {
         $("#loadout-alert-main").css({
             display: displayAlert ? "block" : "none",
         });
+        this.renderUserCenter();
+    }
+
+    onWalletUpdated() {
+        this.renderUserCenter();
     }
 
     waitOnLogin(cb: () => void) {
@@ -487,8 +498,14 @@ export class ProfileUi {
     renderUserCenter() {
         const username = this.account.profile.username || this.localization.translate("index-log-in-desc");
         const accountId = this.account.profile.slug || "本地账号";
+        const walletBalance = this.account.loggedIn && Number.isFinite(this.account.walletBalance)
+            ? this.account.walletBalance
+            : 0;
+        const inventorySize = loadout.getUserAvailableItems(this.account.items).length;
         $("#user-center-username").text(username);
         $("#user-center-id").text(`ID · ${accountId}`);
+        $("#user-center-points").text(walletBalance.toLocaleString());
+        $("#user-center-item-count").text(inventorySize.toLocaleString());
         this.updateUserIcon();
     }
 

@@ -709,6 +709,7 @@ export class WeaponManager {
 
         weapon.ammo--;
         this.player.weapsDirty = true;
+        this.player.game.onWeaponFired(this.player.userId, this.activeWeapon);
 
         const collisionLayer = util.toGroundLayer(this.player.layer);
         const bulletLayer = this.player.aimLayer;

@@ -38,6 +38,7 @@ class GameProcess {
         startedTime: 0,
         stopped: false,
         timeRunning: 0,
+        world: false,
     };
 
     state = ProcState.Idle;
@@ -133,6 +134,7 @@ class GameProcess {
         this.gameData.id = id;
         this.gameData.teamMode = config.teamMode;
         this.gameData.mapName = config.mapName;
+        this.gameData.world = config.world;
         this.gameData.stopped = false;
         this.state = ProcState.CreatingGame;
 
@@ -318,10 +320,11 @@ export class GameProcessManager {
             .filter((proc) => {
                 const game = proc.gameData;
                 return (
-                    (game.canJoin || proc.state === ProcState.CreatingGame)
+                    ((body.world ? game.world : game.canJoin) || proc.state === ProcState.CreatingGame)
                     && proc.avaliableSlots > 0
                     && game.teamMode === body.teamMode
                     && game.mapName === body.mapName
+                    && game.world === (body.world ?? false)
                 );
             })
             .sort((a, b) => {
@@ -332,6 +335,7 @@ export class GameProcessManager {
             proc = this.newGame({
                 teamMode: body.teamMode,
                 mapName: body.mapName as MapDefKey,
+                world: body.world ?? false,
             });
         }
 

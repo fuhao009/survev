@@ -1,4 +1,5 @@
 import type { PassState, QuestState } from "../../shared/types/user.ts";
+import type { WalletOverviewResponse } from "../../shared/types/wallet.ts";
 import type { Item, ItemStatus } from "../../shared/utils/loadout.ts";
 import { type Loadout, loadout as loadouts } from "../../shared/utils/loadout.ts";
 import { util } from "../../shared/utils/util.ts";
@@ -12,6 +13,17 @@ import { hc } from "hono/client";
 import type { UserRouterApp } from "../../server/src/api/routes/user/UserRouter.ts";
 
 type UserRouter = ReturnType<typeof hc<UserRouterApp>>;
+type UserRouterPostPath = {
+    [Path in keyof UserRouter]: UserRouter[Path] extends {
+        $post: (...args: any[]) => any;
+    }
+        ? Path
+        : never;
+}[keyof UserRouter];
+type UserRouterPost<Path extends UserRouterPostPath> = Extract<
+    UserRouter[Path],
+    { $post: (...args: any[]) => any }
+>['$post'];
 
 type AccountEventMap = {
     request: (account: Account) => void;
@@ -21,6 +33,7 @@ type AccountEventMap = {
     items: (items: Item[]) => void;
     error: (error: string, reason?: string) => void;
     pass: (pass: PassState, quests: QuestState[], resetRefresh: boolean) => void;
+    wallet: (walletBalance: number) => void;
 };
 
 export class Account {
@@ -40,6 +53,7 @@ export class Account {
     items: Item[] = [];
     quests: QuestState[] = [];
     pass = {} as PassState;
+    walletBalance = 0;
 
     router: UserRouter;
 
@@ -51,19 +65,23 @@ export class Account {
         });
     }
 
-    async fetchApi<Path extends keyof UserRouter>(
+    async fetchApi<Path extends UserRouterPostPath>(
         path: Path,
-        body: Parameters<UserRouter[Path]["$post"]>[0],
+        body: Parameters<UserRouterPost<Path>>[0],
         cb: (
             error: null | any,
-            res: Awaited<ReturnType<Awaited<ReturnType<UserRouter[Path]["$post"]>>["json"]>>,
+            res: Awaited<ReturnType<Awaited<ReturnType<UserRouterPost<Path>>>["json"]>>,
         ) => void,
     ): Promise<void> {
         this.requestsInFlight++;
         this.emit("request", this);
 
         try {
-            const res = await this.router[path].$post(body as any);
+            const routerPath = this.router[path] as Extract<
+                UserRouter[Path],
+                { $post: (...args: any[]) => any }
+            >;
+            const res = await routerPath.$post(body as any);
             const data = await res.json();
             cb(null, data as any);
         } catch (err) {
@@ -140,7 +158,48 @@ export class Account {
         }
     }
 
+    private resetWallet() {
+        this.walletBalance = 0;
+        this.emit("wallet", this.walletBalance);
+    }
+
+    loadWallet() {
+        if (!this.loggedIn || !helpers.getCookie("app-data")) {
+            this.resetWallet();
+            return;
+        }
+
+        this.requestsInFlight++;
+        this.emit("request", this);
+        this.router.wallet.$get()
+            .then(async (res) => {
+                if (!res.ok) {
+                    throw new Error(`wallet request failed: ${res.status}`);
+                }
+                const data = await res.json() as WalletOverviewResponse;
+                if (!this.loggedIn) {
+                    this.resetWallet();
+                    return;
+                }
+                this.walletBalance = Number.isFinite(data.balance) ? data.balance : 0;
+                this.emit("wallet", this.walletBalance);
+            })
+            .catch(() => {
+                errorLogManager.storeGeneric("account", "load_wallet_error");
+                this.resetWallet();
+            })
+            .finally(() => {
+                this.requestsInFlight--;
+                this.emit("request", this);
+                if (this.requestsInFlight == 0) {
+                    this.emit("requestsComplete");
+                }
+            });
+    }
+
     logout() {
+        this.loggedIn = false;
+        this.resetWallet();
         this.config.set("profile", null);
         this.config.set("sessionCookie", null);
         this.config.set("loadout", loadouts.defaultLoadout());
@@ -157,6 +216,7 @@ export class Account {
             this.loggedIn = false;
             this.profile = {} as this["profile"];
             this.items = [];
+            this.resetWallet();
             if (err) {
                 errorLogManager.storeGeneric("account", "load_profile_error");
             } else if (data.banned) {
@@ -172,6 +232,9 @@ export class Account {
             }
             if (!this.loggedIn) {
                 this.config.set("sessionCookie", null);
+            }
+            if (this.loggedIn) {
+                this.loadWallet();
             }
             if (wasLogginIn && this.loggedIn) {
                 this.emit("login", this);

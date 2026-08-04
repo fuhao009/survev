@@ -293,17 +293,22 @@ export class PlayerBarn {
         for (let i = 0; i < this.players.length; i++) {
             const player = this.players[i];
             player.update(dt);
+            this.game.onWorldPlayerUpdate(player.userId, player.pos.x, player.pos.y, player.layer, player.health);
 
             if (!player.dead && sendWinEmotes) {
                 player.emoteFromSlot(EmoteSlot.Win);
             }
         }
 
-        // doing this after updates ensures that gameover msgs sent are always accurate
-        // if this was done in netsync, players could die while waiting for the next netsync call
-        // then the gameover msgs would be inaccurate since theyre based on the current alive count
-        for (let i = 0; i < this.killedPlayers.length; i++) {
-            this.killedPlayers[i].addGameOverMsg();
+        // A persistent world has no winner. Dead players leave the live world,
+        // but the shard and remaining players continue without a game-over UI.
+        if (!this.game.world) {
+            // doing this after updates ensures that gameover msgs sent are always accurate
+            // if this was done in netsync, players could die while waiting for the next netsync call
+            // then the gameover msgs would be inaccurate since theyre based on the current alive count
+            for (let i = 0; i < this.killedPlayers.length; i++) {
+                this.killedPlayers[i].addGameOverMsg();
+            }
         }
         this.killedPlayers.length = 0;
 
@@ -2841,6 +2846,11 @@ export class Player extends BaseGameObject {
         }
 
         this.game.deadBodyBarn.addDeadBody(this.pos, this.__id, this.layer, params.dir);
+
+        this.game.onPlayerDeath(
+            this.userId,
+            params.source?.__type === ObjectType.Player ? "player" : "hazard",
+        );
 
         //
         // Kill outfit obstacle

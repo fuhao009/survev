@@ -20,6 +20,7 @@ import type { Context } from "../../index.ts";
 import { MOCK_USER_ID } from "../user/auth/mock.ts";
 import { isBanned, logPlayerIPs, ModerationRouter } from "./ModerationRouter.ts";
 import { incrementPassXp } from "./passXp.ts";
+import { worldService } from "../../world/worldService.ts";
 
 export const PrivateRouter = new Hono<Context>()
     .use(privateMiddleware)
@@ -219,6 +220,61 @@ export const PrivateRouter = new Hono<Context>()
             });
 
             return c.json({ success: true }, 200);
+        },
+    )
+    .post(
+        "/world/death",
+        databaseEnabledMiddleware,
+        validateParams(
+            z.object({
+                userId: z.string().min(1),
+                cause: z.enum(["player", "safe_zone", "fire", "hazard"]),
+            }),
+        ),
+        async (c) => {
+            const { userId, cause } = c.req.valid("json");
+            const applied = await worldService.markDeadForPlayer(userId, cause);
+            return c.json({ success: true, applied }, 200);
+        },
+    )
+    .post(
+        "/world/fire",
+        databaseEnabledMiddleware,
+        validateParams(
+            z.object({
+                userId: z.string().min(1),
+                weaponType: z.string().min(1),
+            }),
+        ),
+        async (c) => {
+            const { userId, weaponType } = c.req.valid("json");
+            const applied = await worldService.wearWeaponForPlayer(userId, weaponType);
+            return c.json({ success: true, applied }, 200);
+        },
+    )
+    .post(
+        "/world/position",
+        databaseEnabledMiddleware,
+        validateParams(
+            z.object({
+                updates: z.array(z.object({
+                    userId: z.string().min(1),
+                    x: z.number().finite(),
+                    y: z.number().finite(),
+                    layer: z.number().int(),
+                    health: z.number().finite().min(0).max(100),
+                })).min(1).max(100),
+            }),
+        ),
+        async (c) => {
+            const { updates } = c.req.valid("json");
+            let applied = 0;
+            for (const update of updates) {
+                if (await worldService.syncPositionForPlayer(update.userId, update.x, update.y, update.layer, update.health)) {
+                    applied++;
+                }
+            }
+            return c.json({ success: true, applied }, 200);
         },
     )
     .post(

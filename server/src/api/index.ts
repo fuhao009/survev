@@ -24,6 +24,7 @@ import { PrivateRouter } from "./routes/private/private.ts";
 import { StatsRouter } from "./routes/stats/StatsRouter.ts";
 import { AuthRouter } from "./routes/user/AuthRouter.ts";
 import { UserRouter } from "./routes/user/UserRouter.ts";
+import { WorldRouter } from "./routes/world/WorldRouter.ts";
 
 export type Context = {
     Variables: {
@@ -78,6 +79,7 @@ app.use(
 // app.use(csrf())
 
 app.route("/api/user/", UserRouter);
+app.route("/api/world/", WorldRouter);
 app.route("/api/auth/", AuthRouter);
 app.route("/api/", StatsRouter);
 app.route("/private/", PrivateRouter);
@@ -178,6 +180,7 @@ app.post("/api/find_game_v2", validateParams(zFindGameBody), async (c) => {
         version: body.version,
         mapName: mode.mapName,
         teamMode: mode.teamMode,
+        world: body.world,
         autoFill: true,
         playerData,
     });

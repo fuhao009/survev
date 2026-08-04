@@ -52,6 +52,7 @@ class GameServer {
             autoFill: body.autoFill,
             mapName: body.mapName,
             teamMode: body.teamMode,
+            world: body.world ?? false,
             playerData: body.playerData,
         });
 
@@ -143,7 +144,7 @@ class GameServer {
 const server = new GameServer();
 
 if (process.env.NODE_ENV !== "production") {
-    server.manager.newGame(Config.modes[0]);
+    server.manager.newGame({ ...Config.modes[0], world: false });
 }
 
 const app = Config.gameServer.ssl

@@ -626,6 +626,13 @@
         <div id="ui-editor-top-right">
         </div>
       </div>
+      <section id="world-hud" aria-live="polite">
+        <div class="world-hud-title">大世界</div>
+        <div id="world-hud-life">生命 100</div>
+        <div id="world-hud-gear"></div>
+        <button id="world-extract" type="button">撤离并换积分</button>
+        <div id="world-hud-message"></div>
+      </section>
     </div>
     <div id="start-menu-wrapper">
       <div id="safari-margin"></div>
@@ -825,6 +832,7 @@
                   </optgroup>
                 </select>
                 <a class="btn-green btn-darken menu-option" id="btn-start-mode-0" data-l10n="index-play-solo">单人游玩</a>
+                <a class="btn-world btn-darken menu-option" id="btn-start-world">进入大世界</a>
                 <div id="btns-quick-start">
                   <a class="btn-green btn-darken menu-option" id="btn-start-mode-1" data-l10n="index-play-duo">双人游玩</a>
                   <a class="btn-green btn-darken menu-option" id="btn-start-mode-2" data-l10n="index-play-squad">小队游玩</a>
@@ -1345,9 +1353,22 @@
               <strong id="user-center-username">-</strong>
               <code id="user-center-id">-</code>
             </div>
+            <div class="user-center-metrics" aria-label="账号概览">
+              <div class="user-center-metric">
+                <span class="user-center-metric-label">钱包积分</span>
+                <strong id="user-center-points">0</strong>
+                <small>钱包余额</small>
+              </div>
+              <div class="user-center-metric">
+                <span class="user-center-metric-label">仓库</span>
+                <strong id="user-center-item-count">0</strong>
+                <small>已获取物品</small>
+              </div>
+            </div>
             <div class="user-center-grid">
-              <a class="user-center-option account-stats-link" href="#" data-l10n="index-my-stats">我的数据</a>
-              <a class="user-center-option account-loadout-link" href="#" data-l10n="index-loadout">配装</a>
+              <a class="user-center-option user-center-world-link" href="#start-menu" data-l10n="home-nav-play">进入战区</a>
+              <a class="user-center-option account-loadout-link" href="#"><span class="user-center-option-title">仓库</span><span class="user-center-option-caption" data-l10n="index-loadout">配装</span></a>
+              <a class="user-center-option account-stats-link" href="#" data-l10n="index-my-stats">战绩</a>
               <a class="user-center-option btn-account-change-name" href="#" data-l10n="index-change-account-name">修改用户名</a>
               <a class="user-center-option btn-account-reset-stats" href="#" data-l10n="index-reset-stats">重置数据</a>
             </div>

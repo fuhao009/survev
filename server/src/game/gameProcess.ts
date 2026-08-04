@@ -25,8 +25,45 @@ const socketIdToSocket = new Map<string, ProcessSocket<Client>>();
 
 const procLogger = new Logger(Config.logging, `GameProc-${process.pid}`);
 
+type WorldPositionUpdate = {
+    userId: string;
+    x: number;
+    y: number;
+    layer: number;
+    health: number;
+};
+
+const pendingWorldPositions = new Map<string, WorldPositionUpdate>();
+let worldPositionFlushTimer: ReturnType<typeof setTimeout> | undefined;
+
+function scheduleWorldPositionFlush() {
+    if (worldPositionFlushTimer) return;
+    worldPositionFlushTimer = setTimeout(() => {
+        worldPositionFlushTimer = undefined;
+        void flushWorldPositions();
+    }, 250);
+}
+
+async function flushWorldPositions() {
+    if (pendingWorldPositions.size === 0) return;
+    const updates = [...pendingWorldPositions.values()];
+    pendingWorldPositions.clear();
+    try {
+        const req = await apiPrivateRouter.world.position.$post({ json: { updates } });
+        if (!req.ok) procLogger.warn("Failed to persist world positions", await req.text());
+    } catch (err) {
+        procLogger.error("Failed to persist world positions", err);
+    }
+    if (pendingWorldPositions.size > 0) scheduleWorldPositionFlush();
+}
+
 function stopGame() {
     socketIdToSocket.clear();
+    pendingWorldPositions.clear();
+    if (worldPositionFlushTimer) {
+        clearTimeout(worldPositionFlushTimer);
+        worldPositionFlushTimer = undefined;
+    }
     game = undefined;
 
     // make sure game is properly free'd
@@ -95,10 +132,48 @@ async function sendQuestProgress(userId: string, progress: Array<{ id: string; d
     }
 }
 
+async function markWorldDeath(userId: string, cause: "player" | "safe_zone" | "fire" | "hazard") {
+    try {
+        const req = await apiPrivateRouter.world.death.$post({
+            json: { userId, cause },
+        });
+        if (!req.ok) procLogger.warn("Failed to persist world death", await req.text());
+    } catch (err) {
+        procLogger.error("Failed to persist world death", err);
+    }
+}
+
+async function markWorldFire(userId: string, weaponType: string) {
+    try {
+        const req = await apiPrivateRouter.world.fire.$post({
+            json: { userId, weaponType },
+        });
+        if (!req.ok) procLogger.warn("Failed to persist world weapon wear", await req.text());
+    } catch (err) {
+        procLogger.error("Failed to persist world weapon wear", err);
+    }
+}
+
 /**
  * Implements methods only used when the game is actually running on a server
  */
 class ServerGame extends Game {
+    override onPlayerDeath(userId: string | null, cause: "player" | "safe_zone" | "fire" | "hazard") {
+        if (!this.world || !userId) return;
+        void markWorldDeath(userId, cause);
+    }
+
+    override onWeaponFired(userId: string | null, weaponType: string) {
+        if (!this.world || !userId) return;
+        void markWorldFire(userId, weaponType);
+    }
+
+    override onWorldPlayerUpdate(userId: string | null, x: number, y: number, layer: number, health: number) {
+        if (!this.world || !userId) return;
+        pendingWorldPositions.set(userId, { userId, x, y, layer, health });
+        scheduleWorldPositionFlush();
+    }
+
     override updateData() {
         sendMsg({
             type: ProcessMsgType.UpdateData,
@@ -110,6 +185,7 @@ class ServerGame extends Game {
             startedTime: this.startedTime,
             stopped: this.stopped,
             timeRunning: this.timeRunning,
+            world: this.world,
         });
         if (this.stopped) {
             stopGame();

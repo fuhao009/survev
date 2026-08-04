@@ -51,6 +51,7 @@ export class Game {
     mapName: string;
     isTeamMode: boolean;
     config: ServerGameConfig;
+    readonly world: boolean;
     modeManager: GameModeManager;
 
     now!: number;
@@ -101,6 +102,7 @@ export class Game {
         this.logger.info("Creating");
 
         this.config = config;
+        this.world = config.world;
 
         this.teamMode = config.teamMode;
         this.mapName = config.mapName;
@@ -165,7 +167,7 @@ export class Game {
         }
 
         if (!this.started && !this.preventStart) {
-            this.started = this.modeManager.isGameStarted();
+            this.started = this.world || this.modeManager.isGameStarted();
             if (this.started) {
                 this.gas.advanceGasStage();
             } else {
@@ -179,7 +181,7 @@ export class Game {
                 }
                 // after 30 seconds of no connected players on a game that didn't start
                 // we just force stop the game so it doesn't run forever...
-                if (this.noPlayersTicker > 30) {
+                if (!this.world && this.noPlayersTicker > 30) {
                     this.over = true;
                     this.stop();
                     return;
@@ -330,12 +332,12 @@ export class Game {
         return (
             this.aliveCount < this.map.mapDef.gameMode.maxPlayers
             && !this.over
-            && this.startedTime < 60
+            && (this.world || this.startedTime < 60)
         );
     }
 
     checkGameOver() {
-        if (this.over) return;
+        if (this.over || this.world) return;
 
         const didGameEnd = this.started && this.modeManager.aliveCount() <= 1;
 
@@ -389,6 +391,18 @@ export class Game {
     updateData() {}
     protected _saveGameToDatabase() {}
     sendQuestProgress(_userId: string, _progress: Array<{ id: string; delta: number }>) {}
+
+    onPlayerDeath(_userId: string | null, _cause: "player" | "safe_zone" | "fire" | "hazard") {}
+
+    onWeaponFired(_userId: string | null, _weaponType: string) {}
+
+    onWorldPlayerUpdate(
+        _userId: string | null,
+        _x: number,
+        _y: number,
+        _layer: number,
+        _health: number,
+    ) {}
 
     /**
      * Steps the game X seconds in the future

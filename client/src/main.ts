@@ -9,6 +9,7 @@ import type {
     FindGameResponse,
     GameWsDisconnectReason,
 } from "../../shared/types/api.ts";
+import type { WorldActionResponse, WorldEnterResponse, WorldSnapshot } from "../../shared/types/worldApi.ts";
 import { math } from "../../shared/utils/math.ts";
 import { Account } from "./account.ts";
 import { Ambiance } from "./ambiance.ts";
@@ -42,6 +43,7 @@ export class Application {
     playMode0Btn = $("#btn-start-mode-0");
     playMode1Btn = $("#btn-start-mode-1");
     playMode2Btn = $("#btn-start-mode-2");
+    worldPlayBtn = $("#btn-start-world");
     muteBtns = $(".btn-sound-toggle");
     aimLineBtn = $("#btn-game-aim-line");
     masterSliders = $<HTMLInputElement>(".sl-master-volume");
@@ -89,6 +91,10 @@ export class Application {
 
     errorMessage = "";
     quickPlayPendingModeIdx = -1;
+    worldPlayPending = false;
+    worldSessionActive = false;
+    worldSnapshot: WorldSnapshot | null = null;
+    worldPollTimer: number | null = null;
     findGameAttempts = 0;
     findGameTime = 0;
     pauseTime = 0;
@@ -184,6 +190,14 @@ export class Application {
                         this.tryQuickStartGame(2);
                     });
                 });
+            });
+            this.worldPlayBtn.on("click", () => {
+                this.runWhenLoggedIn(() => {
+                    void this.startWorld();
+                });
+            });
+            $("#world-extract").on("click", () => {
+                void this.extractWorld();
             });
 
             this.serverSelect.on("change", () => {
@@ -406,6 +420,8 @@ export class Application {
     setAppActive(active: boolean) {
         this.active = active;
         this.quickPlayPendingModeIdx = -1;
+        this.worldPlayPending = false;
+        if (active) this.stopWorldSession();
         this.refreshUi();
 
         // Certain systems, like the account, can throw errors
@@ -451,7 +467,7 @@ export class Application {
 
     onTeamMenuJoinGame(data: FindGameMatchData) {
         this.waitOnAccount(() => {
-            this.joinGame(data);
+            this.joinGame(data, false);
         });
     }
 
@@ -573,6 +589,124 @@ export class Application {
         updateButton(this.playMode0Btn, 0);
         updateButton(this.playMode1Btn, 1);
         updateButton(this.playMode2Btn, 2);
+        this.worldPlayBtn.html(
+            this.worldPlayPending ? "<div class=\"ui-spinner\"></div>" : "进入大世界",
+        );
+    }
+
+    async startWorld() {
+        if (!this.ensureLoggedIn() || this.worldPlayPending || this.quickPlayPendingModeIdx !== -1) {
+            return;
+        }
+        this.worldPlayPending = true;
+        this.errorMessage = "";
+        this.refreshUi();
+        try {
+            const response = await fetch(api.resolveUrl("/api/world/enter"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: "{}",
+                credentials: proxy.anyLoginSupported() ? "include" : "omit",
+                signal: helpers.abortSignal(10 * 1000),
+            });
+            if (!response.ok) throw new Error(`world_enter_${response.status}`);
+            const data = await response.json() as WorldEnterResponse;
+            this.worldSnapshot = data.snapshot;
+            this.worldSessionActive = true;
+            this.startWorldPolling();
+            this.refreshWorldHud();
+            this.tryQuickStartGame(0, true);
+        } catch (_err) {
+            this.worldPlayPending = false;
+            this.errorMessage = "大世界暂时无法进入";
+            this.refreshUi();
+        }
+    }
+
+    startWorldPolling() {
+        if (this.worldPollTimer !== null) window.clearInterval(this.worldPollTimer);
+        this.worldPollTimer = window.setInterval(() => {
+            if (!this.worldSessionActive) return;
+            void fetch(api.resolveUrl("/api/world/enter"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: "{}",
+                credentials: proxy.anyLoginSupported() ? "include" : "omit",
+            }).then(async (response) => {
+                if (!response.ok) return;
+                const data = await response.json() as WorldEnterResponse;
+                this.worldSnapshot = data.snapshot;
+                this.refreshWorldHud();
+            }).catch(() => {});
+        }, 2500);
+    }
+
+    stopWorldSession() {
+        this.worldSessionActive = false;
+        this.worldSnapshot = null;
+        if (this.worldPollTimer !== null) {
+            window.clearInterval(this.worldPollTimer);
+            this.worldPollTimer = null;
+        }
+        $("#world-hud").hide();
+    }
+
+    refreshWorldHud() {
+        const snapshot = this.worldSnapshot;
+        if (!snapshot || !this.worldSessionActive || this.active) {
+            $("#world-hud").hide();
+            return;
+        }
+        $("#world-hud").show();
+        const life = snapshot.life;
+        $("#world-hud-life").text(life.status === "alive" ? `生命 ${life.health}` : "生命已结束");
+        const gear = snapshot.inventory
+            .filter((item) => item.state === "carried" || item.state === "equipped")
+            .filter((item) => item.durabilityMax > 0)
+            .map((item) => `${item.type} ${item.durability}/${item.durabilityMax}`)
+            .join(" · ");
+        $("#world-hud-gear").text(gear || "没有可用装备");
+        const canExtract = life.status === "alive" && snapshot.canExtract;
+        $("#world-extract")
+            .prop("disabled", !canExtract)
+            .attr("aria-disabled", String(!canExtract));
+        $("#world-hud-message").text(canExtract ? "已进入撤离区" : "前往撤离区后可结算");
+    }
+
+    async extractWorld() {
+        if (!this.worldSessionActive || this.active) return;
+        const message = $("#world-hud-message");
+        if (!this.worldSnapshot?.canExtract) {
+            message.text("前往撤离区后可结算");
+            return;
+        }
+        message.text("正在结算...");
+        try {
+            const response = await fetch(api.resolveUrl("/api/world/action"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ type: "extract", expectedRevision: this.worldSnapshot?.life.revision }),
+                credentials: proxy.anyLoginSupported() ? "include" : "omit",
+            });
+            const data = await response.json() as WorldActionResponse | { success: false; error?: string };
+            if (!response.ok || !data.success) {
+                message.text(data.success === false ? `无法撤离：${data.error || "未知原因"}` : "无法撤离");
+                return;
+            }
+            const rewards = data.settlement?.status === "finalized" ? data.settlement.rewards : [];
+            const points = rewards.find((reward) => reward.rewardType === "points")?.quantity ?? 0;
+            this.game?.free();
+            this.stopWorldSession();
+            this.setAppActive(true);
+            this.setPlayLockout(false);
+            this.errorMessage = `已撤离，获得 ${points} 积分`;
+            this.account.loadWallet();
+            this.ambience.onGameComplete(this.audioManager);
+            SDK.gamePlayStop();
+            this.refreshUi();
+        } catch (_err) {
+            message.text("结算请求失败");
+        }
     }
 
     waitOnAccount(cb: () => void) {
@@ -634,7 +768,7 @@ export class Application {
         });
     }
 
-    tryQuickStartGame(gameModeIdx: number) {
+    tryQuickStartGame(gameModeIdx: number, world = false) {
         if (!this.ensureLoggedIn()) {
             return;
         }
@@ -680,6 +814,7 @@ export class Application {
                 playerCount: 1,
                 autoFill: true,
                 gameModeIdx,
+                world,
             };
 
             const tryQuickStartGameImpl = () => {
@@ -689,7 +824,7 @@ export class Application {
                             this.onJoinGameError(err);
                         },
                         success: (data) => {
-                            this.joinGame(data);
+                            this.joinGame(data, world);
                         },
                         ban: (ban) => {
                             this.showIpBanModal(ban);
@@ -764,10 +899,10 @@ export class Application {
         );
     }
 
-    joinGame(matchData: FindGameMatchData) {
+    joinGame(matchData: FindGameMatchData, world = false) {
         if (!this.game) {
             setTimeout(() => {
-                this.joinGame(matchData);
+                this.joinGame(matchData, world);
             }, 250);
             return;
         }
@@ -782,6 +917,7 @@ export class Application {
             const onFailure = function() {
                 joinGameImpl(urls, matchData);
             };
+            this.game!.setWorldMode(world);
             this.game!.tryJoinGame(
                 url,
                 matchData.data,
@@ -831,6 +967,7 @@ export class Application {
 
         this.errorMessage = this.getErrorString(err, "full");
         this.quickPlayPendingModeIdx = -1;
+        this.worldPlayPending = false;
         this.teamMenu.leave("join_game_failed");
         this.refreshUi();
     }

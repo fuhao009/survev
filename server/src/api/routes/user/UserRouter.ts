@@ -19,12 +19,14 @@ import { itemsTable, matchDataTable, usersTable } from "../../db/schema.ts";
 import type { Context } from "../../index.ts";
 import { getTimeUntilNextUsernameChange, logoutUser, sanitizeSlug } from "./auth/authUtils.ts";
 import { PassRouter } from "./PassRouter.ts";
+import { WalletRouter } from "./WalletRouter.ts";
 
 export const UserRouter = new Hono<Context>()
     .use(databaseEnabledMiddleware)
     .use(rateLimitMiddleware(40, 60 * 1000))
     .use(authMiddleware)
     .route("/", PassRouter)
+    .route("/wallet", WalletRouter)
     .post("/profile", async (c) => {
         const user = c.get("user")!;
 

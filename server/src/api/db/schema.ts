@@ -12,6 +12,7 @@ import {
     uuid,
 } from "drizzle-orm/pg-core";
 import { TeamMode } from "../../../../shared/gameConfig.ts";
+import type { WorldCarriedItems, WorldPosition, WorldSafeZone } from "../../../../shared/types/world.ts";
 import { ItemStatus, type Loadout, loadout } from "../../../../shared/utils/loadout.ts";
 
 export const sessionTable = pgTable("session", {
@@ -88,6 +89,119 @@ export const userPassTable = pgTable(
 );
 
 export type UserPassTableSelect = typeof userPassTable.$inferSelect;
+
+export const walletTransactionsTable = pgTable(
+    "wallet_transactions",
+    {
+        id: serial("id").primaryKey(),
+        userId: text("user_id")
+            .notNull()
+            .references(() => usersTable.id, {
+                onDelete: "cascade",
+                onUpdate: "cascade",
+            }),
+        amount: integer("amount").notNull(),
+        reason: text("reason").notNull(),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (table) => [index("wallet_transactions_user_created_at_idx").on(table.userId, table.createdAt, table.id)],
+);
+
+export type WalletTransactionsTableSelect = typeof walletTransactionsTable.$inferSelect;
+
+export const worldShardsTable = pgTable("world_shards", {
+    shardId: text("shard_id").primaryKey(),
+    worldId: text("world_id").notNull(),
+    mapId: integer("map_id").notNull(),
+    seed: text("seed").notNull(),
+    status: text("status").notNull().default("active"),
+    worldRevision: integer("world_revision").notNull().default(0),
+    snapshotRevision: integer("snapshot_revision").notNull().default(0),
+    safeZone: json("safe_zone").notNull().$type<WorldSafeZone>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type WorldShardsTableSelect = typeof worldShardsTable.$inferSelect;
+
+export const worldLivesTable = pgTable(
+    "world_lives",
+    {
+        lifeId: text("life_id").primaryKey(),
+        playerId: text("player_id")
+            .notNull()
+            .references(() => usersTable.id, { onDelete: "cascade", onUpdate: "cascade" }),
+        shardId: text("shard_id")
+            .notNull()
+            .references(() => worldShardsTable.shardId, { onDelete: "cascade", onUpdate: "cascade" }),
+        status: text("status").notNull().default("alive"),
+        revision: integer("revision").notNull().default(1),
+        position: json("position").notNull().$type<WorldPosition>(),
+        health: integer("health").notNull().default(100),
+        boost: integer("boost").notNull().default(0),
+        carriedItems: json("carried_items").notNull().$type<WorldCarriedItems>(),
+        startedAt: bigint("started_at", { mode: "number" }).notNull(),
+        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+        diedAt: timestamp("died_at", { withTimezone: true }),
+        extractedAt: timestamp("extracted_at", { withTimezone: true }),
+    },
+    (table) => [
+        index("world_lives_player_status_idx").on(table.playerId, table.status),
+        index("world_lives_shard_status_idx").on(table.shardId, table.status),
+    ],
+);
+
+export type WorldLivesTableSelect = typeof worldLivesTable.$inferSelect;
+
+export const worldItemInstancesTable = pgTable(
+    "world_item_instances",
+    {
+        instanceId: text("instance_id").primaryKey(),
+        userId: text("user_id")
+            .notNull()
+            .references(() => usersTable.id, { onDelete: "cascade", onUpdate: "cascade" }),
+        lifeId: text("life_id").references(() => worldLivesTable.lifeId, { onDelete: "set null" }),
+        type: text("type").notNull(),
+        quantity: integer("quantity").notNull().default(1),
+        durability: integer("durability").notNull(),
+        durabilityMax: integer("durability_max").notNull(),
+        state: text("state").notNull().default("stash"),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (table) => [
+        index("world_item_instances_user_state_idx").on(table.userId, table.state),
+        index("world_items_life_idx").on(table.lifeId),
+    ],
+);
+
+export type WorldItemInstancesTableSelect = typeof worldItemInstancesTable.$inferSelect;
+
+export const worldSettlementsTable = pgTable(
+    "world_settlements",
+    {
+        settlementId: text("settlement_id").primaryKey(),
+        playerId: text("player_id")
+            .notNull()
+            .references(() => usersTable.id, { onDelete: "cascade", onUpdate: "cascade" }),
+        shardId: text("shard_id")
+            .notNull()
+            .references(() => worldShardsTable.shardId, { onDelete: "cascade", onUpdate: "cascade" }),
+        lifeId: text("life_id")
+            .notNull()
+            .references(() => worldLivesTable.lifeId, { onDelete: "cascade", onUpdate: "cascade" }),
+        extractionId: text("extraction_id").notNull(),
+        securedItems: json("secured_items").notNull().$type<WorldCarriedItems>(),
+        rewardPoints: integer("reward_points").notNull().default(0),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (table) => [
+        index("world_settlements_player_created_idx").on(table.playerId, table.createdAt),
+        uniqueIndex("world_settlements_player_extraction_uq").on(table.playerId, table.extractionId),
+    ],
+);
+
+export type WorldSettlementsTableSelect = typeof worldSettlementsTable.$inferSelect;
 
 export const userQuestTable = pgTable(
     "user_quest",

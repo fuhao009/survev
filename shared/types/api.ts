@@ -9,6 +9,7 @@ export const zFindGameBody = z.object({
     playerCount: z.number(),
     autoFill: z.boolean(),
     gameModeIdx: z.number(),
+    world: z.boolean().optional(),
     turnstileToken: z.string().optional(),
 });
 

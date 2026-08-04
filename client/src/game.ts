@@ -62,6 +62,7 @@ export interface Ctx {
 export class Game {
     initialized = false;
     teamMode: TeamMode = TeamMode.Solo;
+    m_world = false;
 
     victoryMusic: SoundHandle | null = null;
     m_ws: WebSocket | null = null;
@@ -138,6 +139,10 @@ export class Game {
         if (IS_DEV) {
             this.editor = new Editor(this.m_config);
         }
+    }
+
+    setWorldMode(world: boolean) {
+        this.m_world = world;
     }
 
     tryJoinGame(
@@ -1512,6 +1517,7 @@ export class Game {
             case net.MsgType.PlayerStats: {
                 const msg = new net.PlayerStatsMsg();
                 msg.deserialize(stream);
+                if (this.m_world) break;
                 this.m_uiManager.setLocalStats(msg.playerStats);
                 this.m_uiManager.showTeamAd(msg.playerStats, this.m_ui2Manager);
                 break;
@@ -1523,6 +1529,11 @@ export class Game {
             case net.MsgType.GameOver: {
                 const msg = new net.GameOverMsg();
                 msg.deserialize(stream);
+                if (this.m_world) {
+                    // The persistent world has death, but never a match winner.
+                    this.m_gameOver = false;
+                    break;
+                }
                 this.m_gameOver = msg.gameOver;
                 const localTeamId = this.m_playerBarn.getPlayerInfo(
                     this.m_localId,

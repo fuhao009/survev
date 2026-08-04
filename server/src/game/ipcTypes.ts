@@ -10,6 +10,7 @@ export interface GameData {
     startedTime: number;
     stopped: boolean;
     timeRunning: number;
+    world: boolean;
 }
 
 export enum ProcessMsgType {
