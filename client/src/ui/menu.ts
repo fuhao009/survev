@@ -37,17 +37,25 @@ function createToast(
 }
 function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
     const startMenuWrapper = $("#start-menu");
-    $("#btn-help").on("click", () => {
-        const e = $("#start-help");
-        startMenuWrapper.addClass("display-help");
-        const height = startMenuWrapper.css("height");
-        e.css("display", "block");
-        startMenuWrapper.animate(
-            {
-                scrollTop: height,
-            },
-            1000,
-        );
+    const helpButton = $("#btn-help");
+    const helpPanel = $("#start-help");
+    helpButton.attr("aria-expanded", "false");
+    helpButton.on("click", () => {
+        const isOpen = startMenuWrapper.hasClass("display-help");
+        startMenuWrapper.toggleClass("display-help", !isOpen);
+        helpButton.toggleClass("is-open", !isOpen).attr("aria-expanded", String(!isOpen));
+        helpPanel.stop(true, true)[isOpen ? "slideUp" : "slideDown"](180);
+
+        if (isOpen) {
+            startMenuWrapper.stop(true).animate({ scrollTop: 0 }, 220);
+        } else {
+            helpPanel.promise().done(() => {
+                startMenuWrapper.stop(true).animate(
+                    { scrollTop: startMenuWrapper[0].scrollHeight },
+                    320,
+                );
+            });
+        }
         return false;
     });
     const teamMobileLink = $("#team-mobile-link");

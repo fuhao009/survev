@@ -287,6 +287,12 @@ export class ProfileUi {
             this.renderUserCenter();
         });
 
+        $(".account-return-user-center").on("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.openUserCenter();
+        });
+
         // Mobile Accounts Modal
         this.modalMobileAccount = new MenuModal($("#modal-mobile-account"));
         this.modalMobileAccount.onShow(() => {
@@ -345,6 +351,12 @@ export class ProfileUi {
             });
             return false;
         });
+        $(".account-details-user").on("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                $(event.currentTarget).trigger("click");
+            }
+        });
         $("#home-login-primary").on("click", () => {
             this.showLoginMenu({ modal: true });
             return false;
@@ -395,6 +407,34 @@ export class ProfileUi {
         const loginSupported = !SDK.isAnySDK && proxy.anyLoginSupported();
 
         $(".account-block").toggle(loginSupported);
+
+        window.addEventListener("hashchange", this.openUserCenterFromHash.bind(this));
+        this.openUserCenterFromHash();
+    }
+
+    openUserCenterFromHash() {
+        if (window.location.hash !== "#user-center") return;
+        this.waitOnLogin(() => {
+            if (this.account.loggedIn) {
+                this.renderUserCenter();
+                this.userCenterModal!.show(true);
+            } else {
+                this.showLoginMenu({ modal: true });
+            }
+        });
+    }
+
+    openUserCenter() {
+        this.setNameModal?.hide();
+        this.resetStatsModal?.hide();
+        this.deleteAccountModal?.hide();
+        this.loadoutMenu.hide();
+        this.modalMobileAccount.hide();
+        if (window.location.hash !== "#user-center") {
+            window.location.hash = "user-center";
+            return;
+        }
+        this.openUserCenterFromHash();
     }
 
     onError(type: string, data?: string) {
@@ -506,6 +546,9 @@ export class ProfileUi {
         $("#user-center-id").text(`ID · ${accountId}`);
         $("#user-center-points").text(walletBalance.toLocaleString());
         $("#user-center-item-count").text(inventorySize.toLocaleString());
+        $("#account-player-id").text(
+            `${this.localization.translate("home-account-id")} · ${accountId}`,
+        );
         this.updateUserIcon();
     }
 

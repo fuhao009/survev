@@ -1,11 +1,11 @@
-<div class='header-extra'>MATCH HISTORY</div>
+<div class='header-extra' data-l10n='stats-match-history'>比赛记录</div>
   <% if (env.error) { %>
     <div class='col-lg-10'>
-      <div class="m-3">Error loading content, please try again.</div>
+      <div class="m-3" data-l10n="stats-load-error">加载失败，请稍后重试。</div>
     </div>
   <% } else if (env.games.length == 0) { %>
     <div class='col-lg-10'>
-      <div class="m-3">No recent games played.</div>
+      <div class="m-3" data-l10n="stats-no-recent-games">暂无最近比赛。</div>
     </div>
   <% } else { %>
     <div class='col-lg-12'>
@@ -27,14 +27,14 @@
                             var secondsPast = (now - timeStart.getTime()) / 1000;
                             if (secondsPast < 3600) {
                                 var minutes = Math.round(secondsPast/60);
-                                timeDiff = minutes < 2 ? '1 minute ago' : minutes + ' minutes ago';
+                                timeDiff = minutes < 2 ? '1分钟前' : minutes + '分钟前';
                             } else if (secondsPast <= 86400) {
                                 var hours = Math.round(secondsPast/3600);
-                                timeDiff = hours == 1 ? 'an hour ago' : hours + ' hours ago';
+                                timeDiff = hours == 1 ? '1小时前' : hours + '小时前';
                             } else if (secondsPast > 86400 && secondsPast < 172800) {
-                                timeDiff = Math.floor(secondsPast/86400) + ' day ago';
+                                timeDiff = Math.floor(secondsPast/86400) + '天前';
                             } else if (secondsPast > 86400) {
-                                timeDiff = Math.floor(secondsPast/86400) + ' days ago';
+                                timeDiff = Math.floor(secondsPast/86400) + '天前';
                             }
                         %>
                         <%= timeDiff %>
@@ -46,7 +46,7 @@
                             var modeText = env.games[i].summary.team_mode;
                             modeText = modeText.charAt(0).toUpperCase() + modeText.slice(1);
                         %>
-                        <div class='match-link-stat-name match-link-stat-name-lg'><%= modeText %> Rank</div>
+                        <div class='match-link-stat-name match-link-stat-name-lg'><%= modeText %><span data-l10n='stats-rank'>排名</span></div>
                         <div class='match-link-stat-value match-link-stat-value-lg'>
                             <span class='match-link-stat-rank match-link-stat-<%= env.games[i].summary.rank %>'>#<%= env.games[i].summary.rank %></span>
                             /<%= env.games[i].summary.team_total || 80 %>
@@ -55,33 +55,33 @@
                 </div>
                 <div class='col-2 col-md-1'>
                     <div class='match-link-stat'>
-                        <div class='match-link-stat-name match-link-stat-name-md'>Kills</div>
+                        <div class='match-link-stat-name match-link-stat-name-md' data-l10n='stats-kills'>击杀</div>
                         <div class='match-link-stat-value match-link-stat-value-md'><%= env.games[i].summary.kills %></div>
                     </div>
                 </div>
                 <% if (env.games[i].summary.team_mode != 'solo') { %>
                     <div class='hide-xs col-md-1'>
                         <div class='match-link-stat'>
-                            <div class='match-link-stat-name match-link-stat-name-md'>Team Kills</div>
+                            <div class='match-link-stat-name match-link-stat-name-md' data-l10n='stats-team-kills'>团队击杀</div>
                             <div class='match-link-stat-value match-link-stat-value-md'><%= env.games[i].summary.team_kills || 0 %></div>
                         </div>
                     </div>
                 <% } %>
                 <div class='col-2 col-md-1 <%= env.games[i].summary.team_mode == 'solo' ? 'offset-md-1' : '' %>'>
                     <div class='match-link-stat'>
-                        <div class='match-link-stat-name match-link-stat-name-md'>Damage Dealt</div>
+                        <div class='match-link-stat-name match-link-stat-name-md' data-l10n='stats-damage-dealt'>造成伤害</div>
                         <div class='match-link-stat-value match-link-stat-value-md'><%= env.games[i].summary.damage_dealt %></div>
                     </div>
                 </div>
                 <div class='col-2 col-md-1'>
                     <div class='match-link-stat'>
-                        <div class='match-link-stat-name match-link-stat-name-md'>Damage Taken</div>
+                        <div class='match-link-stat-name match-link-stat-name-md' data-l10n='stats-damage-taken'>承受伤害</div>
                         <div class='match-link-stat-value match-link-stat-value-md'><%= env.games[i].summary.damage_taken %></div>
                     </div>
                 </div>
                 <div class='col-2 col-md-1'>
                     <div class='match-link-stat'>
-                        <div class='match-link-stat-name match-link-stat-name-md'>Survived</div>
+                        <div class='match-link-stat-name match-link-stat-name-md' data-l10n='stats-survived'>存活时间</div>
                         <div class='match-link-stat-value match-link-stat-value-md'>
                             <%= env.formatTime(env.games[i].summary.time_alive) %>
                         </div>
@@ -116,7 +116,7 @@
                 <div class="spinner"></div>
             </div>
         <% } else { %>
-            <div class='col-12 js-match-load-more btn-darken'>More</div>
+            <div class='col-12 js-match-load-more btn-darken' data-l10n='stats-more'>加载更多</div>
         <% } %>
     <% } %>
   <% } %>

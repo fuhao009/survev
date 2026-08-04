@@ -387,7 +387,11 @@ export class Application {
             );
             this.loadoutMenu.loadoutDisplay = this.loadoutDisplay;
             this.onResize();
-            this.tryJoinTeam(false);
+            if (window.location.hash === "#user-center") {
+                this.profileUi.openUserCenterFromHash();
+            } else {
+                this.tryJoinTeam(false);
+            }
             Menu.setupModals(this.inputBinds, this.inputBindUi);
             this.onConfigModified();
             this.config.addModifiedListener(this.onConfigModified.bind(this));
@@ -1118,7 +1122,9 @@ window.addEventListener("orientationchange", () => {
     App.onResize();
 });
 window.addEventListener("hashchange", () => {
-    App.tryJoinTeam(false);
+    if (window.location.hash !== "#user-center") {
+        App.tryJoinTeam(false);
+    }
 });
 window.addEventListener("beforeunload", (e) => {
     if (App.game?.warnPageReload()) {

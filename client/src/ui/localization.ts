@@ -50,7 +50,9 @@ export class Localization {
     setLocale(locale: Locale) {
         const newLocale = this.acceptedLocales.includes(locale) ? locale : "en";
         if (newLocale !== this.locale) {
-            const downloadUrl = `./l10n/${this.isStats ? "stats/" : ""}${locale}.json`;
+            const downloadUrl = this.isStats
+                ? `/l10n/stats/${locale}.json`
+                : `./l10n/${locale}.json`;
             if (!this.translations[locale]) {
                 downloadFile(downloadUrl, (err, data) => {
                     if (err) {
@@ -114,6 +116,7 @@ export class Localization {
         });
 
         $(".language-select").val(this.getLocale());
+        $("#selected-language").text(this.getLocale().toUpperCase());
     }
 
     populateLanguageSelect() {

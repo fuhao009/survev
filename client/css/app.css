@@ -8513,6 +8513,46 @@ input [type="image"]:focus {
   margin-top: 9px;
 }
 
+#btn-help.is-open {
+  background: rgba(115, 208, 194, 0.12);
+  border-color: rgba(115, 208, 194, 0.62);
+  color: var(--home-ink);
+}
+
+.account-details-user {
+  cursor: pointer;
+}
+
+.account-details-user:hover {
+  border-color: rgba(115, 208, 194, 0.72);
+}
+
+.account-details-user:focus-visible {
+  outline: 2px solid var(--home-orange);
+  outline-offset: 3px;
+}
+
+.account-details {
+  height: auto;
+  min-height: 74px;
+  padding: 11px 14px;
+}
+
+.account-copy {
+  gap: 4px;
+  padding-left: 0;
+}
+
+.account-player-meta {
+  color: var(--home-muted);
+  font-family: monospace;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 #home-side-panel {
   align-items: stretch;
   background: rgba(5, 16, 20, 0.82);
@@ -8924,4 +8964,87 @@ input [type="image"]:focus {
   min-height: 18px;
   margin-top: 7px;
   color: #f2c36c;
+}
+
+/* Account subviews share one clear way back to the account hub. */
+.account-return-user-center {
+  align-items: center;
+  background: transparent;
+  border: 1px solid rgba(115, 208, 194, 0.42);
+  border-radius: 3px;
+  color: var(--home-muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  text-decoration: none;
+}
+
+.account-return-user-center:hover,
+.account-return-user-center:focus-visible {
+  background: rgba(100, 200, 187, 0.12);
+  border-color: var(--home-teal);
+  color: var(--home-ink);
+  outline: none;
+}
+
+#modal-account-name-change .modal-footer,
+#modal-account-reset-stats .modal-footer,
+#modal-account-delete .modal-footer {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px 18px;
+}
+
+#modal-account-name-change .modal-footer .finish,
+#modal-account-reset-stats .modal-footer .finish,
+#modal-account-delete .modal-footer .finish {
+  margin: 0;
+}
+
+#modal-customize-close {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  right: 16px;
+  top: 8px;
+  z-index: 2;
+}
+
+#modal-customize-close .account-return-user-center {
+  min-height: 30px;
+  padding: 0 10px;
+}
+
+#modal-user-center {
+  background-color: rgba(3, 13, 16, 0.72);
+  background-image: url(/img/home-skin/user-center.png);
+  background-position: left center;
+  background-size: cover;
+  isolation: isolate;
+}
+
+#modal-user-center::after {
+  background: rgba(3, 13, 16, 0.34);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
+#modal-user-center .modal-content {
+  position: absolute;
+  z-index: 1;
+}
+
+#background {
+  background-position: center 42%;
+  filter: saturate(1.08) contrast(1.04);
 }

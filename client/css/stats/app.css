@@ -200,7 +200,16 @@ a.nav-link-bright:hover {
 }
 
 #leaderboard-bg {
-  background-image: url("/img/ui/stats_splash.png");
+  background-image: url("/img/home-skin/user-center.png");
+  background-position: left center;
+  opacity: 0.48;
+}
+
+#contentMain {
+  background: rgba(3, 13, 16, 0.72);
+  min-height: calc(100vh - 56px);
+  position: relative;
+  z-index: 1;
 }
 
 .leaderboard-error {

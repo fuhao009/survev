@@ -6,7 +6,7 @@
 <% } else if (env.error || !env.data || env.data.length == 0) {%>
   <!-- Error loading data -->
   <div class='col-lg-10'>
-      <div class='m-3'>Error loading content, please try again.</div>
+      <div class='m-3' data-l10n="stats-load-error">加载失败，请稍后重试。</div>
   </div>
 <% } else { %>
   <div class='match-header-wrapper'>

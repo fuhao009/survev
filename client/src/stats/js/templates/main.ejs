@@ -4,7 +4,7 @@
     <div class="card-body">
       <div class='row card-row-top'>
         <div class='col-12'>
-          <div class="leaderboard-title ml-sm-3 ml-0 mr-0 mt-3" data-l10n='index-leaderboards' data-caps='true'>LEADERBOARDS</div>
+          <div class="leaderboard-title ml-sm-3 ml-0 mr-0 mt-3" data-l10n='index-leaderboards' data-caps='true'>排行榜</div>
         </div>
       </div>
     </div>
@@ -16,31 +16,31 @@
   <div class="row">
     <div class='col-lg-2 col-3 pr-lg-3 pr-1'>
       <select id="leaderboard-team-mode" class="leaderboard-opt custom-select">
-        <option value="solo" data-l10n='stats-solo'>Solo</option>
-        <option value="duo" data-l10n='stats-duo'>Duo</option>
-        <option value="squad" data-l10n='stats-squad'>Squad</option>
+        <option value="solo" data-l10n='stats-solo'>单人</option>
+        <option value="duo" data-l10n='stats-duo'>双人</option>
+        <option value="squad" data-l10n='stats-squad'>小队</option>
       </select>
     </div>
     <div class='col-lg-2 col-3 pl-lg-0 pr-lg-3 pl-0 pr-1'>
       <select id="leaderboard-type" class="leaderboard-opt custom-select">
-        <option value="most_kills" data-l10n='stats-most-kills'>Most kills</option>
-        <option value="most_damage_dealt" data-l10n='stats-most-damage'>Most damage</option>
-        <option value="kpg" data-l10n='stats-kpg-full'>Kills per game</option>
-        <option value="kills" data-l10n='stats-total-kills'>Total kills</option>
-        <option value="wins" data-l10n='stats-total-wins'>Total wins</option>
+        <option value="most_kills" data-l10n='stats-most-kills'>击杀最多</option>
+        <option value="most_damage_dealt" data-l10n='stats-most-damage'>伤害最高</option>
+        <option value="kpg" data-l10n='stats-kpg-full'>场均击杀</option>
+        <option value="kills" data-l10n='stats-total-kills'>总击杀</option>
+        <option value="wins" data-l10n='stats-total-wins'>总胜场</option>
       </select>
     </div>
     <div class='col-lg-2 col-3 pl-lg-0 pr-lg-3 pl-0 pr-1'>
       <select id="leaderboard-time" class="leaderboard-opt custom-select">
-        <option value="daily" data-l10n='stats-today'>Today</option>
-        <option value="weekly" data-l10n='stats-this-week'>This week</option>
-        <option value="alltime" data-l10n='stats-all-time'>All time</option>
+        <option value="daily" data-l10n='stats-today'>今天</option>
+        <option value="weekly" data-l10n='stats-this-week'>本周</option>
+        <option value="alltime" data-l10n='stats-all-time'>全部时间</option>
       </select>
     </div>
     <div class='col-lg-2 col-3 pl-0'>
       <select id="leaderboard-map-id" class="leaderboard-opt custom-select">
         <% for (var i = 0; i < env.gameModes.length; i++) { %>
-          <option value="<%= env.gameModes[i].mapId %>"><%= env.gameModes[i].desc.name%></option>
+          <option value="<%= env.gameModes[i].mapId %>" data-l10n="stats-map-<%= env.gameModes[i].desc.name.toLowerCase() %>"><%= env.gameModes[i].desc.name%></option>
         <% } %>
       </select>
     </div>
@@ -54,4 +54,3 @@
     </div>
   </div>
 </div>
-

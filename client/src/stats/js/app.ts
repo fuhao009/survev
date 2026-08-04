@@ -19,7 +19,7 @@ const templates = {
     language,
 };
 
-type AcceptedLocales = "en" | "es";
+type AcceptedLocales = "en" | "es" | "zh-cn";
 type Routes = "player" | "main";
 
 export class App {
@@ -58,7 +58,7 @@ export class App {
 
         this.localization = new Localization(
             "en",
-            ["en", "es"],
+            ["en", "es", "zh-cn"],
             {
                 en: EnJs as unknown as Record<string, string>,
             },

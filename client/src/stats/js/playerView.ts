@@ -93,18 +93,18 @@ function getPlayerCardData(
 
         // Overall rank / rating not available yet
         const mid: { name: string; val: string }[] = [];
-        addStat(mid, "Rating", "-");
-        addStat(mid, "Rank", "-");
+        addStat(mid, "rating", "-");
+        addStat(mid, "rank", "-");
 
         const bot: { name: string; val: string }[] = [];
-        addStat(bot, "Wins", mode.wins);
-        addStat(bot, "Win %", mode.winPct);
-        addStat(bot, "Kills", mode.kills);
-        addStat(bot, "Avg Survived", helpers.formatTime(mode.avgTimeAlive));
-        addStat(bot, "Most kills", mode.mostKills);
-        addStat(bot, "K/G", mode.kpg);
-        addStat(bot, "Most damage", mode.mostDamage);
-        addStat(bot, "Avg Damage", mode.avgDamage);
+        addStat(bot, "wins", mode.wins);
+        addStat(bot, "win-pct", mode.winPct);
+        addStat(bot, "kills", mode.kills);
+        addStat(bot, "avg-survived", helpers.formatTime(mode.avgTimeAlive));
+        addStat(bot, "most-kills", mode.mostKills);
+        addStat(bot, "kpg", mode.kpg);
+        addStat(bot, "most-damage", mode.mostDamage);
+        addStat(bot, "avg-damage", mode.avgDamage);
 
         teamModes.push({
             teamMode: mode.teamMode,
