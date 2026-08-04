@@ -1,7 +1,16 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { MapDefs } from "../../../../shared/defs/mapDefs.ts";
-import { ITEM_DURABILITY_MAX, type ItemInstance, parseItemInstance } from "../../../../shared/types/itemInstance.ts";
+import { GameObjectDefs } from "../../../../shared/defs/register.ts";
+import {
+    getInitialItemDurability,
+    getRepairCost,
+    isDamageWearItemType,
+    isWeaponWearItemType,
+    repairItem,
+    wearItem,
+} from "../../../../shared/types/itemDurability.ts";
+import { parseItemInstance } from "../../../../shared/types/itemInstance.ts";
 import type {
     WorldCarriedItems,
     WorldCarriedItemsSnapshot,
@@ -32,7 +41,7 @@ const SHARD_ID = "gun-world-local-1";
 const WORLD_SEED = "gun-world-seed-1";
 const BASE_POSITION = { position: { ...WORLD_EXTRACTION_ZONE.center }, layer: 0 } as const;
 const INITIAL_GEAR = ["ak47", "m9"] as const;
-const WORLD_WEAPONS = new Set(["ak47", "m9"]);
+const INITIAL_EQUIPMENT = ["backpack01", "helmet01", "chest01"] as const;
 const LOCKS = new Map<string, Promise<void>>();
 
 const safeZone: WorldSafeZone = {
@@ -137,6 +146,8 @@ function itemSnapshot(
     ownerId: string,
     revision: number,
 ): WorldCarriedItemsSnapshot {
+    const equippedType = (gameObjectType: string, fallback: string) =>
+        items.find((item) => GameObjectDefs.typeToDefSafe(item.type)?.type === gameObjectType)?.type ?? fallback;
     return {
         kind: "carried_items_snapshot",
         ownerId,
@@ -154,10 +165,10 @@ function itemSnapshot(
                 loadedAmmo: 0,
             })),
         equipment: {
-            outfit: "outfitBase",
-            backpack: "backpack_basic",
-            helmet: "helmet_basic",
-            chest: "chest_basic",
+            outfit: equippedType("outfit", "outfitBase"),
+            backpack: equippedType("backpack", "backpack01"),
+            helmet: equippedType("helmet", "helmet01"),
+            chest: equippedType("chest", "chest01"),
             perks: [],
         },
     };
@@ -215,6 +226,7 @@ export class WorldService {
         );
         const wanted = new Set<string>([
             ...INITIAL_GEAR,
+            ...INITIAL_EQUIPMENT,
             loadout.outfit,
             loadout.melee,
             loadout.player_icon,
@@ -227,8 +239,7 @@ export class WorldService {
                 instanceId: randomUUID(),
                 userId,
                 type,
-                durability: ITEM_DURABILITY_MAX,
-                durabilityMax: ITEM_DURABILITY_MAX,
+                ...getInitialItemDurability(type),
                 state: "stash",
             })));
         }
@@ -374,17 +385,22 @@ export class WorldService {
                     ),
                 });
                 if (!item) throw new WorldActionError("weapon_not_carried");
-                if (!WORLD_WEAPONS.has(item.type)) throw new WorldActionError("not_a_weapon");
-                const nextDurability = Math.max(0, item.durability - 1);
+                if (!isWeaponWearItemType(item.type)) throw new WorldActionError("not_a_weapon");
+                if (!(["carried", "equipped"] as string[]).includes(item.state)) {
+                    throw new WorldActionError("weapon_not_carried");
+                }
+                const transition = wearItem(item);
+                if (!transition.changed) throw new WorldActionError("item_destroyed");
                 await db.update(worldItemInstancesTable).set({
-                    durability: nextDurability,
-                    state: nextDurability === 0 ? "destroyed" : item.state,
+                    durability: transition.durability,
+                    state: transition.state,
                     updatedAt: new Date(),
                 }).where(eq(worldItemInstancesTable.instanceId, item.instanceId));
                 await db.update(worldLivesTable).set({ revision: life.revision + 1, updatedAt: new Date() }).where(
                     eq(worldLivesTable.lifeId, life.lifeId),
                 );
             } else if (action.type === "damage") {
+                await this.wearDamageEquipment(userId, life.lifeId);
                 const health = Math.max(0, life.health - action.amount);
                 if (health > 0) {
                     await db.update(worldLivesTable).set({ health, revision: life.revision + 1, updatedAt: new Date() })
@@ -466,7 +482,14 @@ export class WorldService {
             diedAt: new Date(droppedAt),
             updatedAt: new Date(),
         }).where(eq(worldLivesTable.lifeId, life.lifeId));
-        await db.update(worldItemInstancesTable).set({ state: "world", lifeId: null, updatedAt: new Date() }).where(
+        await db.update(worldItemInstancesTable).set({ state: "world", updatedAt: new Date() }).where(
+            and(
+                eq(worldItemInstancesTable.userId, userId),
+                eq(worldItemInstancesTable.lifeId, life.lifeId),
+                inArray(worldItemInstancesTable.state, ["carried", "equipped"]),
+            ),
+        );
+        await db.update(worldItemInstancesTable).set({ lifeId: null, updatedAt: new Date() }).where(
             and(eq(worldItemInstancesTable.userId, userId), eq(worldItemInstancesTable.lifeId, life.lifeId)),
         );
     }
@@ -530,21 +553,71 @@ export class WorldService {
     }
 
     private async repair(userId: string, lifeId: string, instanceId: string) {
-        const item = await db.query.worldItemInstancesTable.findFirst({
-            where: and(
-                eq(worldItemInstancesTable.instanceId, instanceId),
+        return db.transaction(async (tx) => {
+            // Serialise wallet and repair mutations across API processes too;
+            // the in-process user lock alone cannot protect a multi-instance deployment.
+            await tx.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, userId)).for("update");
+            const life = (await tx.select({ status: worldLivesTable.status, revision: worldLivesTable.revision })
+                .from(worldLivesTable)
+                .where(eq(worldLivesTable.lifeId, lifeId))
+                .for("update"))[0];
+            if (!life || life.status !== "alive") throw new WorldActionError("no_alive_life");
+            const item = (await tx.select().from(worldItemInstancesTable).where(
+                and(
+                    eq(worldItemInstancesTable.instanceId, instanceId),
+                    eq(worldItemInstancesTable.userId, userId),
+                    eq(worldItemInstancesTable.lifeId, lifeId),
+                ),
+            ).for("update"))[0];
+            if (!item) throw new WorldActionError("item_not_carried");
+            if (!(["carried", "equipped", "destroyed"] as string[]).includes(item.state)) {
+                throw new WorldActionError("item_not_repairable");
+            }
+
+            const cost = getRepairCost(item);
+            if (cost === null) throw new WorldActionError("item_not_repairable");
+            if (cost === 0) return false;
+
+            const balance = await tx.select({
+                balance: sql<number>`coalesce(sum(${walletTransactionsTable.amount}), 0)`,
+            })
+                .from(walletTransactionsTable)
+                .where(eq(walletTransactionsTable.userId, userId));
+            if (Number(balance[0]?.balance ?? 0) < cost) throw new WorldActionError("insufficient_points");
+
+            const transition = repairItem(item);
+            if (!transition.changed) return false;
+            await tx.insert(walletTransactionsTable).values({ userId, amount: -cost, reason: "world_repair" });
+            await tx.update(worldItemInstancesTable).set({
+                durability: transition.durability,
+                state: transition.state,
+                updatedAt: new Date(),
+            }).where(eq(worldItemInstancesTable.instanceId, instanceId));
+            await tx.update(worldLivesTable).set({ revision: life.revision + 1, updatedAt: new Date() }).where(
+                eq(worldLivesTable.lifeId, lifeId),
+            );
+            return true;
+        });
+    }
+
+    private async wearDamageEquipment(userId: string, lifeId: string) {
+        const items = await db.select().from(worldItemInstancesTable).where(
+            and(
                 eq(worldItemInstancesTable.userId, userId),
                 eq(worldItemInstancesTable.lifeId, lifeId),
+                inArray(worldItemInstancesTable.state, ["carried", "equipped"]),
             ),
-        });
-        if (!item) throw new WorldActionError("item_not_carried");
-        const cost = Math.max(1, Math.ceil((item.durabilityMax - item.durability) / 10));
-        const balance = await this.walletBalance(userId);
-        if (balance < cost) throw new WorldActionError("insufficient_points");
-        await db.insert(walletTransactionsTable).values({ userId, amount: -cost, reason: "world_repair" });
-        await db.update(worldItemInstancesTable).set({ durability: item.durabilityMax, updatedAt: new Date() }).where(
-            eq(worldItemInstancesTable.instanceId, instanceId),
         );
+        for (const item of items) {
+            if (!isDamageWearItemType(item.type)) continue;
+            const transition = wearItem(item);
+            if (!transition.changed) continue;
+            await db.update(worldItemInstancesTable).set({
+                durability: transition.durability,
+                state: transition.state,
+                updatedAt: new Date(),
+            }).where(eq(worldItemInstancesTable.instanceId, item.instanceId));
+        }
     }
 
     async markDeadForPlayer(userId: string, cause: "player" | "safe_zone" | "fire" | "hazard") {
@@ -572,7 +645,7 @@ export class WorldService {
                     eq(worldLivesTable.status, "alive"),
                 ),
             });
-            if (!life || !WORLD_WEAPONS.has(weaponType)) return false;
+            if (!life || !isWeaponWearItemType(weaponType)) return false;
             const item = await db.query.worldItemInstancesTable.findFirst({
                 where: and(
                     eq(worldItemInstancesTable.userId, userId),
@@ -582,10 +655,11 @@ export class WorldService {
                 ),
             });
             if (!item) return false;
-            const durability = Math.max(0, item.durability - 1);
+            const transition = wearItem(item);
+            if (!transition.changed) return false;
             await db.update(worldItemInstancesTable).set({
-                durability,
-                state: durability === 0 ? "destroyed" : item.state,
+                durability: transition.durability,
+                state: transition.state,
                 updatedAt: new Date(),
             }).where(eq(worldItemInstancesTable.instanceId, item.instanceId));
             await db.update(worldLivesTable).set({ revision: life.revision + 1, updatedAt: new Date() }).where(
