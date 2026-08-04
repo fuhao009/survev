@@ -174,6 +174,18 @@ describe("authoritative world terrain", () => {
                 endsAt: 1,
                 patches: [],
             },
+            weather: {
+                kind: "world_weather" as const,
+                type: "clear" as const,
+                phase: "stable" as const,
+                intensity: 0,
+                revision: 1,
+                startedAt: 0,
+                endsAt: 1,
+                transitionProgress: 0,
+                nextType: null,
+            },
+            worldSeed: "test-seed",
         } satisfies WorldPositionSyncResponse;
 
         expect(response.applied).toBe(2);

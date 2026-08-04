@@ -1461,6 +1461,12 @@ export class UiManager2 {
                     )
                 } ${killTxt} ${targetName}`;
             }
+            case DamageType.Lightning: {
+                const killTxt = this.localization.translate(
+                    downed ? "game-knocked-out" : "game-killed",
+                );
+                return `${this.localization.translate("game-the-lightning")} ${killTxt} ${targetName}`;
+            }
             default:
                 return "";
         }
@@ -1558,6 +1564,8 @@ export class UiManager2 {
         const damageTxt = this.localization.translate(
             damageType == GameConfig.DamageType.Airstrike
                 ? "game-an-air-strike"
+                : damageType == GameConfig.DamageType.Lightning
+                ? "game-a-lightning-strike"
                 : `game-${sourceType}`,
         );
         const withTxt = this.localization.translate("game-with");
@@ -1594,11 +1602,15 @@ export class UiManager2 {
                 killerTxt = this.localization.translate("game-the-air-drop");
             } else if (damageType == GameConfig.DamageType.Airstrike) {
                 killerTxt = this.localization.translate("game-the-air-strike");
+            } else if (damageType == GameConfig.DamageType.Lightning) {
+                killerTxt = this.localization.translate("game-the-lightning");
             }
         }
         let damageTxt = this.localization.translate(`game-${sourceType}`);
         if (killerName && damageType == GameConfig.DamageType.Airstrike) {
             damageTxt = this.localization.translate("game-an-air-strike");
+        } else if (killerName && damageType == GameConfig.DamageType.Lightning) {
+            damageTxt = this.localization.translate("game-a-lightning-strike");
         }
         const withTxt = this.localization.translate("game-with");
         if (damageTxt) {

@@ -193,7 +193,17 @@ export class WorldService {
 
     async getTerrainSnapshot(): Promise<WorldTerrain> {
         const shard = await this.ensureShard();
-        return toWorldShard(shard).terrain;
+        return toWorldShard(shard, Date.now()).terrain;
+    }
+
+    async getWorldRuntimeSnapshot() {
+        const shard = await this.ensureShard();
+        const world = toWorldShard(shard, Date.now());
+        return {
+            worldSeed: world.seed,
+            terrain: world.terrain,
+            weather: world.weather,
+        };
     }
 
     private async ensureStarterItems(userId: string, loadout: Loadout) {

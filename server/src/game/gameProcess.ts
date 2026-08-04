@@ -1,10 +1,21 @@
 import fs from "node:fs";
 import { platform } from "node:os";
 import path from "node:path";
+import { DamageType } from "../../../shared/gameConfig.ts";
 import type { WorldPositionSyncResponse, WorldPositionTerrainMovement } from "../../../shared/types/worldApi.ts";
-import { getWorldTerrainBulletModifier, type WorldTerrain } from "../../../shared/types/worldTerrain.ts";
+import {
+    getWorldLightning,
+    getWorldLightningImpact,
+    shouldApplyWorldLightningEvent,
+} from "../../../shared/types/worldLightning.ts";
+import {
+    getWorldTerrainBulletModifier,
+    getWorldTerrainLightningModifier,
+    type WorldTerrain,
+} from "../../../shared/types/worldTerrain.ts";
+import type { WorldWeather } from "../../../shared/types/worldWeather.ts";
 import { Logger } from "../../../shared/utils/logger.ts";
-import type { Vec2 } from "../../../shared/utils/v2.ts";
+import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
 import { Config } from "../config.ts";
 import { apiPrivateRouter } from "../utils/apiRouter.ts";
 import { logErrorToWebhook } from "../utils/logger.ts";
@@ -39,6 +50,9 @@ type WorldPositionUpdate = {
 const pendingWorldPositions = new Map<string, WorldPositionUpdate>();
 const worldMovementSpeedMultipliers = new Map<string, number>();
 let worldTerrain: WorldTerrain | undefined;
+let worldWeather: WorldWeather | undefined;
+let worldSeed: string | undefined;
+const lightningDamageRevisions = new Map<number, number>();
 let worldPositionFlushTimer: ReturnType<typeof setTimeout> | undefined;
 
 function normalizeWorldMovementSpeedMultiplier(value: number): number {
@@ -56,6 +70,12 @@ function cacheWorldMovementSpeedMultipliers(updates: readonly WorldPositionTerra
 
 function cacheWorldTerrain(terrain: WorldPositionSyncResponse["terrain"] | undefined) {
     if (terrain) worldTerrain = terrain;
+}
+
+function cacheWorldRuntime(response: WorldPositionSyncResponse) {
+    cacheWorldTerrain(response.terrain);
+    worldWeather = response.weather;
+    worldSeed = response.worldSeed;
 }
 
 function scheduleWorldPositionFlush() {
@@ -77,7 +97,7 @@ async function flushWorldPositions() {
         } else {
             const res = await req.json() as WorldPositionSyncResponse;
             cacheWorldMovementSpeedMultipliers(res.terrainMovement);
-            cacheWorldTerrain(res.terrain);
+            cacheWorldRuntime(res);
         }
     } catch (err) {
         procLogger.error("Failed to persist world positions", err);
@@ -90,6 +110,9 @@ function stopGame() {
     pendingWorldPositions.clear();
     worldMovementSpeedMultipliers.clear();
     worldTerrain = undefined;
+    worldWeather = undefined;
+    worldSeed = undefined;
+    lightningDamageRevisions.clear();
     if (worldPositionFlushTimer) {
         clearTimeout(worldPositionFlushTimer);
         worldPositionFlushTimer = undefined;
@@ -196,6 +219,43 @@ class ServerGame extends Game {
     override getWorldBulletModifier(position: Vec2) {
         if (!this.world) return super.getWorldBulletModifier(position);
         return getWorldTerrainBulletModifier(position, worldTerrain);
+    }
+
+    override updateWorldHazards(_dt: number) {
+        if (!this.world || !worldSeed || !worldWeather) return;
+
+        const livingIds = new Set(this.playerBarn.livingPlayers.map((player) => player.__id));
+        for (const playerId of lightningDamageRevisions.keys()) {
+            if (!livingIds.has(playerId)) lightningDamageRevisions.delete(playerId);
+        }
+
+        const activeEvents = getWorldLightning(worldSeed, worldWeather, Date.now()).events.filter(
+            (event) => event.phase === "active",
+        );
+        if (activeEvents.length === 0) return;
+
+        for (const event of activeEvents) {
+            for (const player of [...this.playerBarn.livingPlayers]) {
+                if (
+                    player.dead
+                    || !shouldApplyWorldLightningEvent(
+                        lightningDamageRevisions.get(player.__id),
+                        event.revision,
+                    )
+                ) continue;
+
+                const terrainModifier = getWorldTerrainLightningModifier(player.pos, worldTerrain);
+                const impact = getWorldLightningImpact(event, player.pos, terrainModifier);
+                if (!impact) continue;
+
+                lightningDamageRevisions.set(player.__id, event.revision);
+                player.damage({
+                    amount: impact.damage,
+                    damageType: DamageType.Lightning,
+                    dir: v2.normalizeSafe(v2.sub(player.pos, event.position)),
+                });
+            }
+        }
     }
 
     override onPlayerDeath(userId: string | null, cause: "player" | "safe_zone" | "fire" | "hazard") {

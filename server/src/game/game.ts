@@ -211,6 +211,10 @@ export class Game {
         this.playerBarn.update(dt);
         this.profiler.endSample();
 
+        this.profiler.addSample("worldHazards");
+        this.updateWorldHazards(dt);
+        this.profiler.endSample();
+
         this.profiler.addSample("clients");
         this.clientBarn.update(dt);
         this.profiler.endSample();
@@ -412,6 +416,9 @@ export class Game {
         _layer: number,
         _health: number,
     ) {}
+
+    /** Server-only persistent-world hazards run after player movement/update. */
+    updateWorldHazards(_dt: number) {}
 
     /**
      * Realtime world modifiers are supplied by the server-side world API.

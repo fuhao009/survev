@@ -1,14 +1,18 @@
 import { describe, expect, test } from "vitest";
 import {
     getWorldLightning,
+    getWorldLightningImpact,
+    shouldApplyWorldLightningEvent,
     WORLD_LIGHTNING_DURATION_MS,
     type WorldLightning,
 } from "../../shared/types/worldLightning.ts";
+import { getWorldTerrainLightningModifier } from "../../shared/types/worldTerrain.ts";
 
 describe("authoritative world lightning schedule", () => {
     const seed = "gun-world-lightning-seed";
     const thunderstorm = {
         type: "thunderstorm" as const,
+        phase: "stable" as const,
         revision: 4,
         startedAt: 1_700_000_000_000,
         endsAt: 1_700_000_630_000,
@@ -25,6 +29,16 @@ describe("authoritative world lightning schedule", () => {
         });
     });
 
+    test("does not strike during the thunderstorm warning phase", () => {
+        const warning = getWorldLightning(
+            seed,
+            { ...thunderstorm, phase: "warning" },
+            thunderstorm.startedAt + 20_000,
+        );
+
+        expect(warning.events).toEqual([]);
+    });
+
     test("is deterministic and keeps event positions inside the map", () => {
         const first = getWorldLightning(seed, thunderstorm, thunderstorm.startedAt + 20_000);
         const second = getWorldLightning(seed, thunderstorm, thunderstorm.startedAt + 20_000);
@@ -39,6 +53,7 @@ describe("authoritative world lightning schedule", () => {
             expect(event.position.x).toBeLessThanOrEqual(4096);
             expect(event.position.y).toBeLessThanOrEqual(4096);
         }
+        expect(new Set(first.events.map((event) => event.revision)).size).toBe(first.events.length);
     });
 
     test("transitions an event from scheduled to active and removes it after expiry", () => {
@@ -55,5 +70,83 @@ describe("authoritative world lightning schedule", () => {
         expect(active?.eventId).toBe(first!.eventId);
         expect(active?.phase).toBe("active");
         expect(afterExpiry?.eventId).not.toBe(first!.eventId);
+    });
+
+    test("applies conductive flooded terrain to radius and damage", () => {
+        const event = {
+            revision: 7,
+            position: { x: 100, y: 100 },
+            radius: 100,
+            damage: 24,
+        } as const;
+        const playerPosition = { x: 260, y: 100 };
+        const terrain = {
+            revision: 3,
+            patches: [{
+                id: "flooded-a",
+                type: "flooded" as const,
+                bounds: { min: { x: 200, y: 50 }, max: { x: 300, y: 150 } },
+            }],
+        };
+
+        expect(getWorldLightningImpact(event, playerPosition)).toBeNull();
+        const impact = getWorldLightningImpact(
+            event,
+            playerPosition,
+            getWorldTerrainLightningModifier(playerPosition, terrain),
+        );
+
+        expect(impact).toMatchObject({
+            eventRevision: 7,
+            radius: 175,
+        });
+        expect(impact?.damage).toBeCloseTo(32.4);
+    });
+
+    test("uses a stable strongest rule for overlapping terrain patches", () => {
+        const terrain = {
+            revision: 8,
+            patches: [
+                {
+                    id: "mud",
+                    type: "mud" as const,
+                    bounds: { min: { x: 0, y: 0 }, max: { x: 20, y: 20 } },
+                },
+                {
+                    id: "flooded",
+                    type: "flooded" as const,
+                    bounds: { min: { x: 10, y: 10 }, max: { x: 30, y: 30 } },
+                },
+            ],
+        };
+        const position = { x: 15, y: 15 };
+        const first = getWorldTerrainLightningModifier(position, terrain);
+        const second = getWorldTerrainLightningModifier(position, {
+            ...terrain,
+            patches: [...terrain.patches].reverse(),
+        });
+
+        expect(first).toEqual(second);
+        expect(first.matchedPatches.map((patch) => patch.id)).toEqual(["flooded", "mud"]);
+        expect(first.radiusMultiplier).toBe(1.75);
+        expect(first.damageMultiplier).toBe(1.35);
+    });
+
+    test("has no impact outside the radius by default", () => {
+        const event = {
+            revision: 1,
+            position: { x: 0, y: 0 },
+            radius: 20,
+            damage: 24,
+        } as const;
+
+        expect(getWorldLightningImpact(event, { x: 20, y: 0 })?.damage).toBe(24);
+        expect(getWorldLightningImpact(event, { x: 20.001, y: 0 })).toBeNull();
+    });
+
+    test("allows one damage application per event revision across its active window", () => {
+        expect(shouldApplyWorldLightningEvent(undefined, 11)).toBe(true);
+        expect(shouldApplyWorldLightningEvent(10, 11)).toBe(true);
+        expect(shouldApplyWorldLightningEvent(11, 11)).toBe(false);
     });
 });

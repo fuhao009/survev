@@ -1,4 +1,5 @@
 import type { Vec2 } from "../utils/v2.ts";
+import { getDefaultWorldTerrainLightningModifier, type WorldTerrainLightningModifier } from "./worldTerrain.ts";
 import type { WorldWeather } from "./worldWeather.ts";
 
 export type WorldLightningEventPhase = "scheduled" | "active";
@@ -15,6 +16,7 @@ export interface WorldLightningEvent {
     readonly position: Vec2;
     readonly intensity: number;
     readonly radius: number;
+    readonly damage: number;
 }
 
 export interface WorldLightning {
@@ -30,6 +32,7 @@ export const WORLD_LIGHTNING_INTERVAL_MS = 45_000;
 export const WORLD_LIGHTNING_DURATION_MS = 2_500;
 export const WORLD_LIGHTNING_MAP_SIZE = 4096;
 export const WORLD_LIGHTNING_MAP_MARGIN = 128;
+export const WORLD_LIGHTNING_BASE_DAMAGE = 24;
 
 function stableHash(value: string): number {
     let hash = 2166136261;
@@ -79,6 +82,7 @@ function eventFor(
         position,
         intensity,
         radius,
+        damage: WORLD_LIGHTNING_BASE_DAMAGE,
     };
 }
 
@@ -89,10 +93,10 @@ function eventFor(
  */
 export function getWorldLightning(
     seed: string,
-    weather: Pick<WorldWeather, "type" | "revision" | "startedAt" | "endsAt">,
+    weather: Pick<WorldWeather, "type" | "phase" | "revision" | "startedAt" | "endsAt">,
     now = Date.now(),
 ): WorldLightning {
-    if (weather.type !== "thunderstorm") {
+    if (weather.type !== "thunderstorm" || weather.phase !== "stable") {
         return {
             kind: "world_lightning",
             revision: weather.revision,
@@ -116,5 +120,41 @@ export function getWorldLightning(
         revision: weather.revision,
         weatherRevision: weather.revision,
         events,
+    };
+}
+
+export interface WorldLightningImpact {
+    readonly eventRevision: number;
+    readonly distance: number;
+    readonly radius: number;
+    readonly damage: number;
+}
+
+/** Event-revision gate used by the server tick to enforce one hit per strike. */
+export function shouldApplyWorldLightningEvent(
+    lastAppliedRevision: number | undefined,
+    eventRevision: number,
+): boolean {
+    return lastAppliedRevision !== eventRevision;
+}
+
+/** Resolve one authoritative player hit without mutating game state. */
+export function getWorldLightningImpact(
+    event: Pick<WorldLightningEvent, "revision" | "position" | "radius" | "damage">,
+    playerPosition: Vec2,
+    terrainModifier: WorldTerrainLightningModifier = getDefaultWorldTerrainLightningModifier(playerPosition),
+): WorldLightningImpact | null {
+    const distance = Math.hypot(
+        playerPosition.x - event.position.x,
+        playerPosition.y - event.position.y,
+    );
+    const radius = event.radius * terrainModifier.radiusMultiplier;
+    if (distance > radius) return null;
+
+    return {
+        eventRevision: event.revision,
+        distance,
+        radius,
+        damage: event.damage * terrainModifier.damageMultiplier,
     };
 }

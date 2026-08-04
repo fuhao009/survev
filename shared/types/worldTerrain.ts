@@ -85,6 +85,37 @@ export interface WorldTerrainBulletModifier {
     readonly matchedPatches: readonly WorldTerrainBulletMatch[];
 }
 
+/** Terrain effects consumed by the authoritative lightning simulation. */
+export const WORLD_TERRAIN_LIGHTNING_RADIUS_MULTIPLIERS: Readonly<Record<WorldTerrainPatchType, number>> = {
+    mud: 1,
+    flooded: 1.75,
+    rockslide: 1,
+    scorched: 1,
+};
+
+export const WORLD_TERRAIN_LIGHTNING_DAMAGE_MULTIPLIERS: Readonly<Record<WorldTerrainPatchType, number>> = {
+    mud: 1,
+    flooded: 1.35,
+    rockslide: 1,
+    scorched: 1,
+};
+
+export interface WorldTerrainLightningMatch {
+    readonly id: string;
+    readonly type: WorldTerrainPatchType;
+    readonly radiusMultiplier: number;
+    readonly damageMultiplier: number;
+}
+
+export interface WorldTerrainLightningModifier {
+    readonly kind: "world_terrain_lightning";
+    readonly terrainRevision: number;
+    readonly position: Vec2;
+    readonly radiusMultiplier: number;
+    readonly damageMultiplier: number;
+    readonly matchedPatches: readonly WorldTerrainLightningMatch[];
+}
+
 export function getDefaultWorldTerrainBulletModifier(position: Vec2): WorldTerrainBulletModifier {
     return {
         kind: "world_terrain_bullet",
@@ -92,6 +123,17 @@ export function getDefaultWorldTerrainBulletModifier(position: Vec2): WorldTerra
         position: { ...position },
         speedMultiplier: 1,
         obstacleDamageMultiplier: 1,
+        matchedPatches: [],
+    };
+}
+
+export function getDefaultWorldTerrainLightningModifier(position: Vec2): WorldTerrainLightningModifier {
+    return {
+        kind: "world_terrain_lightning",
+        terrainRevision: 0,
+        position: { ...position },
+        radiusMultiplier: 1,
+        damageMultiplier: 1,
         matchedPatches: [],
     };
 }
@@ -165,6 +207,44 @@ export function getWorldTerrainBulletModifier(
         ),
         obstacleDamageMultiplier: matchedPatches.reduce(
             (lowest, patch) => Math.min(lowest, patch.obstacleDamageMultiplier),
+            1,
+        ),
+        matchedPatches,
+    };
+}
+
+/**
+ * Resolve lightning conductivity at the authoritative player position.
+ * Flooded terrain is conductive: it expands the strike radius and increases
+ * damage. Overlapping patches use the strongest conductive effect, while the
+ * sorted audit list remains stable regardless of patch iteration order.
+ */
+export function getWorldTerrainLightningModifier(
+    position: Vec2,
+    terrain: Pick<WorldTerrain, "revision" | "patches"> | undefined,
+): WorldTerrainLightningModifier {
+    if (!terrain) return getDefaultWorldTerrainLightningModifier(position);
+
+    const matchedPatches = terrain.patches
+        .filter((patch) => containsPoint(patch.bounds, position))
+        .sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
+        .map((patch) => ({
+            id: patch.id,
+            type: patch.type,
+            radiusMultiplier: WORLD_TERRAIN_LIGHTNING_RADIUS_MULTIPLIERS[patch.type],
+            damageMultiplier: WORLD_TERRAIN_LIGHTNING_DAMAGE_MULTIPLIERS[patch.type],
+        }));
+
+    return {
+        kind: "world_terrain_lightning",
+        terrainRevision: terrain.revision,
+        position: { ...position },
+        radiusMultiplier: matchedPatches.reduce(
+            (largest, patch) => Math.max(largest, patch.radiusMultiplier),
+            1,
+        ),
+        damageMultiplier: matchedPatches.reduce(
+            (largest, patch) => Math.max(largest, patch.damageMultiplier),
             1,
         ),
         matchedPatches,

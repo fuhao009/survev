@@ -32,6 +32,8 @@ export interface WorldPositionSyncResponse {
     applied: number;
     terrainMovement: WorldPositionTerrainMovement[];
     terrain: WorldTerrain;
+    weather: WorldWeather;
+    worldSeed: string;
 }
 
 export interface WorldEnterResponse {
