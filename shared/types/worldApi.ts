@@ -1,5 +1,6 @@
 import type { ItemInstance } from "./itemInstance.ts";
 import type { WorldCircle, WorldLife, WorldSettlementState, WorldShard } from "./world.ts";
+import type { WorldWeather } from "./worldWeather.ts";
 
 export interface WorldSnapshot {
     shard: WorldShard;
@@ -9,6 +10,7 @@ export interface WorldSnapshot {
     onlinePlayers: number;
     extractionZone: WorldCircle;
     canExtract: boolean;
+    weather: WorldWeather;
 }
 
 export interface WorldEnterResponse {

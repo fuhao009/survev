@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { MapDefs } from "../../../../shared/defs/mapDefs.ts";
 import { type ItemInstance, ITEM_DURABILITY_MAX, parseItemInstance } from "../../../../shared/types/itemInstance.ts";
 import type { WorldActionResponse, WorldSnapshot } from "../../../../shared/types/worldApi.ts";
+import { getWorldWeather } from "../../../../shared/types/worldWeather.ts";
 import type {
     WorldCarriedItems,
     WorldCarriedItemsSnapshot,
@@ -48,7 +49,7 @@ function isWithinExtractionZone(position: { x: number; y: number }) {
     ) <= WORLD_EXTRACTION_ZONE.radius;
 }
 
-function toWorldShard(row: typeof worldShardsTable.$inferSelect): WorldShard {
+function toWorldShard(row: typeof worldShardsTable.$inferSelect, now = Date.now()): WorldShard {
     if (row.status !== "active") {
         return {
             kind: "world_shard",
@@ -60,6 +61,7 @@ function toWorldShard(row: typeof worldShardsTable.$inferSelect): WorldShard {
             worldRevision: row.worldRevision,
             snapshotRevision: row.snapshotRevision,
             safeZone: row.safeZone,
+            weather: getWorldWeather(row.seed, row.createdAt.getTime(), now),
             createdAt: row.createdAt.getTime(),
             status: "closed",
             closedAt: row.updatedAt.getTime(),
@@ -76,6 +78,7 @@ function toWorldShard(row: typeof worldShardsTable.$inferSelect): WorldShard {
         worldRevision: row.worldRevision,
         snapshotRevision: row.snapshotRevision,
         safeZone: row.safeZone,
+        weather: getWorldWeather(row.seed, row.createdAt.getTime(), now),
         createdAt: row.createdAt.getTime(),
         status: "active",
         lastHeartbeatAt: row.updatedAt.getTime(),
@@ -212,6 +215,7 @@ export class WorldService {
 
     private async snapshot(userId: string, shardRow?: typeof worldShardsTable.$inferSelect): Promise<WorldSnapshot> {
         const shard = shardRow ?? await this.ensureShard();
+        const worldShard = toWorldShard(shard);
         const lifeRow = await db.query.worldLivesTable.findFirst({
             where: and(eq(worldLivesTable.playerId, userId), inArray(worldLivesTable.status, ["alive", "dead", "extracted"])),
             orderBy: [desc(worldLivesTable.updatedAt)],
@@ -231,13 +235,14 @@ export class WorldService {
             and(eq(worldLivesTable.shardId, shard.shardId), eq(worldLivesTable.status, "alive")),
         );
         return {
-            shard: toWorldShard(shard),
+            shard: worldShard,
             life: toWorldLife(lifeRow),
             inventory,
             walletBalance: await this.walletBalance(userId),
             onlinePlayers: Number(online[0]?.count ?? 0),
             extractionZone: WORLD_EXTRACTION_ZONE,
             canExtract: lifeRow.status === "alive" && isWithinExtractionZone(lifeRow.position.position),
+            weather: worldShard.weather,
         };
     }
 

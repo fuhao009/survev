@@ -1,5 +1,6 @@
 import type { MapId } from "../gameConfig.ts";
 import type { Vec2 } from "../utils/v2.ts";
+import type { WorldWeather } from "./worldWeather.ts";
 
 /** Unix time in milliseconds. Timestamps are written by the authoritative server. */
 export type WorldTimestamp = number;
@@ -40,6 +41,7 @@ interface WorldShardBase {
     /** Revision of the last durable snapshot. */
     snapshotRevision: number;
     safeZone: WorldSafeZone;
+    weather: WorldWeather;
     createdAt: WorldTimestamp;
 }
 
