@@ -8923,6 +8923,29 @@ input [type="image"]:focus {
   font-weight: 700;
 }
 
+#world-hud-weather {
+  margin: 8px 0 7px;
+  padding: 6px 9px;
+  border-left: 2px solid var(--home-teal);
+  background: rgba(100, 200, 187, 0.08);
+  color: var(--home-ink);
+}
+
+#world-hud-weather-name {
+  font-weight: 700;
+}
+
+#world-hud-weather-hint {
+  min-height: 16px;
+  color: var(--home-muted);
+  font-size: 12px;
+}
+
+#world-hud-weather.world-hud-weather-warning {
+  border-left-color: var(--home-orange);
+  background: rgba(227, 185, 111, 0.1);
+}
+
 #world-hud-gear {
   margin: 6px 0 10px;
   color: #c8d0d5;
@@ -8964,6 +8987,15 @@ input [type="image"]:focus {
   min-height: 18px;
   margin-top: 7px;
   color: #f2c36c;
+}
+
+@media (max-width: 500px) {
+  #world-hud {
+    top: 12px;
+    left: 12px;
+    width: min(360px, calc(100vw - 24px));
+    padding: 10px 11px;
+  }
 }
 
 /* Account subviews share one clear way back to the account hub. */

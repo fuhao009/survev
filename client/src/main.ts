@@ -10,6 +10,7 @@ import type {
     GameWsDisconnectReason,
 } from "../../shared/types/api.ts";
 import type { WorldActionResponse, WorldEnterResponse, WorldSnapshot } from "../../shared/types/worldApi.ts";
+import type { WorldWeatherType } from "../../shared/types/worldWeather.ts";
 import { math } from "../../shared/utils/math.ts";
 import { Account } from "./account.ts";
 import { Ambiance } from "./ambiance.ts";
@@ -36,6 +37,13 @@ import { Pass } from "./ui/pass.ts";
 import { ProfileUi } from "./ui/profileUi.ts";
 import { TeamMenu } from "./ui/teamMenu.ts";
 import { loadStaticDomImages } from "./ui/ui2.ts";
+
+const WORLD_WEATHER_LABELS: Record<WorldWeatherType, string> = {
+    clear: "晴朗",
+    rain: "降雨",
+    fog: "浓雾",
+    thunderstorm: "雷暴",
+};
 
 export class Application {
     nameInput = $("#player-name-input-solo");
@@ -672,6 +680,25 @@ export class Application {
         const life = snapshot.life;
         const dead = life.status === "dead" || this.worldDeathPending;
         $("#world-hud-life").text(life.status === "alive" && !dead ? `生命 ${life.health}` : "生命已结束");
+        const weather = snapshot.weather;
+        const weatherLabel = WORLD_WEATHER_LABELS[weather.type];
+        const nextWeatherLabel = WORLD_WEATHER_LABELS[weather.nextType || weather.type];
+        const weatherWarning = weather.phase === "warning";
+        const weatherSecondsLeft = Math.max(0, Math.ceil((weather.endsAt - Date.now()) / 1000));
+        $("#world-hud-weather")
+            .toggleClass("world-hud-weather-warning", weatherWarning)
+            .attr(
+                "aria-label",
+                weatherWarning
+                    ? `天气：${weatherLabel}，即将切换为${nextWeatherLabel}`
+                    : `天气：${weatherLabel}`,
+            );
+        $("#world-hud-weather-name").text(`天气：${weatherLabel}`);
+        $("#world-hud-weather-hint").text(
+            weatherWarning
+                ? `即将切换为${nextWeatherLabel} · ${weatherSecondsLeft} 秒`
+                : "当前环境稳定",
+        );
         const gear = snapshot.inventory
             .filter((item) => item.state === "carried" || item.state === "equipped")
             .filter((item) => item.durabilityMax > 0)
