@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { MapDefs } from "../../../../shared/defs/mapDefs.ts";
 import { type ItemInstance, ITEM_DURABILITY_MAX, parseItemInstance } from "../../../../shared/types/itemInstance.ts";
 import type { WorldActionResponse, WorldSnapshot } from "../../../../shared/types/worldApi.ts";
+import { getWorldTerrain } from "../../../../shared/types/worldTerrain.ts";
 import { getWorldWeather } from "../../../../shared/types/worldWeather.ts";
 import type {
     WorldCarriedItems,
@@ -61,6 +62,7 @@ function toWorldShard(row: typeof worldShardsTable.$inferSelect, now = Date.now(
             worldRevision: row.worldRevision,
             snapshotRevision: row.snapshotRevision,
             safeZone: row.safeZone,
+            terrain: getWorldTerrain(row.seed, row.createdAt.getTime(), now),
             weather: getWorldWeather(row.seed, row.createdAt.getTime(), now),
             createdAt: row.createdAt.getTime(),
             status: "closed",
@@ -78,6 +80,7 @@ function toWorldShard(row: typeof worldShardsTable.$inferSelect, now = Date.now(
         worldRevision: row.worldRevision,
         snapshotRevision: row.snapshotRevision,
         safeZone: row.safeZone,
+        terrain: getWorldTerrain(row.seed, row.createdAt.getTime(), now),
         weather: getWorldWeather(row.seed, row.createdAt.getTime(), now),
         createdAt: row.createdAt.getTime(),
         status: "active",
@@ -242,6 +245,7 @@ export class WorldService {
             onlinePlayers: Number(online[0]?.count ?? 0),
             extractionZone: WORLD_EXTRACTION_ZONE,
             canExtract: lifeRow.status === "alive" && isWithinExtractionZone(lifeRow.position.position),
+            terrain: worldShard.terrain,
             weather: worldShard.weather,
         };
     }

@@ -1,5 +1,6 @@
 import type { ItemInstance } from "./itemInstance.ts";
 import type { WorldCircle, WorldLife, WorldSettlementState, WorldShard } from "./world.ts";
+import type { WorldTerrain } from "./worldTerrain.ts";
 import type { WorldWeather } from "./worldWeather.ts";
 
 export interface WorldSnapshot {
@@ -10,6 +11,7 @@ export interface WorldSnapshot {
     onlinePlayers: number;
     extractionZone: WorldCircle;
     canExtract: boolean;
+    terrain: WorldTerrain;
     weather: WorldWeather;
 }
 
