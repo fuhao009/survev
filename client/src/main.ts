@@ -94,6 +94,7 @@ export class Application {
     worldPlayPending = false;
     worldSessionActive = false;
     worldSnapshot: WorldSnapshot | null = null;
+    worldDeathPending = false;
     worldPollTimer: number | null = null;
     findGameAttempts = 0;
     findGameTime = 0;
@@ -375,6 +376,7 @@ export class Application {
                 this.resourceManager,
                 onJoin,
                 onQuit,
+                () => this.onWorldPlayerDeath(),
             );
             this.loadoutDisplay = new LoadoutDisplay(
                 this.pixi,
@@ -615,6 +617,7 @@ export class Application {
             if (!response.ok) throw new Error(`world_enter_${response.status}`);
             const data = await response.json() as WorldEnterResponse;
             this.worldSnapshot = data.snapshot;
+            this.worldDeathPending = false;
             this.worldSessionActive = true;
             this.startWorldPolling();
             this.refreshWorldHud();
@@ -647,6 +650,7 @@ export class Application {
     stopWorldSession() {
         this.worldSessionActive = false;
         this.worldSnapshot = null;
+        this.worldDeathPending = false;
         if (this.worldPollTimer !== null) {
             window.clearInterval(this.worldPollTimer);
             this.worldPollTimer = null;
@@ -662,15 +666,15 @@ export class Application {
         }
         $("#world-hud").show();
         const life = snapshot.life;
-        const dead = life.status === "dead";
-        $("#world-hud-life").text(life.status === "alive" ? `生命 ${life.health}` : "生命已结束");
+        const dead = life.status === "dead" || this.worldDeathPending;
+        $("#world-hud-life").text(life.status === "alive" && !dead ? `生命 ${life.health}` : "生命已结束");
         const gear = snapshot.inventory
             .filter((item) => item.state === "carried" || item.state === "equipped")
             .filter((item) => item.durabilityMax > 0)
             .map((item) => `${item.type} ${item.durability}/${item.durabilityMax}`)
             .join(" · ");
         $("#world-hud-gear").text(gear || "没有可用装备");
-        const canExtract = life.status === "alive" && snapshot.canExtract;
+        const canExtract = !dead && life.status === "alive" && snapshot.canExtract;
         $("#world-extract")
             .toggle(!dead)
             .prop("disabled", !canExtract)
@@ -686,7 +690,7 @@ export class Application {
     }
 
     returnToWorldHome() {
-        if (!this.worldSessionActive || this.worldSnapshot?.life.status !== "dead") return;
+        if (!this.worldSessionActive || (this.worldSnapshot?.life.status !== "dead" && !this.worldDeathPending)) return;
         this.game?.free();
         this.stopWorldSession();
         this.setAppActive(true);
@@ -694,6 +698,12 @@ export class Application {
         this.ambience.onGameComplete(this.audioManager);
         SDK.gamePlayStop();
         this.refreshUi();
+    }
+
+    onWorldPlayerDeath() {
+        if (!this.worldSessionActive) return;
+        this.worldDeathPending = true;
+        this.refreshWorldHud();
     }
 
     async extractWorld() {

@@ -135,6 +135,7 @@ export class Game {
         public m_resourceManager: ResourceManager,
         public onJoin: () => void,
         public onQuit: (err?: GameWsDisconnectReason) => void,
+        public onLocalPlayerDeath: () => void,
     ) {
         if (IS_DEV) {
             this.editor = new Editor(this.m_config);
@@ -1408,6 +1409,9 @@ export class Game {
                         this.m_audioManager,
                         this.m_particleBarn,
                     );
+                    if (msg.targetId === this.m_localId) {
+                        this.onLocalPlayerDeath();
+                    }
                 }
 
                 // Bullets often don't play hit sounds on the frame that a player dies
