@@ -228,6 +228,32 @@ export class Gas {
         this.damage = stage.damage;
     }
 
+    startWorld() {
+        const center = v2.create(this.game.map.width / 2, this.game.map.height / 2);
+        const stage = GasStages[2];
+        const startRad = stage.rad * this.mapSize;
+
+        // Open-world shards use the same starting radius as the persistent
+        // world API safe zone, so the red zone is visible immediately.
+        this.stage = 2;
+        this.mode = GasMode.Waiting;
+        this.circleIdx = 0;
+        this.radOld = startRad;
+        this.radNew = startRad;
+        this.currentRad = startRad;
+        this.posOld = center;
+        this.posNew = v2.copy(center);
+        this.currentPos = v2.copy(center);
+        this.duration = 45;
+        this.damage = stage.damage;
+        this._gasTicker = 0;
+        this.gasT = 0;
+        this._running = true;
+        this.dirty = true;
+        this.timeDirty = true;
+        this.game.updateData();
+    }
+
     update(dt: number) {
         this._gasTicker += dt;
 

@@ -8906,6 +8906,20 @@ input [type="image"]:focus {
   opacity: 0.8;
 }
 
+#world-return-home {
+  display: none;
+  margin-left: 8px;
+  border: 1px solid #aeb8bd;
+  padding: 7px 10px;
+  background: #39434a;
+  color: #f3f5f6;
+  cursor: pointer;
+}
+
+#world-return-home:hover {
+  background: #4b5962;
+}
+
 #world-hud-message {
   min-height: 18px;
   margin-top: 7px;

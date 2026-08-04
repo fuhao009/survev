@@ -5,7 +5,9 @@ import { authMiddleware, databaseEnabledMiddleware, rateLimitMiddleware, validat
 import type { Context } from "../../index.ts";
 import { WorldActionError, worldService } from "../../world/worldService.ts";
 
-const zEnter = z.object({});
+const zEnter = z.object({
+    newLife: z.boolean().optional(),
+});
 const zAction = z.discriminatedUnion("type", [
     z.object({ type: z.literal("move"), x: z.number().finite(), y: z.number().finite(), expectedRevision: z.number().int().positive().optional() }),
     z.object({ type: z.literal("fire"), instanceId: z.string().min(1), expectedRevision: z.number().int().positive().optional() }),
@@ -20,7 +22,8 @@ export const WorldRouter = new Hono<Context>()
     .use(authMiddleware)
     .post("/enter", validateParams(zEnter), async (c) => {
         const user = c.get("user")!;
-        const snapshot = await worldService.enter(user.id, user.loadout);
+        const { newLife } = c.req.valid("json");
+        const snapshot = await worldService.enter(user.id, user.loadout, newLife ?? false);
         return c.json<WorldEnterResponse>({ success: true, snapshot }, 200);
     })
     .post("/action", validateParams(zAction), async (c) => {

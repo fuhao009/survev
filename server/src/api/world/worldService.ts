@@ -241,13 +241,21 @@ export class WorldService {
         };
     }
 
-    async enter(userId: string, loadout: Loadout): Promise<WorldSnapshot> {
+    async enter(userId: string, loadout: Loadout, newLife = false): Promise<WorldSnapshot> {
         return this.withLock(userId, async () => {
             const shard = await this.ensureShard();
             const active = await db.query.worldLivesTable.findFirst({
                 where: and(eq(worldLivesTable.playerId, userId), eq(worldLivesTable.shardId, SHARD_ID), eq(worldLivesTable.status, "alive")),
             });
             if (active) return this.snapshot(userId, shard);
+
+            if (!newLife) {
+                const latest = await db.query.worldLivesTable.findFirst({
+                    where: and(eq(worldLivesTable.playerId, userId), eq(worldLivesTable.shardId, SHARD_ID)),
+                    orderBy: [desc(worldLivesTable.updatedAt)],
+                });
+                if (latest) return this.snapshot(userId, shard);
+            }
 
             const items = await this.ensureStarterItems(userId, loadout);
             const lifeId = randomUUID();

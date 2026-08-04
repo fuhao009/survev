@@ -199,6 +199,9 @@ export class Application {
             $("#world-extract").on("click", () => {
                 void this.extractWorld();
             });
+            $("#world-return-home").on("click", () => {
+                this.returnToWorldHome();
+            });
 
             this.serverSelect.on("change", () => {
                 const t = this.serverSelect.find(":selected").val();
@@ -605,7 +608,7 @@ export class Application {
             const response = await fetch(api.resolveUrl("/api/world/enter"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: "{}",
+                body: JSON.stringify({ newLife: true }),
                 credentials: proxy.anyLoginSupported() ? "include" : "omit",
                 signal: helpers.abortSignal(10 * 1000),
             });
@@ -659,6 +662,7 @@ export class Application {
         }
         $("#world-hud").show();
         const life = snapshot.life;
+        const dead = life.status === "dead";
         $("#world-hud-life").text(life.status === "alive" ? `生命 ${life.health}` : "生命已结束");
         const gear = snapshot.inventory
             .filter((item) => item.state === "carried" || item.state === "equipped")
@@ -668,9 +672,28 @@ export class Application {
         $("#world-hud-gear").text(gear || "没有可用装备");
         const canExtract = life.status === "alive" && snapshot.canExtract;
         $("#world-extract")
+            .toggle(!dead)
             .prop("disabled", !canExtract)
             .attr("aria-disabled", String(!canExtract));
-        $("#world-hud-message").text(canExtract ? "已进入撤离区" : "前往撤离区后可结算");
+        $("#world-return-home").toggle(dead);
+        $("#world-hud-message").text(
+            dead
+                ? "本次生命已结束，装备已掉落"
+                : canExtract
+                ? "已进入撤离区"
+                : "前往撤离区后可结算",
+        );
+    }
+
+    returnToWorldHome() {
+        if (!this.worldSessionActive || this.worldSnapshot?.life.status !== "dead") return;
+        this.game?.free();
+        this.stopWorldSession();
+        this.setAppActive(true);
+        this.setPlayLockout(false);
+        this.ambience.onGameComplete(this.audioManager);
+        SDK.gamePlayStop();
+        this.refreshUi();
     }
 
     async extractWorld() {

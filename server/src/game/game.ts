@@ -169,7 +169,11 @@ export class Game {
         if (!this.started && !this.preventStart) {
             this.started = this.world || this.modeManager.isGameStarted();
             if (this.started) {
-                this.gas.advanceGasStage();
+                if (this.world) {
+                    this.gas.startWorld();
+                } else {
+                    this.gas.advanceGasStage();
+                }
             } else {
                 const connected = this.playerBarn.players.reduce((a, b) => {
                     return a + (b.disconnected ? 0 : 1);
