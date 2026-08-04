@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
-import type { WorldSnapshot } from "../../shared/types/worldApi.ts";
+import { Game } from "../../server/src/game/game.ts";
+import { TeamMode } from "../../shared/gameConfig.ts";
+import type { WorldPositionSyncResponse, WorldSnapshot } from "../../shared/types/worldApi.ts";
 import type { WorldTerrain, WorldTerrainPatch } from "../../shared/types/worldTerrain.ts";
 import {
     getWorldTerrain,
@@ -7,6 +9,14 @@ import {
     WORLD_TERRAIN_CYCLE_DURATION_MS,
     WORLD_TERRAIN_PATCH_COUNT,
 } from "../../shared/types/worldTerrain.ts";
+
+class TerrainTestGame extends Game {
+    multiplier = 1;
+
+    override getWorldMovementSpeedMultiplier(userId: string | null): number {
+        return userId ? this.multiplier : 1;
+    }
+}
 
 function terrainWithPatches(
     revision: number,
@@ -131,5 +141,35 @@ describe("authoritative world terrain", () => {
         expect(snapshot.terrainMovement.terrainRevision).toBe(snapshot.terrain.revision);
         expect(snapshot.terrainMovement.position).toEqual(snapshot.life.position);
         expect(snapshot.terrainMovement).toEqual(getWorldTerrainMovementModifier(position, snapshot.terrain));
+    });
+
+    test("applies the server-side terrain multiplier after normal player speed rules", () => {
+        const game = new TerrainTestGame("terrain-speed-test", {
+            mapName: "main",
+            teamMode: TeamMode.Solo,
+            world: true,
+        });
+        const player = game.playerBarn.addTestPlayer({ userId: "terrain-player" });
+
+        player.recalculateSpeed(false);
+        const normalSpeed = player.speed;
+
+        game.multiplier = 0.55;
+        player.recalculateSpeed(false);
+
+        expect(normalSpeed).toBeGreaterThan(1);
+        expect(player.speed).toBeCloseTo(normalSpeed * 0.55);
+        expect(game.getWorldMovementSpeedMultiplier(null)).toBe(1);
+    });
+
+    test("keeps the applied count in the batched position response", () => {
+        const response = {
+            success: true,
+            applied: 2,
+            terrainMovement: [],
+        } satisfies WorldPositionSyncResponse;
+
+        expect(response.applied).toBe(2);
+        expect(response.terrainMovement).toEqual([]);
     });
 });

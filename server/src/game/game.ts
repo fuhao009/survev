@@ -409,6 +409,14 @@ export class Game {
     ) {}
 
     /**
+     * Realtime world modifiers are supplied by the server-side world API.
+     * Offline games and a cache miss deliberately use the normal speed.
+     */
+    getWorldMovementSpeedMultiplier(_userId: string | null): number {
+        return 1;
+    }
+
+    /**
      * Steps the game X seconds in the future
      * This is done in smaller steps of 0.1 seconds
      * To make sure everything updates properly

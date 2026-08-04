@@ -7,6 +7,7 @@ import { type MapDefKey, MapDefs } from "../../../../../shared/defs/mapDefs.ts";
 import { GameObjectDefs } from "../../../../../shared/defs/register.ts";
 import { TeamMode } from "../../../../../shared/gameConfig.ts";
 import { zGiveItemParams, zRemoveItemParams } from "../../../../../shared/types/moderation.ts";
+import type { WorldPositionSyncResponse } from "../../../../../shared/types/worldApi.ts";
 import { serverConfigPath } from "../../../config.ts";
 import { isBehindProxy } from "../../../utils/proxyCheck.ts";
 import { type SaveGameBody, zSetClientThemeBody, zSetGameModeBody, zUpdateRegionBody } from "../../../utils/types.ts";
@@ -17,10 +18,10 @@ import { leaderboardCache } from "../../cache/leaderboard.ts";
 import { db } from "../../db/index.ts";
 import { itemsTable, type MatchDataTable, matchDataTable, userQuestTable, usersTable } from "../../db/schema.ts";
 import type { Context } from "../../index.ts";
+import { worldService } from "../../world/worldService.ts";
 import { MOCK_USER_ID } from "../user/auth/mock.ts";
 import { isBanned, logPlayerIPs, ModerationRouter } from "./ModerationRouter.ts";
 import { incrementPassXp } from "./passXp.ts";
-import { worldService } from "../../world/worldService.ts";
 
 export const PrivateRouter = new Hono<Context>()
     .use(privateMiddleware)
@@ -269,12 +270,21 @@ export const PrivateRouter = new Hono<Context>()
         async (c) => {
             const { updates } = c.req.valid("json");
             let applied = 0;
+            const terrainMovement: WorldPositionSyncResponse["terrainMovement"] = [];
             for (const update of updates) {
-                if (await worldService.syncPositionForPlayer(update.userId, update.x, update.y, update.layer, update.health)) {
+                const result = await worldService.syncPositionForPlayer(
+                    update.userId,
+                    update.x,
+                    update.y,
+                    update.layer,
+                    update.health,
+                );
+                if (result) {
                     applied++;
+                    terrainMovement.push({ userId: update.userId, terrainMovement: result });
                 }
             }
-            return c.json({ success: true, applied }, 200);
+            return c.json({ success: true, applied, terrainMovement }, 200);
         },
     )
     .post(

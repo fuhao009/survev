@@ -180,7 +180,10 @@ export class WorldService {
 
     private async ensureStarterItems(userId: string, loadout: Loadout) {
         const existing = await db.select().from(worldItemInstancesTable).where(
-            and(eq(worldItemInstancesTable.userId, userId), inArray(worldItemInstancesTable.state, ["stash", "equipped"])),
+            and(
+                eq(worldItemInstancesTable.userId, userId),
+                inArray(worldItemInstancesTable.state, ["stash", "equipped"]),
+            ),
         );
         const wanted = new Set<string>([
             ...INITIAL_GEAR,
@@ -220,21 +223,28 @@ export class WorldService {
         const shard = shardRow ?? await this.ensureShard();
         const worldShard = toWorldShard(shard);
         const lifeRow = await db.query.worldLivesTable.findFirst({
-            where: and(eq(worldLivesTable.playerId, userId), inArray(worldLivesTable.status, ["alive", "dead", "extracted"])),
+            where: and(
+                eq(worldLivesTable.playerId, userId),
+                inArray(worldLivesTable.status, ["alive", "dead", "extracted"]),
+            ),
             orderBy: [desc(worldLivesTable.updatedAt)],
         });
         if (!lifeRow) throw new Error("world life could not be loaded");
         const life = toWorldLife(lifeRow);
-        const inventoryRows = await db.select().from(worldItemInstancesTable).where(eq(worldItemInstancesTable.userId, userId));
-        const inventory = inventoryRows.map((item) => parseItemInstance({
-            instanceId: item.instanceId,
-            type: item.type,
-            quantity: 1,
-            durability: item.durability,
-            durabilityMax: item.durabilityMax,
-            state: item.state,
-            ownerId: item.userId,
-        }));
+        const inventoryRows = await db.select().from(worldItemInstancesTable).where(
+            eq(worldItemInstancesTable.userId, userId),
+        );
+        const inventory = inventoryRows.map((item) =>
+            parseItemInstance({
+                instanceId: item.instanceId,
+                type: item.type,
+                quantity: 1,
+                durability: item.durability,
+                durabilityMax: item.durabilityMax,
+                state: item.state,
+                ownerId: item.userId,
+            })
+        );
         const online = await db.select({ count: sql<number>`count(*)` }).from(worldLivesTable).where(
             and(eq(worldLivesTable.shardId, shard.shardId), eq(worldLivesTable.status, "alive")),
         );
@@ -258,7 +268,11 @@ export class WorldService {
         return this.withLock(userId, async () => {
             const shard = await this.ensureShard();
             const active = await db.query.worldLivesTable.findFirst({
-                where: and(eq(worldLivesTable.playerId, userId), eq(worldLivesTable.shardId, SHARD_ID), eq(worldLivesTable.status, "alive")),
+                where: and(
+                    eq(worldLivesTable.playerId, userId),
+                    eq(worldLivesTable.shardId, SHARD_ID),
+                    eq(worldLivesTable.status, "alive"),
+                ),
             });
             if (active) return this.snapshot(userId, shard);
 
@@ -287,7 +301,12 @@ export class WorldService {
                 startedAt: Date.now(),
             });
             await db.update(worldItemInstancesTable).set({ state: "carried", lifeId, updatedAt: new Date() })
-                .where(and(eq(worldItemInstancesTable.userId, userId), inArray(worldItemInstancesTable.state, ["stash", "equipped"])));
+                .where(
+                    and(
+                        eq(worldItemInstancesTable.userId, userId),
+                        inArray(worldItemInstancesTable.state, ["stash", "equipped"]),
+                    ),
+                );
             return this.snapshot(userId, shard);
         });
     }
@@ -296,7 +315,11 @@ export class WorldService {
         return this.withLock(userId, async () => {
             const shard = await this.ensureShard();
             const life = await db.query.worldLivesTable.findFirst({
-                where: and(eq(worldLivesTable.playerId, userId), eq(worldLivesTable.shardId, SHARD_ID), eq(worldLivesTable.status, "alive")),
+                where: and(
+                    eq(worldLivesTable.playerId, userId),
+                    eq(worldLivesTable.shardId, SHARD_ID),
+                    eq(worldLivesTable.status, "alive"),
+                ),
             });
             if (!life) throw new WorldActionError("no_alive_life");
             if (action.expectedRevision !== undefined && action.expectedRevision !== life.revision) {
@@ -304,19 +327,39 @@ export class WorldService {
             }
             let settlement: WorldSettlementState | undefined;
             if (action.type === "move") {
-                const nextPosition = { position: { x: Math.max(0, Math.min(4096, action.x)), y: Math.max(0, Math.min(4096, action.y)) }, layer: 0 };
-                await db.update(worldLivesTable).set({ position: nextPosition, revision: life.revision + 1, updatedAt: new Date() }).where(eq(worldLivesTable.lifeId, life.lifeId));
+                const nextPosition = {
+                    position: { x: Math.max(0, Math.min(4096, action.x)), y: Math.max(0, Math.min(4096, action.y)) },
+                    layer: 0,
+                };
+                await db.update(worldLivesTable).set({
+                    position: nextPosition,
+                    revision: life.revision + 1,
+                    updatedAt: new Date(),
+                }).where(eq(worldLivesTable.lifeId, life.lifeId));
             } else if (action.type === "fire") {
-                const item = await db.query.worldItemInstancesTable.findFirst({ where: and(eq(worldItemInstancesTable.instanceId, action.instanceId), eq(worldItemInstancesTable.userId, userId), eq(worldItemInstancesTable.lifeId, life.lifeId)) });
+                const item = await db.query.worldItemInstancesTable.findFirst({
+                    where: and(
+                        eq(worldItemInstancesTable.instanceId, action.instanceId),
+                        eq(worldItemInstancesTable.userId, userId),
+                        eq(worldItemInstancesTable.lifeId, life.lifeId),
+                    ),
+                });
                 if (!item) throw new WorldActionError("weapon_not_carried");
                 if (!WORLD_WEAPONS.has(item.type)) throw new WorldActionError("not_a_weapon");
                 const nextDurability = Math.max(0, item.durability - 1);
-                await db.update(worldItemInstancesTable).set({ durability: nextDurability, state: nextDurability === 0 ? "destroyed" : item.state, updatedAt: new Date() }).where(eq(worldItemInstancesTable.instanceId, item.instanceId));
-                await db.update(worldLivesTable).set({ revision: life.revision + 1, updatedAt: new Date() }).where(eq(worldLivesTable.lifeId, life.lifeId));
+                await db.update(worldItemInstancesTable).set({
+                    durability: nextDurability,
+                    state: nextDurability === 0 ? "destroyed" : item.state,
+                    updatedAt: new Date(),
+                }).where(eq(worldItemInstancesTable.instanceId, item.instanceId));
+                await db.update(worldLivesTable).set({ revision: life.revision + 1, updatedAt: new Date() }).where(
+                    eq(worldLivesTable.lifeId, life.lifeId),
+                );
             } else if (action.type === "damage") {
                 const health = Math.max(0, life.health - action.amount);
                 if (health > 0) {
-                    await db.update(worldLivesTable).set({ health, revision: life.revision + 1, updatedAt: new Date() }).where(eq(worldLivesTable.lifeId, life.lifeId));
+                    await db.update(worldLivesTable).set({ health, revision: life.revision + 1, updatedAt: new Date() })
+                        .where(eq(worldLivesTable.lifeId, life.lifeId));
                 } else {
                     await this.markDead(userId, life, action.cause ?? "player");
                 }
@@ -334,9 +377,14 @@ export class WorldService {
     async syncPositionForPlayer(userId: string, x: number, y: number, layer: number, health: number) {
         return this.withLock(userId, async () => {
             const life = await db.query.worldLivesTable.findFirst({
-                where: and(eq(worldLivesTable.playerId, userId), eq(worldLivesTable.shardId, SHARD_ID), eq(worldLivesTable.status, "alive")),
+                where: and(
+                    eq(worldLivesTable.playerId, userId),
+                    eq(worldLivesTable.shardId, SHARD_ID),
+                    eq(worldLivesTable.status, "alive"),
+                ),
             });
             if (!life) return false;
+            const shard = await this.ensureShard();
 
             const position = {
                 position: {
@@ -349,11 +397,15 @@ export class WorldService {
             // life above zero if the position heartbeat wins the race for the
             // tick in which the game marks the player dead.
             const nextHealth = Math.max(1, Math.min(100, Math.round(health)));
+            const terrainMovement = getWorldTerrainMovementModifier(
+                position.position,
+                toWorldShard(shard).terrain,
+            );
             const unchanged = life.position.position.x === position.position.x
                 && life.position.position.y === position.position.y
                 && life.position.layer === position.layer
                 && life.health === nextHealth;
-            if (unchanged) return true;
+            if (unchanged) return terrainMovement;
 
             await db.update(worldLivesTable).set({
                 position,
@@ -361,27 +413,74 @@ export class WorldService {
                 revision: life.revision + 1,
                 updatedAt: new Date(),
             }).where(eq(worldLivesTable.lifeId, life.lifeId));
-            return true;
+            return terrainMovement;
         });
     }
 
-    private async markDead(userId: string, life: typeof worldLivesTable.$inferSelect, cause: "player" | "safe_zone" | "fire" | "hazard") {
+    private async markDead(
+        userId: string,
+        life: typeof worldLivesTable.$inferSelect,
+        cause: "player" | "safe_zone" | "fire" | "hazard",
+    ) {
         const droppedAt = Date.now();
-        const dropped = { state: "dropped_on_death" as const, snapshot: life.carriedItems.snapshot, dropId: randomUUID(), droppedAt } satisfies WorldCarriedItems;
-        await db.update(worldLivesTable).set({ status: "dead", health: 0, carriedItems: dropped, revision: life.revision + 1, diedAt: new Date(droppedAt), updatedAt: new Date() }).where(eq(worldLivesTable.lifeId, life.lifeId));
-        await db.update(worldItemInstancesTable).set({ state: "world", lifeId: null, updatedAt: new Date() }).where(and(eq(worldItemInstancesTable.userId, userId), eq(worldItemInstancesTable.lifeId, life.lifeId)));
+        const dropped = {
+            state: "dropped_on_death" as const,
+            snapshot: life.carriedItems.snapshot,
+            dropId: randomUUID(),
+            droppedAt,
+        } satisfies WorldCarriedItems;
+        await db.update(worldLivesTable).set({
+            status: "dead",
+            health: 0,
+            carriedItems: dropped,
+            revision: life.revision + 1,
+            diedAt: new Date(droppedAt),
+            updatedAt: new Date(),
+        }).where(eq(worldLivesTable.lifeId, life.lifeId));
+        await db.update(worldItemInstancesTable).set({ state: "world", lifeId: null, updatedAt: new Date() }).where(
+            and(eq(worldItemInstancesTable.userId, userId), eq(worldItemInstancesTable.lifeId, life.lifeId)),
+        );
     }
 
-    private async extract(userId: string, life: typeof worldLivesTable.$inferSelect, shard: typeof worldShardsTable.$inferSelect): Promise<WorldSettlementState> {
+    private async extract(
+        userId: string,
+        life: typeof worldLivesTable.$inferSelect,
+        shard: typeof worldShardsTable.$inferSelect,
+    ): Promise<WorldSettlementState> {
         const extractionId = randomUUID();
         const settlementId = randomUUID();
-        const secured = { state: "secured_on_extraction" as const, snapshot: life.carriedItems.snapshot, extractionId, securedAt: Date.now() } satisfies WorldCarriedItems;
+        const secured = {
+            state: "secured_on_extraction" as const,
+            snapshot: life.carriedItems.snapshot,
+            extractionId,
+            securedAt: Date.now(),
+        } satisfies WorldCarriedItems;
         const rewardPoints = Math.max(25, life.carriedItems.snapshot.weapons.length * 15 + life.revision);
         await db.transaction(async (tx) => {
-            await tx.insert(worldSettlementsTable).values({ settlementId, playerId: userId, shardId: shard.shardId, lifeId: life.lifeId, extractionId, securedItems: secured, rewardPoints });
-            await tx.insert(walletTransactionsTable).values({ userId, amount: rewardPoints, reason: "world_extraction" });
-            await tx.update(worldLivesTable).set({ status: "extracted", carriedItems: secured, extractedAt: new Date(), revision: life.revision + 1, updatedAt: new Date() }).where(eq(worldLivesTable.lifeId, life.lifeId));
-            await tx.update(worldItemInstancesTable).set({ state: "stash", lifeId: null, updatedAt: new Date() }).where(and(eq(worldItemInstancesTable.userId, userId), eq(worldItemInstancesTable.lifeId, life.lifeId)));
+            await tx.insert(worldSettlementsTable).values({
+                settlementId,
+                playerId: userId,
+                shardId: shard.shardId,
+                lifeId: life.lifeId,
+                extractionId,
+                securedItems: secured,
+                rewardPoints,
+            });
+            await tx.insert(walletTransactionsTable).values({
+                userId,
+                amount: rewardPoints,
+                reason: "world_extraction",
+            });
+            await tx.update(worldLivesTable).set({
+                status: "extracted",
+                carriedItems: secured,
+                extractedAt: new Date(),
+                revision: life.revision + 1,
+                updatedAt: new Date(),
+            }).where(eq(worldLivesTable.lifeId, life.lifeId));
+            await tx.update(worldItemInstancesTable).set({ state: "stash", lifeId: null, updatedAt: new Date() }).where(
+                and(eq(worldItemInstancesTable.userId, userId), eq(worldItemInstancesTable.lifeId, life.lifeId)),
+            );
         });
         return {
             kind: "world_settlement",
@@ -402,20 +501,32 @@ export class WorldService {
     }
 
     private async repair(userId: string, lifeId: string, instanceId: string) {
-        const item = await db.query.worldItemInstancesTable.findFirst({ where: and(eq(worldItemInstancesTable.instanceId, instanceId), eq(worldItemInstancesTable.userId, userId), eq(worldItemInstancesTable.lifeId, lifeId)) });
+        const item = await db.query.worldItemInstancesTable.findFirst({
+            where: and(
+                eq(worldItemInstancesTable.instanceId, instanceId),
+                eq(worldItemInstancesTable.userId, userId),
+                eq(worldItemInstancesTable.lifeId, lifeId),
+            ),
+        });
         if (!item) throw new WorldActionError("item_not_carried");
         const cost = Math.max(1, Math.ceil((item.durabilityMax - item.durability) / 10));
         const balance = await this.walletBalance(userId);
         if (balance < cost) throw new WorldActionError("insufficient_points");
         await db.insert(walletTransactionsTable).values({ userId, amount: -cost, reason: "world_repair" });
-        await db.update(worldItemInstancesTable).set({ durability: item.durabilityMax, updatedAt: new Date() }).where(eq(worldItemInstancesTable.instanceId, instanceId));
+        await db.update(worldItemInstancesTable).set({ durability: item.durabilityMax, updatedAt: new Date() }).where(
+            eq(worldItemInstancesTable.instanceId, instanceId),
+        );
     }
 
     async markDeadForPlayer(userId: string, cause: "player" | "safe_zone" | "fire" | "hazard") {
         return this.withLock(userId, async () => {
             await this.ensureShard();
             const life = await db.query.worldLivesTable.findFirst({
-                where: and(eq(worldLivesTable.playerId, userId), eq(worldLivesTable.shardId, SHARD_ID), eq(worldLivesTable.status, "alive")),
+                where: and(
+                    eq(worldLivesTable.playerId, userId),
+                    eq(worldLivesTable.shardId, SHARD_ID),
+                    eq(worldLivesTable.status, "alive"),
+                ),
             });
             if (!life) return false;
             await this.markDead(userId, life, cause);
@@ -426,7 +537,11 @@ export class WorldService {
     async wearWeaponForPlayer(userId: string, weaponType: string) {
         return this.withLock(userId, async () => {
             const life = await db.query.worldLivesTable.findFirst({
-                where: and(eq(worldLivesTable.playerId, userId), eq(worldLivesTable.shardId, SHARD_ID), eq(worldLivesTable.status, "alive")),
+                where: and(
+                    eq(worldLivesTable.playerId, userId),
+                    eq(worldLivesTable.shardId, SHARD_ID),
+                    eq(worldLivesTable.status, "alive"),
+                ),
             });
             if (!life || !WORLD_WEAPONS.has(weaponType)) return false;
             const item = await db.query.worldItemInstancesTable.findFirst({
@@ -444,7 +559,9 @@ export class WorldService {
                 state: durability === 0 ? "destroyed" : item.state,
                 updatedAt: new Date(),
             }).where(eq(worldItemInstancesTable.instanceId, item.instanceId));
-            await db.update(worldLivesTable).set({ revision: life.revision + 1, updatedAt: new Date() }).where(eq(worldLivesTable.lifeId, life.lifeId));
+            await db.update(worldLivesTable).set({ revision: life.revision + 1, updatedAt: new Date() }).where(
+                eq(worldLivesTable.lifeId, life.lifeId),
+            );
             return true;
         });
     }

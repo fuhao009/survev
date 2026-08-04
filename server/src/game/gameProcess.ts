@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { platform } from "node:os";
 import path from "node:path";
+import type { WorldPositionTerrainMovement } from "../../../shared/types/worldApi.ts";
 import { Logger } from "../../../shared/utils/logger.ts";
 import { Config } from "../config.ts";
 import { apiPrivateRouter } from "../utils/apiRouter.ts";
@@ -34,7 +35,21 @@ type WorldPositionUpdate = {
 };
 
 const pendingWorldPositions = new Map<string, WorldPositionUpdate>();
+const worldMovementSpeedMultipliers = new Map<string, number>();
 let worldPositionFlushTimer: ReturnType<typeof setTimeout> | undefined;
+
+function normalizeWorldMovementSpeedMultiplier(value: number): number {
+    return Number.isFinite(value) && value > 0 && value <= 1 ? value : 1;
+}
+
+function cacheWorldMovementSpeedMultipliers(updates: readonly WorldPositionTerrainMovement[]) {
+    for (const update of updates) {
+        worldMovementSpeedMultipliers.set(
+            update.userId,
+            normalizeWorldMovementSpeedMultiplier(update.terrainMovement.speedMultiplier),
+        );
+    }
+}
 
 function scheduleWorldPositionFlush() {
     if (worldPositionFlushTimer) return;
@@ -50,7 +65,12 @@ async function flushWorldPositions() {
     pendingWorldPositions.clear();
     try {
         const req = await apiPrivateRouter.world.position.$post({ json: { updates } });
-        if (!req.ok) procLogger.warn("Failed to persist world positions", await req.text());
+        if (!req.ok) {
+            procLogger.warn("Failed to persist world positions", await req.text());
+        } else {
+            const res = await req.json();
+            cacheWorldMovementSpeedMultipliers(res.terrainMovement);
+        }
     } catch (err) {
         procLogger.error("Failed to persist world positions", err);
     }
@@ -60,6 +80,7 @@ async function flushWorldPositions() {
 function stopGame() {
     socketIdToSocket.clear();
     pendingWorldPositions.clear();
+    worldMovementSpeedMultipliers.clear();
     if (worldPositionFlushTimer) {
         clearTimeout(worldPositionFlushTimer);
         worldPositionFlushTimer = undefined;
@@ -158,8 +179,14 @@ async function markWorldFire(userId: string, weaponType: string) {
  * Implements methods only used when the game is actually running on a server
  */
 class ServerGame extends Game {
+    override getWorldMovementSpeedMultiplier(userId: string | null): number {
+        if (!this.world || !userId) return 1;
+        return worldMovementSpeedMultipliers.get(userId) ?? 1;
+    }
+
     override onPlayerDeath(userId: string | null, cause: "player" | "safe_zone" | "fire" | "hazard") {
         if (!this.world || !userId) return;
+        worldMovementSpeedMultipliers.delete(userId);
         void markWorldDeath(userId, cause);
     }
 

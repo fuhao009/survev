@@ -17,6 +17,20 @@ export interface WorldSnapshot {
     weather: WorldWeather;
 }
 
+/** Server response for one persisted realtime world position. */
+export interface WorldPositionTerrainMovement {
+    userId: string;
+    terrainMovement: WorldTerrainMovementModifier;
+}
+
+/** Batch response used by a game process position heartbeat. */
+export interface WorldPositionSyncResponse {
+    success: true;
+    /** Kept for compatibility with callers that only count applied updates. */
+    applied: number;
+    terrainMovement: WorldPositionTerrainMovement[];
+}
+
 export interface WorldEnterResponse {
     success: true;
     snapshot: WorldSnapshot;

@@ -4654,6 +4654,10 @@ export class Player extends BaseGameObject {
             this.speed += PerkProperties.field_medic.speedBoost;
         }
 
+        if (this.game.world) {
+            this.speed *= this.game.getWorldMovementSpeedMultiplier(this.userId);
+        }
+
         this.speed = math.clamp(this.speed, 1, 10000);
     }
 }
