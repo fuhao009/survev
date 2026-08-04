@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { MapDefs } from "../../../../shared/defs/mapDefs.ts";
 import { type ItemInstance, ITEM_DURABILITY_MAX, parseItemInstance } from "../../../../shared/types/itemInstance.ts";
 import type { WorldActionResponse, WorldSnapshot } from "../../../../shared/types/worldApi.ts";
-import { getWorldTerrain } from "../../../../shared/types/worldTerrain.ts";
+import { getWorldTerrain, getWorldTerrainMovementModifier } from "../../../../shared/types/worldTerrain.ts";
 import { getWorldWeather } from "../../../../shared/types/worldWeather.ts";
 import type {
     WorldCarriedItems,
@@ -224,6 +224,7 @@ export class WorldService {
             orderBy: [desc(worldLivesTable.updatedAt)],
         });
         if (!lifeRow) throw new Error("world life could not be loaded");
+        const life = toWorldLife(lifeRow);
         const inventoryRows = await db.select().from(worldItemInstancesTable).where(eq(worldItemInstancesTable.userId, userId));
         const inventory = inventoryRows.map((item) => parseItemInstance({
             instanceId: item.instanceId,
@@ -239,13 +240,16 @@ export class WorldService {
         );
         return {
             shard: worldShard,
-            life: toWorldLife(lifeRow),
+            life,
             inventory,
             walletBalance: await this.walletBalance(userId),
             onlinePlayers: Number(online[0]?.count ?? 0),
             extractionZone: WORLD_EXTRACTION_ZONE,
             canExtract: lifeRow.status === "alive" && isWithinExtractionZone(lifeRow.position.position),
             terrain: worldShard.terrain,
+            terrainMovement: "position" in life
+                ? getWorldTerrainMovementModifier(life.position.position, worldShard.terrain)
+                : null,
             weather: worldShard.weather,
         };
     }

@@ -1,6 +1,6 @@
 import type { ItemInstance } from "./itemInstance.ts";
 import type { WorldCircle, WorldLife, WorldSettlementState, WorldShard } from "./world.ts";
-import type { WorldTerrain } from "./worldTerrain.ts";
+import type { WorldTerrain, WorldTerrainMovementModifier } from "./worldTerrain.ts";
 import type { WorldWeather } from "./worldWeather.ts";
 
 export interface WorldSnapshot {
@@ -12,6 +12,8 @@ export interface WorldSnapshot {
     extractionZone: WorldCircle;
     canExtract: boolean;
     terrain: WorldTerrain;
+    /** Server-derived at the life position; null when the life has no position. */
+    terrainMovement: WorldTerrainMovementModifier | null;
     weather: WorldWeather;
 }
 

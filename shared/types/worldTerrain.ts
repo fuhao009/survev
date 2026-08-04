@@ -31,6 +31,70 @@ export interface WorldTerrain {
     patches: readonly WorldTerrainPatch[];
 }
 
+/**
+ * Shared movement rules for the terrain states. These values are descriptive
+ * until the realtime Player simulation consumes the authoritative modifier.
+ */
+export const WORLD_TERRAIN_MOVEMENT_SPEED_MULTIPLIERS: Readonly<Record<WorldTerrainPatchType, number>> = {
+    mud: 0.78,
+    flooded: 0.55,
+    rockslide: 0.65,
+    scorched: 0.9,
+};
+
+export interface WorldTerrainMovementMatch {
+    readonly id: string;
+    readonly type: WorldTerrainPatchType;
+    readonly speedMultiplier: number;
+}
+
+/** Server-derived movement state for one authoritative player position. */
+export interface WorldTerrainMovementModifier {
+    readonly kind: "world_terrain_movement";
+    readonly terrainRevision: number;
+    readonly position: Vec2;
+    readonly speedMultiplier: number;
+    readonly matchedPatches: readonly WorldTerrainMovementMatch[];
+}
+
+function containsPoint(bounds: WorldTerrainPatchBounds, position: Vec2): boolean {
+    return position.x >= bounds.min.x
+        && position.x <= bounds.max.x
+        && position.y >= bounds.min.y
+        && position.y <= bounds.max.y;
+}
+
+/**
+ * Resolve the movement modifier from authoritative terrain patches. Patch
+ * bounds are inclusive, and overlapping patches use the slowest multiplier.
+ * Sorting matches by id keeps the audit fields stable even if a caller's
+ * patch collection has a different iteration order.
+ */
+export function getWorldTerrainMovementModifier(
+    position: Vec2,
+    terrain: Pick<WorldTerrain, "revision" | "patches">,
+): WorldTerrainMovementModifier {
+    const matchedPatches = terrain.patches
+        .filter((patch) => containsPoint(patch.bounds, position))
+        .sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
+        .map((patch) => ({
+            id: patch.id,
+            type: patch.type,
+            speedMultiplier: WORLD_TERRAIN_MOVEMENT_SPEED_MULTIPLIERS[patch.type],
+        }));
+
+    return {
+        kind: "world_terrain_movement",
+        terrainRevision: terrain.revision,
+        position: { ...position },
+        speedMultiplier: matchedPatches.reduce(
+            (slowest, patch) => Math.min(slowest, patch.speedMultiplier),
+            1,
+        ),
+        matchedPatches,
+    };
+}
+
 export const WORLD_TERRAIN_CYCLE_DURATION_MS = 5 * 60 * 1000;
 export const WORLD_TERRAIN_PATCH_COUNT = 4;
 export const WORLD_TERRAIN_MAP_SIZE = 4096;
