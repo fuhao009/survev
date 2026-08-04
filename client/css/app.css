@@ -9048,3 +9048,41 @@ input [type="image"]:focus {
   background-position: center 42%;
   filter: saturate(1.08) contrast(1.04);
 }
+
+/* Keep modal close controls in their own corner instead of the content flow. */
+.modal-header {
+  position: relative;
+  padding-right: 58px;
+}
+
+.modal-header > .close-corner {
+  float: none;
+  margin: 0;
+  position: absolute;
+  right: 14px;
+  top: 12px;
+  z-index: 3;
+}
+
+#modal-user-center .user-center-header {
+  position: relative;
+}
+
+#modal-user-center .user-center-header > .close-corner {
+  float: none;
+  margin: 0;
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  z-index: 3;
+}
+
+#modal-user-center .user-center-header-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#modal-user-center .user-center-avatar {
+  flex: 0 0 auto;
+  margin: 0 48px 0 16px;
+}
