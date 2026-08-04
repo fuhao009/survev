@@ -1,19 +1,19 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { MapDefs } from "../../../../shared/defs/mapDefs.ts";
-import { type ItemInstance, ITEM_DURABILITY_MAX, parseItemInstance } from "../../../../shared/types/itemInstance.ts";
-import type { WorldActionResponse, WorldSnapshot } from "../../../../shared/types/worldApi.ts";
-import { getWorldTerrain, getWorldTerrainMovementModifier } from "../../../../shared/types/worldTerrain.ts";
-import { getWorldWeather } from "../../../../shared/types/worldWeather.ts";
+import { ITEM_DURABILITY_MAX, type ItemInstance, parseItemInstance } from "../../../../shared/types/itemInstance.ts";
 import type {
     WorldCarriedItems,
     WorldCarriedItemsSnapshot,
     WorldLife,
+    WorldSafeZone,
     WorldSettlementState,
     WorldShard,
-    WorldSafeZone,
 } from "../../../../shared/types/world.ts";
 import { WORLD_EXTRACTION_ZONE } from "../../../../shared/types/world.ts";
+import type { WorldActionResponse, WorldSnapshot } from "../../../../shared/types/worldApi.ts";
+import { getWorldTerrain, getWorldTerrainMovementModifier } from "../../../../shared/types/worldTerrain.ts";
+import { getWorldWeather } from "../../../../shared/types/worldWeather.ts";
 import type { Loadout } from "../../../../shared/utils/loadout.ts";
 import { db } from "../db/index.ts";
 import {
@@ -127,7 +127,11 @@ function toWorldLife(row: typeof worldLivesTable.$inferSelect): WorldLife {
     };
 }
 
-function itemSnapshot(items: Array<typeof worldItemInstancesTable.$inferSelect>, ownerId: string, revision: number): WorldCarriedItemsSnapshot {
+function itemSnapshot(
+    items: Array<typeof worldItemInstancesTable.$inferSelect>,
+    ownerId: string,
+    revision: number,
+): WorldCarriedItemsSnapshot {
     return {
         kind: "carried_items_snapshot",
         ownerId,
@@ -137,7 +141,11 @@ function itemSnapshot(items: Array<typeof worldItemInstancesTable.$inferSelect>,
             .filter((item) => ["ak47", "m9", "fists"].includes(item.type))
             .map((item) => ({
                 itemType: item.type,
-                slot: item.type === "fists" ? "melee" as const : item.type === "m9" ? "secondary" as const : "primary" as const,
+                slot: item.type === "fists"
+                    ? "melee" as const
+                    : item.type === "m9"
+                    ? "secondary" as const
+                    : "primary" as const,
                 loadedAmmo: 0,
             })),
         equipment: {
