@@ -12,6 +12,7 @@ import type {
 } from "../../../../shared/types/world.ts";
 import { WORLD_EXTRACTION_ZONE } from "../../../../shared/types/world.ts";
 import type { WorldActionResponse, WorldSnapshot } from "../../../../shared/types/worldApi.ts";
+import { getWorldLightning } from "../../../../shared/types/worldLightning.ts";
 import { getWorldTerrain, getWorldTerrainMovementModifier } from "../../../../shared/types/worldTerrain.ts";
 import type { WorldTerrain } from "../../../../shared/types/worldTerrain.ts";
 import { getWorldWeather } from "../../../../shared/types/worldWeather.ts";
@@ -52,6 +53,7 @@ function isWithinExtractionZone(position: { x: number; y: number }) {
 }
 
 function toWorldShard(row: typeof worldShardsTable.$inferSelect, now = Date.now()): WorldShard {
+    const weather = getWorldWeather(row.seed, row.createdAt.getTime(), now);
     if (row.status !== "active") {
         return {
             kind: "world_shard",
@@ -64,7 +66,8 @@ function toWorldShard(row: typeof worldShardsTable.$inferSelect, now = Date.now(
             snapshotRevision: row.snapshotRevision,
             safeZone: row.safeZone,
             terrain: getWorldTerrain(row.seed, row.createdAt.getTime(), now),
-            weather: getWorldWeather(row.seed, row.createdAt.getTime(), now),
+            weather,
+            lightning: getWorldLightning(row.seed, weather, now),
             createdAt: row.createdAt.getTime(),
             status: "closed",
             closedAt: row.updatedAt.getTime(),
@@ -82,7 +85,8 @@ function toWorldShard(row: typeof worldShardsTable.$inferSelect, now = Date.now(
         snapshotRevision: row.snapshotRevision,
         safeZone: row.safeZone,
         terrain: getWorldTerrain(row.seed, row.createdAt.getTime(), now),
-        weather: getWorldWeather(row.seed, row.createdAt.getTime(), now),
+        weather,
+        lightning: getWorldLightning(row.seed, weather, now),
         createdAt: row.createdAt.getTime(),
         status: "active",
         lastHeartbeatAt: row.updatedAt.getTime(),
@@ -275,6 +279,7 @@ export class WorldService {
                 ? getWorldTerrainMovementModifier(life.position.position, worldShard.terrain)
                 : null,
             weather: worldShard.weather,
+            lightning: worldShard.lightning,
         };
     }
 

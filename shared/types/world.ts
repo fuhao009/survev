@@ -1,5 +1,6 @@
 import type { MapId } from "../gameConfig.ts";
 import type { Vec2 } from "../utils/v2.ts";
+import type { WorldLightning } from "./worldLightning.ts";
 import type { WorldTerrain } from "./worldTerrain.ts";
 import type { WorldWeather } from "./worldWeather.ts";
 
@@ -44,6 +45,7 @@ interface WorldShardBase {
     safeZone: WorldSafeZone;
     terrain: WorldTerrain;
     weather: WorldWeather;
+    lightning: WorldLightning;
     createdAt: WorldTimestamp;
 }
 
