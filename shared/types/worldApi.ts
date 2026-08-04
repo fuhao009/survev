@@ -29,6 +29,7 @@ export interface WorldPositionSyncResponse {
     /** Kept for compatibility with callers that only count applied updates. */
     applied: number;
     terrainMovement: WorldPositionTerrainMovement[];
+    terrain: WorldTerrain;
 }
 
 export interface WorldEnterResponse {

@@ -167,6 +167,13 @@ describe("authoritative world terrain", () => {
             success: true,
             applied: 2,
             terrainMovement: [],
+            terrain: {
+                kind: "world_terrain" as const,
+                revision: 3,
+                startedAt: 0,
+                endsAt: 1,
+                patches: [],
+            },
         } satisfies WorldPositionSyncResponse;
 
         expect(response.applied).toBe(2);

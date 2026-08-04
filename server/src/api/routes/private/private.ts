@@ -284,7 +284,12 @@ export const PrivateRouter = new Hono<Context>()
                     terrainMovement.push({ userId: update.userId, terrainMovement: result });
                 }
             }
-            return c.json({ success: true, applied, terrainMovement }, 200);
+            return c.json({
+                success: true,
+                applied,
+                terrainMovement,
+                terrain: await worldService.getTerrainSnapshot(),
+            }, 200);
         },
     )
     .post(

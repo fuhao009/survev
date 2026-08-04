@@ -1,6 +1,11 @@
 import { TeamMode } from "../../../shared/gameConfig.ts";
+import {
+    getDefaultWorldTerrainBulletModifier,
+    type WorldTerrainBulletModifier,
+} from "../../../shared/types/worldTerrain.ts";
 import type { Loadout } from "../../../shared/utils/loadout.ts";
 import { math } from "../../../shared/utils/math.ts";
+import type { Vec2 } from "../../../shared/utils/v2.ts";
 import { Config } from "../config.ts";
 import { ServerLogger } from "../utils/logger.ts";
 import { type FindGamePrivateBody, type ServerGameConfig } from "../utils/types.ts";
@@ -414,6 +419,10 @@ export class Game {
      */
     getWorldMovementSpeedMultiplier(_userId: string | null): number {
         return 1;
+    }
+
+    getWorldBulletModifier(position: Vec2): WorldTerrainBulletModifier {
+        return getDefaultWorldTerrainBulletModifier(position);
     }
 
     /**

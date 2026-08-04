@@ -160,6 +160,7 @@ export class Bullet {
     trailThick!: boolean;
     startPos!: Vec2;
     speed!: number;
+    baseSpeed!: number;
     damageSelf!: boolean;
     damage!: number;
     damageMult!: number;
@@ -202,7 +203,8 @@ export class Bullet {
         this.reflected = false;
         this.lastShot = params.lastShot ?? false;
         this.speedMult = params.speedMult ?? 1;
-        this.speed = bulletDef.speed * this.speedMult * variance;
+        this.baseSpeed = bulletDef.speed * this.speedMult * variance;
+        this.speed = this.baseSpeed * this.bulletManager.game.getWorldBulletModifier(this.pos).speedMultiplier;
         this.hasModifier = this.speedMult !== 1 || this.distanceMult !== 1;
         this.onHitFx = bulletDef.onHit ?? params.onHitFx;
         this.canReflect = this.onHitFx !== "explosion_rounds";
@@ -353,6 +355,7 @@ export class Bullet {
     }
 
     update(dt: number): void {
+        this.speed = this.baseSpeed * this.bulletManager.game.getWorldBulletModifier(this.pos).speedMultiplier;
         const posOld = v2.copy(this.pos);
         const distLeft = this.distance - v2.length(v2.sub(this.startPos, this.pos));
         const moveDist = math.min(distLeft, dt * this.speed);
@@ -598,6 +601,7 @@ export class Bullet {
                 if (this.apRounds) {
                     obstacleMult *= PerkProperties.ap_rounds.obstacleMult;
                 }
+                obstacleMult *= this.bulletManager.game.getWorldBulletModifier(col.point).obstacleDamageMultiplier;
 
                 this.bulletManager.damages.push({
                     obj: col.obj!,

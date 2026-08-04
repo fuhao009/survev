@@ -1,8 +1,10 @@
 import fs from "node:fs";
 import { platform } from "node:os";
 import path from "node:path";
-import type { WorldPositionTerrainMovement } from "../../../shared/types/worldApi.ts";
+import type { WorldPositionSyncResponse, WorldPositionTerrainMovement } from "../../../shared/types/worldApi.ts";
+import { getWorldTerrainBulletModifier, type WorldTerrain } from "../../../shared/types/worldTerrain.ts";
 import { Logger } from "../../../shared/utils/logger.ts";
+import type { Vec2 } from "../../../shared/utils/v2.ts";
 import { Config } from "../config.ts";
 import { apiPrivateRouter } from "../utils/apiRouter.ts";
 import { logErrorToWebhook } from "../utils/logger.ts";
@@ -36,6 +38,7 @@ type WorldPositionUpdate = {
 
 const pendingWorldPositions = new Map<string, WorldPositionUpdate>();
 const worldMovementSpeedMultipliers = new Map<string, number>();
+let worldTerrain: WorldTerrain | undefined;
 let worldPositionFlushTimer: ReturnType<typeof setTimeout> | undefined;
 
 function normalizeWorldMovementSpeedMultiplier(value: number): number {
@@ -49,6 +52,10 @@ function cacheWorldMovementSpeedMultipliers(updates: readonly WorldPositionTerra
             normalizeWorldMovementSpeedMultiplier(update.terrainMovement.speedMultiplier),
         );
     }
+}
+
+function cacheWorldTerrain(terrain: WorldPositionSyncResponse["terrain"] | undefined) {
+    if (terrain) worldTerrain = terrain;
 }
 
 function scheduleWorldPositionFlush() {
@@ -68,8 +75,9 @@ async function flushWorldPositions() {
         if (!req.ok) {
             procLogger.warn("Failed to persist world positions", await req.text());
         } else {
-            const res = await req.json();
+            const res = await req.json() as WorldPositionSyncResponse;
             cacheWorldMovementSpeedMultipliers(res.terrainMovement);
+            cacheWorldTerrain(res.terrain);
         }
     } catch (err) {
         procLogger.error("Failed to persist world positions", err);
@@ -81,6 +89,7 @@ function stopGame() {
     socketIdToSocket.clear();
     pendingWorldPositions.clear();
     worldMovementSpeedMultipliers.clear();
+    worldTerrain = undefined;
     if (worldPositionFlushTimer) {
         clearTimeout(worldPositionFlushTimer);
         worldPositionFlushTimer = undefined;
@@ -182,6 +191,11 @@ class ServerGame extends Game {
     override getWorldMovementSpeedMultiplier(userId: string | null): number {
         if (!this.world || !userId) return 1;
         return worldMovementSpeedMultipliers.get(userId) ?? 1;
+    }
+
+    override getWorldBulletModifier(position: Vec2) {
+        if (!this.world) return super.getWorldBulletModifier(position);
+        return getWorldTerrainBulletModifier(position, worldTerrain);
     }
 
     override onPlayerDeath(userId: string | null, cause: "player" | "safe_zone" | "fire" | "hazard") {

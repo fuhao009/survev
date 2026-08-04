@@ -13,6 +13,7 @@ import type {
 import { WORLD_EXTRACTION_ZONE } from "../../../../shared/types/world.ts";
 import type { WorldActionResponse, WorldSnapshot } from "../../../../shared/types/worldApi.ts";
 import { getWorldTerrain, getWorldTerrainMovementModifier } from "../../../../shared/types/worldTerrain.ts";
+import type { WorldTerrain } from "../../../../shared/types/worldTerrain.ts";
 import { getWorldWeather } from "../../../../shared/types/worldWeather.ts";
 import type { Loadout } from "../../../../shared/utils/loadout.ts";
 import { db } from "../db/index.ts";
@@ -184,6 +185,11 @@ export class WorldService {
         const row = await db.query.worldShardsTable.findFirst({ where: eq(worldShardsTable.shardId, SHARD_ID) });
         if (!row) throw new Error("world shard could not be initialized");
         return row;
+    }
+
+    async getTerrainSnapshot(): Promise<WorldTerrain> {
+        const shard = await this.ensureShard();
+        return toWorldShard(shard).terrain;
     }
 
     private async ensureStarterItems(userId: string, loadout: Loadout) {

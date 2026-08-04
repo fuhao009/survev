@@ -1,6 +1,6 @@
 import type { Vec2 } from "../utils/v2.ts";
 
-/** Terrain states are data-only until a later simulation task consumes them. */
+/** Terrain states are shared by authoritative simulation and client snapshots. */
 export type WorldTerrainPatchType = "mud" | "flooded" | "rockslide" | "scorched";
 
 export interface WorldTerrainPatchBounds {
@@ -31,10 +31,7 @@ export interface WorldTerrain {
     patches: readonly WorldTerrainPatch[];
 }
 
-/**
- * Shared movement rules for the terrain states. These values are descriptive
- * until the realtime Player simulation consumes the authoritative modifier.
- */
+/** Shared movement rules for the terrain states. */
 export const WORLD_TERRAIN_MOVEMENT_SPEED_MULTIPLIERS: Readonly<Record<WorldTerrainPatchType, number>> = {
     mud: 0.78,
     flooded: 0.55,
@@ -55,6 +52,48 @@ export interface WorldTerrainMovementModifier {
     readonly position: Vec2;
     readonly speedMultiplier: number;
     readonly matchedPatches: readonly WorldTerrainMovementMatch[];
+}
+
+/** Terrain effects consumed by the authoritative bullet simulation. */
+export const WORLD_TERRAIN_BULLET_SPEED_MULTIPLIERS: Readonly<Record<WorldTerrainPatchType, number>> = {
+    mud: 0.9,
+    flooded: 0.72,
+    rockslide: 0.82,
+    scorched: 1,
+};
+
+export const WORLD_TERRAIN_BULLET_OBSTACLE_DAMAGE_MULTIPLIERS: Readonly<Record<WorldTerrainPatchType, number>> = {
+    mud: 0.85,
+    flooded: 0.6,
+    rockslide: 0.75,
+    scorched: 0.95,
+};
+
+export interface WorldTerrainBulletMatch {
+    readonly id: string;
+    readonly type: WorldTerrainPatchType;
+    readonly speedMultiplier: number;
+    readonly obstacleDamageMultiplier: number;
+}
+
+export interface WorldTerrainBulletModifier {
+    readonly kind: "world_terrain_bullet";
+    readonly terrainRevision: number;
+    readonly position: Vec2;
+    readonly speedMultiplier: number;
+    readonly obstacleDamageMultiplier: number;
+    readonly matchedPatches: readonly WorldTerrainBulletMatch[];
+}
+
+export function getDefaultWorldTerrainBulletModifier(position: Vec2): WorldTerrainBulletModifier {
+    return {
+        kind: "world_terrain_bullet",
+        terrainRevision: 0,
+        position: { ...position },
+        speedMultiplier: 1,
+        obstacleDamageMultiplier: 1,
+        matchedPatches: [],
+    };
 }
 
 function containsPoint(bounds: WorldTerrainPatchBounds, position: Vec2): boolean {
@@ -89,6 +128,43 @@ export function getWorldTerrainMovementModifier(
         position: { ...position },
         speedMultiplier: matchedPatches.reduce(
             (slowest, patch) => Math.min(slowest, patch.speedMultiplier),
+            1,
+        ),
+        matchedPatches,
+    };
+}
+
+/**
+ * Resolve bullet speed and obstacle penetration from the authoritative patch
+ * set. Overlapping patches use the most restrictive multiplier and matches
+ * are sorted by id for deterministic audit output.
+ */
+export function getWorldTerrainBulletModifier(
+    position: Vec2,
+    terrain: Pick<WorldTerrain, "revision" | "patches"> | undefined,
+): WorldTerrainBulletModifier {
+    if (!terrain) return getDefaultWorldTerrainBulletModifier(position);
+
+    const matchedPatches = terrain.patches
+        .filter((patch) => containsPoint(patch.bounds, position))
+        .sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
+        .map((patch) => ({
+            id: patch.id,
+            type: patch.type,
+            speedMultiplier: WORLD_TERRAIN_BULLET_SPEED_MULTIPLIERS[patch.type],
+            obstacleDamageMultiplier: WORLD_TERRAIN_BULLET_OBSTACLE_DAMAGE_MULTIPLIERS[patch.type],
+        }));
+
+    return {
+        kind: "world_terrain_bullet",
+        terrainRevision: terrain.revision,
+        position: { ...position },
+        speedMultiplier: matchedPatches.reduce(
+            (slowest, patch) => Math.min(slowest, patch.speedMultiplier),
+            1,
+        ),
+        obstacleDamageMultiplier: matchedPatches.reduce(
+            (lowest, patch) => Math.min(lowest, patch.obstacleDamageMultiplier),
             1,
         ),
         matchedPatches,
