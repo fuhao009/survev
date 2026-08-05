@@ -11,6 +11,7 @@ import {
     wearItem,
 } from "../../../../shared/types/itemDurability.ts";
 import { parseItemInstance } from "../../../../shared/types/itemInstance.ts";
+import type { ItemInstance } from "../../../../shared/types/itemInstance.ts";
 import type {
     WorldCarriedItems,
     WorldCarriedItemsSnapshot,
@@ -508,7 +509,25 @@ export class WorldService {
             securedAt: Date.now(),
         } satisfies WorldCarriedItems;
         const rewardPoints = Math.max(25, life.carriedItems.snapshot.weapons.length * 15 + life.revision);
+        let securedInventory: ItemInstance[] = [];
         await db.transaction(async (tx) => {
+            const items = await tx.select().from(worldItemInstancesTable).where(
+                and(
+                    eq(worldItemInstancesTable.userId, userId),
+                    eq(worldItemInstancesTable.lifeId, life.lifeId),
+                ),
+            );
+            securedInventory = items.map((item) =>
+                parseItemInstance({
+                    instanceId: item.instanceId,
+                    type: item.type,
+                    quantity: 1,
+                    durability: item.durability,
+                    durabilityMax: item.durabilityMax,
+                    state: "stash",
+                    ownerId: item.userId,
+                })
+            );
             await tx.insert(worldSettlementsTable).values({
                 settlementId,
                 playerId: userId,
@@ -548,6 +567,7 @@ export class WorldService {
             finalizedAt: Date.now(),
             receiptId: settlementId,
             securedItems: secured,
+            securedInventory,
             rewards: [{ rewardType: "points", quantity: rewardPoints }],
         };
     }

@@ -37,6 +37,13 @@ import { Pass } from "./ui/pass.ts";
 import { ProfileUi } from "./ui/profileUi.ts";
 import { TeamMenu } from "./ui/teamMenu.ts";
 import { loadStaticDomImages } from "./ui/ui2.ts";
+import {
+    buildDeadWorldResult,
+    buildExtractedWorldResult,
+    getWorldItemStateLabel,
+    WORLD_RESULT_RETURN_HASH,
+    type WorldResultViewModel,
+} from "./worldSettlement.ts";
 
 const WORLD_WEATHER_LABELS: Record<WorldWeatherType, string> = {
     clear: "晴朗",
@@ -104,6 +111,7 @@ export class Application {
     worldSnapshot: WorldSnapshot | null = null;
     worldDeathPending = false;
     worldPollTimer: number | null = null;
+    worldResultView: WorldResultViewModel | null = null;
     findGameAttempts = 0;
     findGameTime = 0;
     pauseTime = 0;
@@ -209,7 +217,10 @@ export class Application {
                 void this.extractWorld();
             });
             $("#world-return-home").on("click", () => {
-                this.returnToWorldHome();
+                this.returnToUserCenter();
+            });
+            $("#world-result-user-center").on("click", () => {
+                this.returnToUserCenter();
             });
 
             this.serverSelect.on("change", () => {
@@ -615,6 +626,8 @@ export class Application {
         if (!this.ensureLoggedIn() || this.worldPlayPending || this.quickPlayPendingModeIdx !== -1) {
             return;
         }
+        this.worldResultView = null;
+        this.refreshWorldResult();
         this.worldPlayPending = true;
         this.errorMessage = "";
         this.refreshUi();
@@ -655,23 +668,77 @@ export class Application {
                 const data = await response.json() as WorldEnterResponse;
                 this.worldSnapshot = data.snapshot;
                 this.refreshWorldHud();
+                if (data.snapshot.life.status === "dead" && !this.worldResultView) {
+                    this.game?.free();
+                    this.stopWorldPolling();
+                    this.worldResultView = buildDeadWorldResult(data.snapshot);
+                    this.refreshWorldHud();
+                    this.refreshWorldResult();
+                }
             }).catch(() => {});
         }, 2500);
+    }
+
+    stopWorldPolling() {
+        if (this.worldPollTimer !== null) {
+            window.clearInterval(this.worldPollTimer);
+            this.worldPollTimer = null;
+        }
     }
 
     stopWorldSession() {
         this.worldSessionActive = false;
         this.worldSnapshot = null;
         this.worldDeathPending = false;
-        if (this.worldPollTimer !== null) {
-            window.clearInterval(this.worldPollTimer);
-            this.worldPollTimer = null;
-        }
+        this.stopWorldPolling();
         $("#world-hud").hide();
+    }
+
+    refreshWorldResult() {
+        const result = this.worldResultView;
+        const panel = $("#world-result");
+        if (!result) {
+            panel.hide().removeClass("world-result-dead");
+            return;
+        }
+
+        panel
+            .css("display", "flex")
+            .toggleClass("world-result-dead", result.outcome === "dead");
+        $("#world-result-title").text(result.title);
+        $("#world-result-summary").text(result.summary);
+        $("#world-result-reward").text(result.rewardPoints > 0 ? `+${result.rewardPoints}` : "0");
+        $("#world-result-wallet-before").text(result.walletBefore.toLocaleString());
+        $("#world-result-wallet-after").text(result.walletAfter.toLocaleString());
+        $("#world-result-items-title").text(result.outcome === "extracted" ? "带出并入库" : "掉落清单");
+        $("#world-result-warehouse").text(
+            result.outcome === "extracted"
+                ? `本局带出 ${result.carriedCount} 件 · 当前仓库 ${result.warehouseCount} 件`
+                : `本局未入库 · 当前仓库 ${result.warehouseCount} 件`,
+        );
+
+        const list = $("#world-result-items").empty();
+        if (result.items.length === 0) {
+            $("<li>").text(result.outcome === "extracted" ? "本局没有可展示的物品" : "携带物品清单为空").appendTo(list);
+            return;
+        }
+        for (const item of result.items) {
+            const detail = item.kind === "equipment" && item.durabilityMax !== undefined
+                ? `${item.durability}/${item.durabilityMax} · ${getWorldItemStateLabel(item.state)}`
+                : `${item.quantity} 件 · 一次性物品`;
+            $("<li>")
+                .append($("<span>").text(`${item.label} ×${item.quantity}`))
+                .append($("<span>").addClass("world-result-item-detail").text(detail))
+                .appendTo(list);
+        }
     }
 
     refreshWorldHud() {
         const snapshot = this.worldSnapshot;
+        if (this.worldResultView) {
+            $("#world-hud").hide();
+            return;
+        }
         if (!snapshot || !this.worldSessionActive || this.active) {
             $("#world-hud").hide();
             return;
@@ -721,13 +788,29 @@ export class Application {
     }
 
     returnToWorldHome() {
-        if (!this.worldSessionActive || (this.worldSnapshot?.life.status !== "dead" && !this.worldDeathPending)) return;
+        this.returnToUserCenter();
+    }
+
+    returnToUserCenter() {
+        if (
+            !this.worldResultView
+            && (!this.worldSessionActive || (this.worldSnapshot?.life.status !== "dead" && !this.worldDeathPending))
+        ) {
+            return;
+        }
         this.game?.free();
         this.stopWorldSession();
+        this.worldResultView = null;
+        this.refreshWorldResult();
         this.setAppActive(true);
         this.setPlayLockout(false);
         this.ambience.onGameComplete(this.audioManager);
         SDK.gamePlayStop();
+        this.account.loadWallet();
+        if (window.location.hash !== WORLD_RESULT_RETURN_HASH) {
+            window.location.hash = WORLD_RESULT_RETURN_HASH;
+        }
+        this.profileUi.openUserCenter();
         this.refreshUi();
     }
 
@@ -757,13 +840,18 @@ export class Application {
                 message.text(data.success === false ? `无法撤离：${data.error || "未知原因"}` : "无法撤离");
                 return;
             }
-            const rewards = data.settlement?.status === "finalized" ? data.settlement.rewards : [];
-            const points = rewards.find((reward) => reward.rewardType === "points")?.quantity ?? 0;
+            if (data.settlement?.status !== "finalized" || !this.worldSnapshot) {
+                message.text("结算结果暂不可用，请稍后查看用户中心");
+                return;
+            }
+            const before = this.worldSnapshot;
+            const result = buildExtractedWorldResult(data.settlement, before, data.snapshot);
             this.game?.free();
             this.stopWorldSession();
             this.setAppActive(true);
             this.setPlayLockout(false);
-            this.errorMessage = `已撤离，获得 ${points} 积分`;
+            this.worldResultView = result;
+            this.refreshWorldResult();
             this.account.loadWallet();
             this.ambience.onGameComplete(this.audioManager);
             SDK.gamePlayStop();
