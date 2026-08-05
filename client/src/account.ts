@@ -1,4 +1,5 @@
-import type { PassState, QuestState } from "../../shared/types/user.ts";
+import type { ItemInstance } from "../../shared/types/itemInstance.ts";
+import type { PassState, ProfileResponse, QuestState } from "../../shared/types/user.ts";
 import type { WalletOverviewResponse } from "../../shared/types/wallet.ts";
 import type { Item, ItemStatus } from "../../shared/utils/loadout.ts";
 import { type Loadout, loadout as loadouts } from "../../shared/utils/loadout.ts";
@@ -16,14 +17,13 @@ type UserRouter = ReturnType<typeof hc<UserRouterApp>>;
 type UserRouterPostPath = {
     [Path in keyof UserRouter]: UserRouter[Path] extends {
         $post: (...args: any[]) => any;
-    }
-        ? Path
+    } ? Path
         : never;
 }[keyof UserRouter];
 type UserRouterPost<Path extends UserRouterPostPath> = Extract<
     UserRouter[Path],
     { $post: (...args: any[]) => any }
->['$post'];
+>["$post"];
 
 type AccountEventMap = {
     request: (account: Account) => void;
@@ -34,6 +34,7 @@ type AccountEventMap = {
     error: (error: string, reason?: string) => void;
     pass: (pass: PassState, quests: QuestState[], resetRefresh: boolean) => void;
     wallet: (walletBalance: number) => void;
+    worldInventory: (items: ItemInstance[]) => void;
 };
 
 export class Account {
@@ -54,6 +55,7 @@ export class Account {
     quests: QuestState[] = [];
     pass = {} as PassState;
     walletBalance = 0;
+    worldInventory: ItemInstance[] = [];
 
     router: UserRouter;
 
@@ -163,43 +165,107 @@ export class Account {
         this.emit("wallet", this.walletBalance);
     }
 
-    loadWallet() {
+    private async requestWalletBalance(): Promise<number> {
+        const res = await this.router.wallet.$get();
+        if (!res.ok) {
+            throw new Error(`wallet request failed: ${res.status}`);
+        }
+        const data = await res.json() as WalletOverviewResponse;
+        if (!Number.isFinite(data.balance)) {
+            throw new Error("wallet response has an invalid balance");
+        }
+        return data.balance;
+    }
+
+    async loadWallet(): Promise<boolean> {
         if (!this.loggedIn || !helpers.getCookie("app-data")) {
             this.resetWallet();
-            return;
+            return false;
         }
 
         this.requestsInFlight++;
         this.emit("request", this);
-        this.router.wallet.$get()
-            .then(async (res) => {
-                if (!res.ok) {
-                    throw new Error(`wallet request failed: ${res.status}`);
-                }
-                const data = await res.json() as WalletOverviewResponse;
-                if (!this.loggedIn) {
-                    this.resetWallet();
-                    return;
-                }
-                this.walletBalance = Number.isFinite(data.balance) ? data.balance : 0;
-                this.emit("wallet", this.walletBalance);
-            })
-            .catch(() => {
-                errorLogManager.storeGeneric("account", "load_wallet_error");
+        try {
+            const balance = await this.requestWalletBalance();
+            if (!this.loggedIn) {
                 this.resetWallet();
-            })
-            .finally(() => {
-                this.requestsInFlight--;
-                this.emit("request", this);
-                if (this.requestsInFlight == 0) {
-                    this.emit("requestsComplete");
-                }
-            });
+                return false;
+            }
+            this.walletBalance = balance;
+            this.emit("wallet", this.walletBalance);
+            return true;
+        } catch (_error) {
+            // Keep the last known value so a transient refresh failure cannot
+            // make the account center display false zero balances.
+            errorLogManager.storeGeneric("account", "load_wallet_error");
+            return false;
+        } finally {
+            this.requestsInFlight--;
+            this.emit("request", this);
+            if (this.requestsInFlight == 0) {
+                this.emit("requestsComplete");
+            }
+        }
+    }
+
+    /** Refresh the account hub from profile, world-inventory, and wallet authorities. */
+    async refreshAccountData(): Promise<boolean> {
+        if (!this.loggedIn || !helpers.getCookie("app-data")) {
+            return false;
+        }
+
+        this.requestsInFlight++;
+        this.emit("request", this);
+        try {
+            const [res, walletBalance] = await Promise.all([
+                this.router.profile.$post({}),
+                this.requestWalletBalance(),
+            ]);
+            if (!res.ok) {
+                throw new Error(`profile refresh failed: ${res.status}`);
+            }
+            const data = await res.json() as ProfileResponse;
+            if (!data.success || !Array.isArray(data.worldInventory)) {
+                this.emit("error", "server_error");
+                return false;
+            }
+
+            if (!this.loggedIn) {
+                return false;
+            }
+
+            this.profile = data.profile;
+            this.items = data.items;
+            this.worldInventory = data.worldInventory;
+            this.loadout = data.loadout;
+            this.walletBalance = walletBalance;
+            const profile = this.config.get("profile") || { slug: "" };
+            profile.slug = data.profile.slug;
+            this.config.set("profile", profile);
+            this.emit("items", this.items);
+            this.emit("worldInventory", this.worldInventory);
+            this.emit("loadout", this.loadout);
+            this.emit("wallet", this.walletBalance);
+            return true;
+        } catch (_error) {
+            // Do not clear the existing profile, inventory, or wallet. The
+            // account center remains usable and its retry action can recover.
+            errorLogManager.storeGeneric("account", "refresh_profile_error");
+            return false;
+        } finally {
+            this.requestsInFlight--;
+            this.emit("request", this);
+            if (this.requestsInFlight == 0) {
+                this.emit("requestsComplete");
+            }
+        }
     }
 
     logout() {
         this.loggedIn = false;
         this.resetWallet();
+        this.worldInventory = [];
+        this.emit("worldInventory", this.worldInventory);
         this.config.set("profile", null);
         this.config.set("sessionCookie", null);
         this.config.set("loadout", loadouts.defaultLoadout());
@@ -216,6 +282,7 @@ export class Account {
             this.loggedIn = false;
             this.profile = {} as this["profile"];
             this.items = [];
+            this.worldInventory = [];
             this.resetWallet();
             if (err) {
                 errorLogManager.storeGeneric("account", "load_profile_error");
@@ -225,6 +292,7 @@ export class Account {
                 this.loggedIn = true;
                 this.profile = data.profile;
                 this.items = data.items;
+                this.worldInventory = data.worldInventory;
                 this.loadout = data.loadout;
                 const profile = this.config.get("profile") || { slug: "" };
                 profile.slug = data.profile.slug;
@@ -240,6 +308,7 @@ export class Account {
                 this.emit("login", this);
             }
             this.emit("items", this.items);
+            this.emit("worldInventory", this.worldInventory);
             this.emit("loadout", this.loadout);
         });
     }

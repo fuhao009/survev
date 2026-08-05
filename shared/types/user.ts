@@ -1,4 +1,5 @@
 import { type Item, type Loadout } from "../utils/loadout.ts";
+import type { ItemInstance } from "./itemInstance.ts";
 
 export type ProfileResponse =
     | {
@@ -18,6 +19,8 @@ export type ProfileResponse =
         };
         loadout: Loadout;
         items: Item[];
+        /** Latest stashed/equipped persistent-world item state for the account center. */
+        worldInventory: ItemInstance[];
     };
 
 export type UsernameResponse =

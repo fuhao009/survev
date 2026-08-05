@@ -4,6 +4,7 @@ import z from "zod";
 import { UnlockDefs } from "../../../../../shared/defs/gameObjects/unlockDefs.ts";
 import { Constants } from "../../../../../shared/net/net.ts";
 import { loadoutSchema } from "../../../../../shared/types/api.ts";
+import { parseItemInstance } from "../../../../../shared/types/itemInstance.ts";
 import { type ProfileResponse, type UsernameResponse } from "../../../../../shared/types/user.ts";
 import loadout, { ItemStatus } from "../../../../../shared/utils/loadout.ts";
 import { validateUserName } from "../../../utils/badWords.ts";
@@ -15,7 +16,7 @@ import {
     validateParams,
 } from "../../auth/middleware.ts";
 import { db } from "../../db/index.ts";
-import { itemsTable, matchDataTable, usersTable } from "../../db/schema.ts";
+import { itemsTable, matchDataTable, usersTable, worldItemInstancesTable } from "../../db/schema.ts";
 import type { Context } from "../../index.ts";
 import { getTimeUntilNextUsernameChange, logoutUser, sanitizeSlug } from "./auth/authUtils.ts";
 import { PassRouter } from "./PassRouter.ts";
@@ -55,20 +56,31 @@ export const UserRouter = new Hono<Context>()
 
         const defaultUnlockItems = UnlockDefs["unlock_default"].unlocks;
 
-        const items = await db
-            .select({
-                type: itemsTable.type,
-                timeAcquired: itemsTable.timeAcquired,
-                source: itemsTable.source,
-                status: itemsTable.status,
-            })
-            .from(itemsTable)
-            .where(
-                and(
-                    eq(itemsTable.userId, user.id),
-                    notInArray(itemsTable.type, defaultUnlockItems),
+        const [items, worldItems] = await Promise.all([
+            db
+                .select({
+                    type: itemsTable.type,
+                    timeAcquired: itemsTable.timeAcquired,
+                    source: itemsTable.source,
+                    status: itemsTable.status,
+                })
+                .from(itemsTable)
+                .where(
+                    and(
+                        eq(itemsTable.userId, user.id),
+                        notInArray(itemsTable.type, defaultUnlockItems),
+                    ),
                 ),
-            );
+            db
+                .select()
+                .from(worldItemInstancesTable)
+                .where(
+                    and(
+                        eq(worldItemInstancesTable.userId, user.id),
+                        inArray(worldItemInstancesTable.state, ["stash", "equipped"]),
+                    ),
+                ),
+        ]);
 
         return c.json<ProfileResponse>(
             {
@@ -82,6 +94,17 @@ export const UserRouter = new Hono<Context>()
                 },
                 loadout,
                 items: items,
+                worldInventory: worldItems.map((item) =>
+                    parseItemInstance({
+                        instanceId: item.instanceId,
+                        type: item.type,
+                        quantity: 1,
+                        durability: item.durability,
+                        durabilityMax: item.durabilityMax,
+                        state: item.state,
+                        ownerId: item.userId,
+                    })
+                ),
             },
             200,
         );

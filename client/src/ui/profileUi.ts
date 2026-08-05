@@ -6,6 +6,7 @@ import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
 import { proxy } from "../proxy.ts";
 import { SDK } from "../sdk/sdk.ts";
+import { getWorldItemLabel, getWorldItemStateLabel } from "../worldSettlement.ts";
 import type { LoadoutMenu } from "./loadoutMenu.ts";
 import type { Localization } from "./localization.ts";
 import { MenuModal } from "./menuModal.ts";
@@ -159,6 +160,7 @@ export class ProfileUi {
         account.addEventListener("loadout", this.onLoadoutUpdated.bind(this));
         account.addEventListener("items", this.onItemsUpdated.bind(this));
         account.addEventListener("wallet", this.onWalletUpdated.bind(this));
+        account.addEventListener("worldInventory", this.onWorldInventoryUpdated.bind(this));
         account.addEventListener("request", this.render.bind(this));
         this.initUi();
         this.render();
@@ -307,6 +309,11 @@ export class ProfileUi {
             this.openUserCenter();
         });
 
+        $("#user-center-refresh").on("click", (event) => {
+            event.preventDefault();
+            void this.refreshUserCenter();
+        });
+
         // Mobile Accounts Modal
         this.modalMobileAccount = new MenuModal($("#modal-mobile-account"));
         this.modalMobileAccount.onShow(() => {
@@ -430,8 +437,9 @@ export class ProfileUi {
         if (!isUserCenterHash(window.location.hash)) return;
         this.waitOnLogin(() => {
             if (this.account.loggedIn) {
-                this.renderUserCenter();
-                this.userCenterModal!.show(true);
+                void this.refreshUserCenter().finally(() => {
+                    this.userCenterModal!.show(true);
+                });
             } else {
                 this.showLoginMenu({ modal: true });
             }
@@ -513,6 +521,20 @@ export class ProfileUi {
         this.renderUserCenter();
     }
 
+    onWorldInventoryUpdated() {
+        this.renderUserCenter();
+    }
+
+    async refreshUserCenter(): Promise<boolean> {
+        $("#user-center-refresh-status").text("正在刷新数据...");
+        const refreshed = await this.account.refreshAccountData();
+        this.renderUserCenter();
+        $("#user-center-refresh-status").text(
+            refreshed ? "数据已更新" : "刷新失败，当前显示上次数据，可重试",
+        );
+        return refreshed;
+    }
+
     waitOnLogin(cb: () => void) {
         if (this.account.loggingIn && !this.account.loggedIn) {
             const runOnce = () => {
@@ -561,6 +583,26 @@ export class ProfileUi {
         $("#user-center-id").text(`ID · ${accountId}`);
         $("#user-center-points").text(walletBalance.toLocaleString());
         $("#user-center-item-count").text(inventorySize.toLocaleString());
+        const worldItems = this.account.worldInventory.filter((item) =>
+            item.state === "stash" || item.state === "equipped"
+        );
+        $("#user-center-world-item-count").text(
+            worldItems.reduce((count, item) => count + item.quantity, 0).toLocaleString(),
+        );
+        const worldItemsList = $("#user-center-world-items").empty();
+        if (worldItems.length == 0) {
+            $("<li>").text("暂无大世界装备").appendTo(worldItemsList);
+        } else {
+            for (const item of worldItems) {
+                const detail = item.durabilityMax > 0
+                    ? `${item.durability}/${item.durabilityMax} · ${getWorldItemStateLabel(item.state)}`
+                    : `${item.quantity} 件`;
+                $("<li>")
+                    .append($("<span>").text(`${getWorldItemLabel(item.type)} ×${item.quantity}`))
+                    .append($("<span>").addClass("user-center-world-item-detail").text(detail))
+                    .appendTo(worldItemsList);
+            }
+        }
         $("#account-player-id").text(
             `${this.localization.translate("home-account-id")} · ${accountId}`,
         );

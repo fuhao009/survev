@@ -807,7 +807,6 @@ export class Application {
         this.setPlayLockout(false);
         this.ambience.onGameComplete(this.audioManager);
         SDK.gamePlayStop();
-        this.account.loadWallet();
         if (window.location.hash !== WORLD_RESULT_RETURN_HASH) {
             window.location.hash = WORLD_RESULT_RETURN_HASH;
         }
@@ -853,7 +852,6 @@ export class Application {
             this.setPlayLockout(false);
             this.worldResultView = result;
             this.refreshWorldResult();
-            this.account.loadWallet();
             this.ambience.onGameComplete(this.audioManager);
             SDK.gamePlayStop();
             this.refreshUi();
