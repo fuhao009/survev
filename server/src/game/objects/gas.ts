@@ -233,10 +233,11 @@ export class Gas {
         const stage = GasStages[2];
         const startRad = stage.rad * this.mapSize;
 
-        // Open-world shards use the same starting radius as the persistent
-        // world API safe zone, so the red zone is visible immediately.
+        // Open-world shards keep the battle-royale gas disabled.
+        // Persistent-world danger comes from weather, terrain, combat, and
+        // extraction flow rather than a shrinking red zone.
         this.stage = 2;
-        this.mode = GasMode.Waiting;
+        this.mode = GasMode.Inactive;
         this.circleIdx = 0;
         this.radOld = startRad;
         this.radNew = startRad;
@@ -244,11 +245,11 @@ export class Gas {
         this.posOld = center;
         this.posNew = v2.copy(center);
         this.currentPos = v2.copy(center);
-        this.duration = 45;
+        this.duration = 0;
         this.damage = stage.damage;
         this._gasTicker = 0;
         this.gasT = 0;
-        this._running = true;
+        this._running = false;
         this.dirty = true;
         this.timeDirty = true;
         this.game.updateData();
@@ -348,6 +349,7 @@ export class Gas {
     }
 
     isInGas(pos: Vec2) {
+        if (this.mode === GasMode.Inactive) return false;
         return v2.distance(pos, this.currentPos) >= this.currentRad;
     }
 
