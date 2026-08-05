@@ -627,6 +627,7 @@ export class ProfileUi {
         );
         $("#account-login").css("display", this.account.loggedIn ? "none" : "block");
         $("#start-menu").toggleClass("is-logged-in", this.account.loggedIn);
+        $("#start-menu-wrapper").toggleClass("is-logged-in", this.account.loggedIn);
         $("#start-top-right").toggleClass("home-account-visible", this.account.loggedIn);
         $("#home-nav-loadout").toggleClass("home-nav-account-visible", this.account.loggedIn);
         $("#home-nav-stats").toggleClass("home-nav-account-visible", this.account.loggedIn);

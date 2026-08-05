@@ -9367,3 +9367,127 @@ input [type="image"]:focus {
     width: 100%;
   }
 }
+
+/* Keep the home entry centered and reduce the logged-in view to its primary action. */
+#start-menu-wrapper {
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+#start-main-center {
+  box-sizing: border-box;
+  left: 50%;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(660px, calc(100% - 32px));
+}
+
+#start-row-header {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#start-row-top {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#home-side-panel,
+#home-nav {
+  display: none;
+}
+
+#start-menu-wrapper:not(.is-logged-in) #btn-start-world {
+  display: none !important;
+}
+
+#modal-create-account .modal-content {
+  box-sizing: border-box;
+  left: 50%;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  right: auto;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(410px, calc(100vw - 32px));
+}
+
+#modal-create-account .modal-header {
+  box-sizing: border-box;
+  min-height: 64px;
+  padding: 18px 64px 18px 22px;
+  position: relative;
+}
+
+#modal-create-account .modal-header > .close-corner {
+  float: none;
+  margin: 0;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+}
+
+#start-menu-wrapper.is-logged-in #start-top-left,
+#start-menu-wrapper.is-logged-in #home-nav,
+#start-menu-wrapper.is-logged-in #start-top-right,
+#start-menu-wrapper.is-logged-in #start-row-header,
+#start-menu-wrapper.is-logged-in #start-rotate-reminder,
+#start-menu-wrapper.is-logged-in #home-side-panel,
+#start-menu-wrapper.is-logged-in #start-bottom-left,
+#start-menu-wrapper.is-logged-in #start-bottom-middle,
+#start-menu-wrapper.is-logged-in #start-bottom-right-wrapper {
+  display: none !important;
+}
+
+#start-menu-wrapper.is-logged-in #start-main-center {
+  width: min(360px, calc(100% - 32px));
+}
+
+#start-menu-wrapper.is-logged-in #start-menu {
+  padding: 24px;
+}
+
+#start-menu-wrapper.is-logged-in #start-menu .play-button-container > *:not(#btn-start-world) {
+  display: none !important;
+}
+
+#start-menu-wrapper.is-logged-in #btn-start-world {
+  display: flex !important;
+  align-items: center;
+  box-sizing: border-box;
+  justify-content: center;
+  margin: 0;
+  min-height: 52px;
+  width: 100%;
+}
+
+@media (max-width: 850px), (max-width: 900px) and (min-resolution: 3dppx) {
+  #start-main-center {
+    max-height: calc(100dvh - 24px);
+    width: calc(100% - 24px);
+  }
+
+  #modal-create-account .modal-content {
+    max-height: calc(100dvh - 24px);
+    width: calc(100vw - 24px);
+  }
+
+  #modal-create-account .modal-header {
+    padding-left: 18px;
+    padding-right: 58px;
+  }
+
+  #modal-create-account .modal-header > .close-corner {
+    right: 12px;
+    top: 12px;
+  }
+
+  #start-menu-wrapper.is-logged-in #start-main-center {
+    width: min(360px, calc(100% - 24px));
+  }
+
+  #start-menu-wrapper.is-logged-in #start-menu {
+    padding: 18px;
+  }
+}
