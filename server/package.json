@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "rolldown -c rolldown.config.ts",
+    "build": "rolldown -c rolldown.config.ts && pnpm run copy-db-migrations",
+    "copy-db-migrations": "mkdir -p dist && cp -R src/api/db/drizzle-sqlite dist/drizzle-sqlite && cp -R src/api/db/drizzle dist/drizzle",
     "typecheck": "tsc",
     "start:api": "node --enable-source-maps dist/index.js",
     "start:game": "node --enable-source-maps dist/gameServer.js",
@@ -14,6 +15,9 @@
     "db:migrate": "drizzle-kit migrate --config=src/api/drizzle.config.ts",
     "db:seed": "tsx src/api/db/seed.ts",
     "db:studio": "drizzle-kit studio --config=src/api/drizzle.config.ts",
+    "db:generate:postgres": "drizzle-kit generate --config=src/api/drizzle.postgres.config.ts",
+    "db:migrate:postgres": "drizzle-kit migrate --config=src/api/drizzle.postgres.config.ts",
+    "db:studio:postgres": "drizzle-kit studio --config=src/api/drizzle.postgres.config.ts",
     "db:wipe": "tsx src/api/db/wipe.ts",
     "stressTest": "tsx src/stressTest.ts",
     "lint": "cd .. && pnpm lint"
@@ -24,6 +28,7 @@
     "@hono/zod-validator": "^0.8.0",
     "@oslojs/crypto": "^1.0.1",
     "arctic": "^3.7.0",
+    "better-sqlite3": "^13.0.1",
     "croner": "^10.0.1",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.32",
@@ -37,6 +42,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/nanotimer": "^0.3.2",
     "@types/node": "~22.12.0",
     "@types/pg": "^8.20.0",

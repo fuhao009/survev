@@ -29,23 +29,21 @@ First generate a private key and set encryptLoadoutSecret to it, this is used to
 openssl rand -base64 10
 ```
 
-After installing [PostgreSQL](https://www.postgresql.org), start the service and create a database:
-```sh
-sudo -u postgres initdb --locale=C.UTF-8 --encoding=UTF8 -D /var/lib/postgres/data --data-checksums
-
-systemctl enable --now postgresql.service
-
-sudo -u postgres createuser survev
-sudo -u postgres createdb survev -O survev
-```
-
-Then populate the database with the schema:
+Development uses a file-backed SQLite database by default. The first API start
+creates `data/survev.sqlite` and applies the checked-in Drizzle migrations. You
+can override the path with `SURVEV_DATABASE_PATH` and rerun migrations with:
 ```sh
 cd server
-
-# Run this everytime you make changes to schema.ts.
 pnpm run db:generate
 pnpm run db:migrate
+```
+
+For deployments that require PostgreSQL, set `SURVEV_DB_DRIVER=postgres`,
+configure the existing PostgreSQL fields in `survev-config.hjson`, and use the
+explicit PostgreSQL migration scripts:
+```sh
+pnpm run db:generate:postgres
+pnpm run db:migrate:postgres
 
 # Start the server
 pnpm run dev
@@ -61,9 +59,6 @@ pnpm run db:studio
 
 To wipe the database and start over:
 ```sh
-# Set database permissions.
-sudo -u postgres psql -c "ALTER USER survev WITH PASSWORD 'survev';"
-
 # Wipe database.
 pnpm run db:wipe
 ```

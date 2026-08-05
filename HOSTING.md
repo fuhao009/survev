@@ -72,7 +72,9 @@ npm i -g pnpm
 
 ### Database support (optional)
 
-IF you want to have accounts, leaderboards and IP bans, you will have to install and set-up PostgreSQL database
+Local development uses SQLite automatically. For production PostgreSQL, set
+`SURVEV_DB_DRIVER=postgres` and configure the PostgreSQL connection fields in
+`survev-config.hjson` before running the explicit PostgreSQL migration command.
 
 ```sh
 sudo apt install -y postgresql

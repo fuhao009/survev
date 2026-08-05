@@ -17,6 +17,13 @@ import type { Context } from "../../index.ts";
 // hardcoded for now
 export const questSlotIndexes = [0, 1];
 
+function withForUpdate<T>(query: T): T {
+    if (Config.database.driver === "postgres") {
+        return (query as T & { for: (mode: "update") => T }).for("update");
+    }
+    return query;
+}
+
 /**
  * lazily create pass and quest if they don't exist
  */
@@ -250,16 +257,17 @@ export const PassRouter = new Hono<Context>()
         const { idx } = c.req.valid("json");
 
         const success = await db.transaction(async (transaction) => {
-            const quests = await transaction
-                .select()
-                .from(userQuestTable)
-                .where(
-                    and(
-                        eq(userQuestTable.userId, user.id),
-                        inArray(userQuestTable.idx, questSlotIndexes),
+            const quests = await withForUpdate(
+                transaction
+                    .select()
+                    .from(userQuestTable)
+                    .where(
+                        and(
+                            eq(userQuestTable.userId, user.id),
+                            inArray(userQuestTable.idx, questSlotIndexes),
+                        ),
                     ),
-                )
-                .for("update");
+            );
 
             const quest = quests.find((entry) => entry.idx === idx);
 

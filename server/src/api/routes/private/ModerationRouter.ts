@@ -28,6 +28,10 @@ import { bannedIpsTable, ipLogsTable, itemsTable, matchDataTable, userPassTable,
 import { sanitizeSlug } from "../user/auth/authUtils.ts";
 import { incrementPassXp } from "./passXp.ts";
 
+function affectedRows(result: { changes: number } | { rowCount?: number }): number {
+    return "changes" in result ? result.changes : result.rowCount ?? 0;
+}
+
 export const ModerationRouter = new Hono()
     .use(databaseEnabledMiddleware)
     .post("/ban_account", validateParams(zBanAccountParams), async (c) => {
@@ -308,7 +312,7 @@ export const ModerationRouter = new Hono()
                 })
                 .where(eq(matchDataTable.username, current_name));
 
-            return c.json({ message: `Updated ${res.rowCount} rows` }, 200);
+            return c.json({ message: `Updated ${affectedRows(res)} rows` }, 200);
         },
     )
     .post("/set_account_name", validateParams(zSetAccountNameParams), async (c) => {
@@ -330,7 +334,7 @@ export const ModerationRouter = new Hono()
             })
             .where(eq(usersTable.slug, current_slug));
 
-        if (res.rowCount) {
+        if (affectedRows(res)) {
             return c.json(
                 { message: `updated ${current_slug}'s name to ${sanitized.validName}` },
                 200,
@@ -353,7 +357,7 @@ export const ModerationRouter = new Hono()
                 .delete(matchDataTable)
                 .where(eq(matchDataTable.gameId, gameId));
 
-            return c.json({ message: `Deleted ${res.rowCount} rows` }, 200);
+            return c.json({ message: `Deleted ${affectedRows(res)} rows` }, 200);
         },
     )
     .post(
@@ -468,7 +472,7 @@ export const ModerationRouter = new Hono()
                 ),
             );
 
-        if (!result.rowCount) {
+        if (!affectedRows(result)) {
             return c.json(
                 { message: `User ${slug} was not found on game ${game_id}` },
                 404,
@@ -503,7 +507,7 @@ export const ModerationRouter = new Hono()
 
         return c.json(
             {
-                message: `Successfully reset stats for ${slug} (${result.rowCount} games affected).`,
+                message: `Successfully reset stats for ${slug} (${affectedRows(result)} games affected).`,
             },
             200,
         );

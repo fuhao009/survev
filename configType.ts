@@ -194,7 +194,8 @@ export interface ConfigType {
     clientErrorLoggingWebhook?: string;
 
     /**
-     * PostgreSQL Database configuration, this will enable features like accounts, IP bans, leaderboards etc.
+     * Database configuration. Development defaults to a file-backed SQLite
+     * database; PostgreSQL remains available for deployments that opt in.
      */
     database: {
         /**
@@ -202,6 +203,12 @@ export interface ConfigType {
          * Disabling this will make all API routes that need the database return an error.
          */
         enabled: boolean;
+
+        /** @default "sqlite" */
+        driver: "sqlite" | "postgres";
+
+        /** SQLite database file path. Ignored by the PostgreSQL driver. */
+        path: string;
 
         /** @default "127.0.0.1" */
         host: string;

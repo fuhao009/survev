@@ -27,6 +27,7 @@ import { getWorldTerrain, getWorldTerrainMovementModifier } from "../../../../sh
 import type { WorldTerrain } from "../../../../shared/types/worldTerrain.ts";
 import { getWorldWeather } from "../../../../shared/types/worldWeather.ts";
 import type { Loadout } from "../../../../shared/utils/loadout.ts";
+import { Config } from "../../config.ts";
 import { db } from "../db/index.ts";
 import {
     usersTable,
@@ -44,6 +45,13 @@ const BASE_POSITION = { position: { ...WORLD_EXTRACTION_ZONE.center }, layer: 0 
 const INITIAL_GEAR = ["ak47", "m9"] as const;
 const INITIAL_EQUIPMENT = ["backpack01", "helmet01", "chest01"] as const;
 const LOCKS = new Map<string, Promise<void>>();
+
+function withForUpdate<T>(query: T): T {
+    if (Config.database.driver === "postgres") {
+        return (query as T & { for: (mode: "update") => T }).for("update");
+    }
+    return query;
+}
 
 const safeZone: WorldSafeZone = {
     kind: "safe_zone",
@@ -576,19 +584,22 @@ export class WorldService {
         return db.transaction(async (tx) => {
             // Serialise wallet and repair mutations across API processes too;
             // the in-process user lock alone cannot protect a multi-instance deployment.
-            await tx.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, userId)).for("update");
-            const life = (await tx.select({ status: worldLivesTable.status, revision: worldLivesTable.revision })
-                .from(worldLivesTable)
-                .where(eq(worldLivesTable.lifeId, lifeId))
-                .for("update"))[0];
+            await withForUpdate(tx.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, userId)));
+            const life = (await withForUpdate(
+                tx.select({ status: worldLivesTable.status, revision: worldLivesTable.revision })
+                    .from(worldLivesTable)
+                    .where(eq(worldLivesTable.lifeId, lifeId)),
+            ))[0];
             if (!life || life.status !== "alive") throw new WorldActionError("no_alive_life");
-            const item = (await tx.select().from(worldItemInstancesTable).where(
-                and(
-                    eq(worldItemInstancesTable.instanceId, instanceId),
-                    eq(worldItemInstancesTable.userId, userId),
-                    eq(worldItemInstancesTable.lifeId, lifeId),
+            const item = (await withForUpdate(
+                tx.select().from(worldItemInstancesTable).where(
+                    and(
+                        eq(worldItemInstancesTable.instanceId, instanceId),
+                        eq(worldItemInstancesTable.userId, userId),
+                        eq(worldItemInstancesTable.lifeId, lifeId),
+                    ),
                 ),
-            ).for("update"))[0];
+            ))[0];
             if (!item) throw new WorldActionError("item_not_carried");
             if (!(["carried", "equipped", "destroyed"] as string[]).includes(item.state)) {
                 throw new WorldActionError("item_not_repairable");

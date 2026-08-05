@@ -6,6 +6,7 @@ import {
     type LeaderboardResponse,
     zLeaderboardsRequest,
 } from "../../../../../shared/types/stats.ts";
+import { Config } from "../../../config.ts";
 import { server } from "../../apiServer.ts";
 import { databaseEnabledMiddleware, rateLimitMiddleware, validateParams } from "../../auth/middleware.ts";
 import { leaderboardCache } from "../../cache/leaderboard.ts";
@@ -67,8 +68,8 @@ const typeToQuery: Record<LeaderboardRequest["type"], string> = {
 };
 
 const intervalFilter = {
-    daily: gte(matchDataTable.createdAt, sql`NOW() - INTERVAL '1 day'`),
-    weekly: gte(matchDataTable.createdAt, sql`NOW() - INTERVAL '7 days'`),
+    daily: gte(matchDataTable.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000)),
+    weekly: gte(matchDataTable.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
 };
 
 async function soloLeaderboardQuery(params: LeaderboardRequest) {
@@ -118,19 +119,28 @@ async function multiplePlayersQuery({
     mapId,
     teamMode,
 }: LeaderboardRequest): Promise<LeaderboardResponse[]> {
-    const data = await db
-        .select({
-            matchedUsers: sql<
-                {
-                    username: string;
-                    userId: string | null;
-                }[]
-            >`json_agg(
+    const matchedUsersExpression = Config.database.driver === "postgres"
+        ? sql<{
+            username: string;
+            userId: string | null;
+        }[]>`json_agg(
                 json_build_object(
                     'username', ${matchDataTable.username},
                     'userId', ${matchDataTable.userId}
                 )
-            )`,
+            )`
+        : sql<{
+            username: string;
+            userId: string | null;
+        }[]>`json_group_array(
+                json_object(
+                    'username', ${matchDataTable.username},
+                    'userId', ${matchDataTable.userId}
+                )
+            )`;
+    const data = await db
+        .select({
+            matchedUsers: matchedUsersExpression,
             region: matchDataTable.region,
             val: sql<number>`SUM(${matchDataTable.kills}) as val`,
         })
@@ -156,7 +166,10 @@ async function multiplePlayersQuery({
 
     const userIds: string[] = [];
     for (const row of data) {
-        for (const { userId } of row.matchedUsers) {
+        const matchedUsers = typeof row.matchedUsers === "string"
+            ? JSON.parse(row.matchedUsers) as { username: string; userId: string | null }[]
+            : row.matchedUsers;
+        for (const { userId } of matchedUsers) {
             if (!userId) continue;
             userIds.push(userId);
         }
@@ -177,7 +190,10 @@ async function multiplePlayersQuery({
     return data.map((row) => {
         const usernames = [];
         const slugs = [];
-        for (const { userId, username } of row.matchedUsers) {
+        const matchedUsers = typeof row.matchedUsers === "string"
+            ? JSON.parse(row.matchedUsers) as { username: string; userId: string | null }[]
+            : row.matchedUsers;
+        for (const { userId, username } of matchedUsers) {
             usernames.push(username);
             slugs.push(userId ? slugMap[userId] || null : null);
         }

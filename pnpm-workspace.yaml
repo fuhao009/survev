@@ -1,5 +1,6 @@
 allowBuilds:
   '@taufik-nurrohman/color-picker': true
+  better-sqlite3: true
   canvas: true
   dprint: true
   esbuild: true

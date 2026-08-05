@@ -6,6 +6,7 @@ import {
     type UserStatsResponse,
     zUserStatsRequest,
 } from "../../../../../shared/types/stats.ts";
+import { Config } from "../../../config.ts";
 import { databaseEnabledMiddleware, rateLimitMiddleware, validateParams } from "../../auth/middleware.ts";
 import { db } from "../../db/index.ts";
 import { matchDataTable, usersTable } from "../../db/schema.ts";
@@ -51,8 +52,8 @@ UserStatsRouter.post(
 );
 
 const intervalFilter: Record<string, SQL<unknown>> = {
-    daily: gte(matchDataTable.createdAt, sql`NOW() - INTERVAL '1 day'`),
-    weekly: gte(matchDataTable.createdAt, sql`NOW() - INTERVAL '7 days'`),
+    daily: gte(matchDataTable.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000)),
+    weekly: gte(matchDataTable.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
 };
 
 async function userStatsSqlQuery(
@@ -98,18 +99,11 @@ async function userStatsSqlQuery(
             .groupBy(matchDataTable.teamMode),
     );
 
-    const res = await db
-        .with(withSelect)
-        .select({
-            slug: usersTable.slug,
-            username: usersTable.username,
-            banned: usersTable.banned,
-            player_icon: sql`JSON_EXTRACT_PATH(ANY_VALUE(${usersTable.loadout}), 'player_icon')`,
-            games: sql`COALESCE(SUM("mode_stats".games), 0)`,
-            wins: sql`COALESCE(SUM("mode_stats".wins), 0)`,
-            kills: sql`COALESCE(SUM("mode_stats".kills), 0)`,
-            kpg: sql`COALESCE(ROUND(SUM("mode_stats".kills) * 1.0 / NULLIF(SUM("mode_stats".games), 0), 1), 0)`,
-            modes: sql`
+    const playerIcon = Config.database.driver === "postgres"
+        ? sql`JSON_EXTRACT_PATH(ANY_VALUE(${usersTable.loadout}), 'player_icon')`
+        : sql`json_extract(${usersTable.loadout}, '$.player_icon')`;
+    const modesExpression = Config.database.driver === "postgres"
+        ? sql`
         COALESCE(JSON_AGG(
             CASE WHEN "mode_stats".team_mode IS NOT NULL THEN
                 JSON_BUILD_OBJECT(
@@ -125,7 +119,37 @@ async function userStatsSqlQuery(
                     'games', "mode_stats".games
                 )
             END
-        ), '[]')`,
+        ), '[]')`
+        : sql`
+        COALESCE(json_group_array(
+            CASE WHEN "mode_stats".team_mode IS NOT NULL THEN
+                json_object(
+                    'wins', "mode_stats".wins,
+                    'kills', "mode_stats".kills,
+                    'teamMode', "mode_stats".team_mode,
+                    'avgDamage', "mode_stats".avg_damage,
+                    'avgTimeAlive', "mode_stats".avg_time_alive,
+                    'mostDamage', "mode_stats".most_damage,
+                    'kpg', "mode_stats".kpg,
+                    'winPct', "mode_stats".winPct,
+                    'mostKills', "mode_stats".most_kills,
+                    'games', "mode_stats".games
+                )
+            END
+        ), '[]')`;
+
+    const res = await db
+        .with(withSelect)
+        .select({
+            slug: usersTable.slug,
+            username: usersTable.username,
+            banned: usersTable.banned,
+            player_icon: playerIcon,
+            games: sql`COALESCE(SUM("mode_stats".games), 0)`,
+            wins: sql`COALESCE(SUM("mode_stats".wins), 0)`,
+            kills: sql`COALESCE(SUM("mode_stats".kills), 0)`,
+            kpg: sql`COALESCE(ROUND(SUM("mode_stats".kills) * 1.0 / NULLIF(SUM("mode_stats".games), 0), 1), 0)`,
+            modes: modesExpression,
         })
         .from(usersTable)
         .leftJoin(withSelect, eq(sql`1`, 1))
@@ -137,11 +161,13 @@ async function userStatsSqlQuery(
 
     if (!userStats || !userStats.slug) return emptyState as unknown as UserStatsResponse;
 
-    const modes = userStats?.modes;
+    const parsedModes = (typeof userStats?.modes === "string"
+        ? JSON.parse(userStats.modes)
+        : userStats?.modes) as UserStatsResponse["modes"];
     const formatedData: UserStatsResponse = {
         ...userStats,
         // sql fuckery, it returns [null] where no result
-        modes: modes[0] === null ? [] : modes,
+        modes: parsedModes[0] === null ? [] : parsedModes,
     };
     return formatedData;
 }

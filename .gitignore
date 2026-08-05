@@ -14,6 +14,9 @@ survev-config.hjson
 
 # sqlite db
 *.db
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
 lost_game_data/
 
 # Compiled source

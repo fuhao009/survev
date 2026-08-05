@@ -46,6 +46,8 @@ export function getConfig(isProduction: boolean, dir: string) {
         },
         database: {
             enabled: true,
+            driver: "sqlite",
+            path: path.join(import.meta?.dirname || __dirname, "data", "survev.sqlite"),
             host: "127.0.0.1",
             user: "survev",
             password: "survev",
@@ -98,6 +100,15 @@ export function getConfig(isProduction: boolean, dir: string) {
     }
 
     util.mergeDeep(config, localConfig);
+
+    const configuredDriver = process.env.SURVEV_DB_DRIVER ?? process.env.DB_DRIVER;
+    if (configuredDriver === "sqlite" || configuredDriver === "postgres") {
+        config.database.driver = configuredDriver;
+    }
+    const configuredPath = process.env.SURVEV_DATABASE_PATH ?? process.env.DATABASE_PATH;
+    if (configuredPath) {
+        config.database.path = path.resolve(configuredPath);
+    }
 
     if (!config.oauthRedirectURI) {
         // apply this default after merging the local config
