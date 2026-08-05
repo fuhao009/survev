@@ -9287,3 +9287,15 @@ input [type="image"]:focus {
   flex: 0 0 auto;
   margin: 0 48px 0 16px;
 }
+
+@media (max-width: 500px) {
+  #modal-user-center .user-center-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #modal-user-center .user-center-footer {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+}

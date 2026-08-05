@@ -37,6 +37,7 @@ import { Pass } from "./ui/pass.ts";
 import { ProfileUi } from "./ui/profileUi.ts";
 import { TeamMenu } from "./ui/teamMenu.ts";
 import { loadStaticDomImages } from "./ui/ui2.ts";
+import { isUserCenterHash } from "./ui/userCenterNavigation.ts";
 import {
     buildDeadWorldResult,
     buildExtractedWorldResult,
@@ -406,7 +407,7 @@ export class Application {
             );
             this.loadoutMenu.loadoutDisplay = this.loadoutDisplay;
             this.onResize();
-            if (window.location.hash === "#user-center") {
+            if (isUserCenterHash(window.location.hash)) {
                 this.profileUi.openUserCenterFromHash();
             } else {
                 this.tryJoinTeam(false);
@@ -1237,7 +1238,7 @@ window.addEventListener("orientationchange", () => {
     App.onResize();
 });
 window.addEventListener("hashchange", () => {
-    if (window.location.hash !== "#user-center") {
+    if (!isUserCenterHash(window.location.hash)) {
         App.tryJoinTeam(false);
     }
 });

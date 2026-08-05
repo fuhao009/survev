@@ -9,6 +9,7 @@ import { SDK } from "../sdk/sdk.ts";
 import type { LoadoutMenu } from "./loadoutMenu.ts";
 import type { Localization } from "./localization.ts";
 import { MenuModal } from "./menuModal.ts";
+import { isUserCenterHash, resolveUserCenterReturnHash } from "./userCenterNavigation.ts";
 
 function createLoginOptions(
     parentElem: JQuery<HTMLElement>,
@@ -286,8 +287,21 @@ export class ProfileUi {
         this.userCenterModal.onShow(() => {
             this.renderUserCenter();
         });
+        this.userCenterModal.onHide(() => {
+            if (isUserCenterHash(window.location.hash)) {
+                history.replaceState("", document.title, `${window.location.pathname}${window.location.search}`);
+            }
+        });
 
         $(".account-return-user-center").on("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.openUserCenter();
+        });
+
+        $(
+            "#modal-account-name-change, #modal-account-reset-stats, #modal-account-delete, #modal-customize",
+        ).find(".close-corner").on("click", (event) => {
             event.preventDefault();
             event.stopPropagation();
             this.openUserCenter();
@@ -413,7 +427,7 @@ export class ProfileUi {
     }
 
     openUserCenterFromHash() {
-        if (window.location.hash !== "#user-center") return;
+        if (!isUserCenterHash(window.location.hash)) return;
         this.waitOnLogin(() => {
             if (this.account.loggedIn) {
                 this.renderUserCenter();
@@ -430,8 +444,9 @@ export class ProfileUi {
         this.deleteAccountModal?.hide();
         this.loadoutMenu.hide();
         this.modalMobileAccount.hide();
-        if (window.location.hash !== "#user-center") {
-            window.location.hash = "user-center";
+        const returnHash = resolveUserCenterReturnHash(window.location.hash);
+        if (window.location.hash !== returnHash) {
+            window.location.hash = returnHash;
             return;
         }
         this.openUserCenterFromHash();
