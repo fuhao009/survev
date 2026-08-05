@@ -101,10 +101,8 @@ export function getConfig(isProduction: boolean, dir: string) {
 
     util.mergeDeep(config, localConfig);
 
-    const configuredDriver = process.env.SURVEV_DB_DRIVER ?? process.env.DB_DRIVER;
-    if (configuredDriver === "sqlite" || configuredDriver === "postgres") {
-        config.database.driver = configuredDriver;
-    }
+    const configuredDriver = process.env.SURVEV_DB_DRIVER?.toLowerCase();
+    config.database.driver = configuredDriver === "postgres" ? "postgres" : "sqlite";
     const configuredPath = process.env.SURVEV_DATABASE_PATH ?? process.env.DATABASE_PATH;
     if (configuredPath) {
         config.database.path = path.resolve(configuredPath);
