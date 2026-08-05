@@ -88,7 +88,7 @@ export const BuildingEditorConfig = {
 };
 
 const defaultConfig = {
-    muteAudio: false,
+    muteAudio: true,
     masterVolume: 1,
     soundVolume: 1,
     musicVolume: 1,
