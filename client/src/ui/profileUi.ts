@@ -526,11 +526,11 @@ export class ProfileUi {
     }
 
     async refreshUserCenter(): Promise<boolean> {
-        $("#user-center-refresh-status").text("正在刷新数据...");
+        $("#user-center-refresh-status").text(this.localization.translate("account-refreshing"));
         const refreshed = await this.account.refreshAccountData();
         this.renderUserCenter();
         $("#user-center-refresh-status").text(
-            refreshed ? "数据已更新" : "刷新失败，当前显示上次数据，可重试",
+            this.localization.translate(refreshed ? "account-refresh-success" : "account-refresh-failed"),
         );
         return refreshed;
     }
@@ -591,7 +591,7 @@ export class ProfileUi {
         );
         const worldItemsList = $("#user-center-world-items").empty();
         if (worldItems.length == 0) {
-            $("<li>").text("暂无大世界装备").appendTo(worldItemsList);
+            $("<li>").text(this.localization.translate("account-no-world-items")).appendTo(worldItemsList);
         } else {
             for (const item of worldItems) {
                 const detail = item.durabilityMax > 0

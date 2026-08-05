@@ -706,27 +706,57 @@ export class Application {
         panel
             .css("display", "flex")
             .toggleClass("world-result-dead", result.outcome === "dead");
-        $("#world-result-title").text(result.title);
-        $("#world-result-summary").text(result.summary);
+        $("#world-result-title").text(
+            this.localization.translate(
+                result.outcome === "extracted"
+                    ? "world-settlement-extracted-title"
+                    : "world-settlement-dead-title",
+            ),
+        );
+        $("#world-result-summary").text(
+            this.localization.translate(
+                result.outcome === "extracted"
+                    ? "world-settlement-extracted-summary"
+                    : "world-settlement-dead-summary",
+            ),
+        );
         $("#world-result-reward").text(result.rewardPoints > 0 ? `+${result.rewardPoints}` : "0");
         $("#world-result-wallet-before").text(result.walletBefore.toLocaleString());
         $("#world-result-wallet-after").text(result.walletAfter.toLocaleString());
-        $("#world-result-items-title").text(result.outcome === "extracted" ? "带出并入库" : "掉落清单");
+        $("#world-result-items-title").text(
+            this.localization.translate(
+                result.outcome === "extracted"
+                    ? "world-settlement-items-extracted"
+                    : "world-settlement-items-dropped",
+            ),
+        );
         $("#world-result-warehouse").text(
-            result.outcome === "extracted"
-                ? `本局带出 ${result.carriedCount} 件 · 当前仓库 ${result.warehouseCount} 件`
-                : `本局未入库 · 当前仓库 ${result.warehouseCount} 件`,
+            this.localization.translate(
+                result.outcome === "extracted"
+                    ? "world-settlement-warehouse-extracted"
+                    : "world-settlement-warehouse-dead",
+                {
+                    carriedCount: result.carriedCount,
+                    warehouseCount: result.warehouseCount,
+                },
+            ),
         );
 
         const list = $("#world-result-items").empty();
         if (result.items.length === 0) {
-            $("<li>").text(result.outcome === "extracted" ? "本局没有可展示的物品" : "携带物品清单为空").appendTo(list);
+            $("<li>").text(
+                this.localization.translate(
+                    result.outcome === "extracted"
+                        ? "world-settlement-no-items-extracted"
+                        : "world-settlement-no-items-dead",
+                ),
+            ).appendTo(list);
             return;
         }
         for (const item of result.items) {
             const detail = item.kind === "equipment" && item.durabilityMax !== undefined
                 ? `${item.durability}/${item.durabilityMax} · ${getWorldItemStateLabel(item.state)}`
-                : `${item.quantity} 件 · 一次性物品`;
+                : this.localization.translate("world-settlement-consumable-detail", { quantity: item.quantity });
             $("<li>")
                 .append($("<span>").text(`${item.label} ×${item.quantity}`))
                 .append($("<span>").addClass("world-result-item-detail").text(detail))
@@ -747,7 +777,11 @@ export class Application {
         $("#world-hud").show();
         const life = snapshot.life;
         const dead = life.status === "dead" || this.worldDeathPending;
-        $("#world-hud-life").text(life.status === "alive" && !dead ? `生命 ${life.health}` : "生命已结束");
+        $("#world-hud-life").text(
+            life.status === "alive" && !dead
+                ? this.localization.translate("world-life", { health: life.health })
+                : this.localization.translate("world-life-ended"),
+        );
         const weather = snapshot.weather;
         const weatherLabel = WORLD_WEATHER_LABELS[weather.type];
         const nextWeatherLabel = WORLD_WEATHER_LABELS[weather.nextType || weather.type];
@@ -758,21 +792,27 @@ export class Application {
             .attr(
                 "aria-label",
                 weatherWarning
-                    ? `天气：${weatherLabel}，即将切换为${nextWeatherLabel}`
-                    : `天气：${weatherLabel}`,
+                    ? this.localization.translate("world-weather-transition", {
+                        weather: weatherLabel,
+                        nextWeather: nextWeatherLabel,
+                    })
+                    : this.localization.translate("world-weather", { weather: weatherLabel }),
             );
-        $("#world-hud-weather-name").text(`天气：${weatherLabel}`);
+        $("#world-hud-weather-name").text(this.localization.translate("world-weather", { weather: weatherLabel }));
         $("#world-hud-weather-hint").text(
             weatherWarning
-                ? `即将切换为${nextWeatherLabel} · ${weatherSecondsLeft} 秒`
-                : "当前环境稳定",
+                ? this.localization.translate("world-weather-hint", {
+                    nextWeather: nextWeatherLabel,
+                    seconds: weatherSecondsLeft,
+                })
+                : this.localization.translate("world-weather-stable"),
         );
         const gear = snapshot.inventory
             .filter((item) => item.state === "carried" || item.state === "equipped")
             .filter((item) => item.durabilityMax > 0)
             .map((item) => `${item.type} ${item.durability}/${item.durabilityMax}`)
             .join(" · ");
-        $("#world-hud-gear").text(gear || "没有可用装备");
+        $("#world-hud-gear").text(gear || this.localization.translate("world-gear-empty"));
         const canExtract = !dead && life.status === "alive" && snapshot.canExtract;
         $("#world-extract")
             .toggle(!dead)
@@ -781,10 +821,10 @@ export class Application {
         $("#world-return-home").toggle(dead);
         $("#world-hud-message").text(
             dead
-                ? "本次生命已结束，装备已掉落"
+                ? this.localization.translate("world-message-dead")
                 : canExtract
-                ? "已进入撤离区"
-                : "前往撤离区后可结算",
+                ? this.localization.translate("world-message-extracted")
+                : this.localization.translate("world-message-extract-unavailable"),
         );
     }
 
@@ -824,10 +864,10 @@ export class Application {
         if (!this.worldSessionActive || this.active) return;
         const message = $("#world-hud-message");
         if (!this.worldSnapshot?.canExtract) {
-            message.text("前往撤离区后可结算");
+            message.text(this.localization.translate("world-message-extract-unavailable"));
             return;
         }
-        message.text("正在结算...");
+        message.text(this.localization.translate("world-settlement-settling"));
         try {
             const response = await fetch(api.resolveUrl("/api/world/action"), {
                 method: "POST",
@@ -837,11 +877,19 @@ export class Application {
             });
             const data = await response.json() as WorldActionResponse | { success: false; error?: string };
             if (!response.ok || !data.success) {
-                message.text(data.success === false ? `无法撤离：${data.error || "未知原因"}` : "无法撤离");
+                message.text(
+                    data.success === false
+                        ? this.localization.translate("world-settlement-extract-failed", {
+                            reason: data.error || this.localization.translate("world-settlement-unknown-reason"),
+                        })
+                        : this.localization.translate("world-settlement-extract-failed", {
+                            reason: this.localization.translate("world-settlement-unknown-reason"),
+                        }),
+                );
                 return;
             }
             if (data.settlement?.status !== "finalized" || !this.worldSnapshot) {
-                message.text("结算结果暂不可用，请稍后查看用户中心");
+                message.text(this.localization.translate("world-settlement-unavailable"));
                 return;
             }
             const before = this.worldSnapshot;
@@ -856,7 +904,7 @@ export class Application {
             SDK.gamePlayStop();
             this.refreshUi();
         } catch (_err) {
-            message.text("结算请求失败");
+            message.text(this.localization.translate("world-settlement-request-failed"));
         }
     }
 

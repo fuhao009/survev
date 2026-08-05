@@ -627,44 +627,44 @@
         </div>
       </div>
       <section id="world-hud" aria-live="polite">
-        <div class="world-hud-title">大世界</div>
+        <div class="world-hud-title" data-l10n="world-hud-title">大世界</div>
         <div id="world-hud-life">生命 100</div>
         <div id="world-hud-weather" role="status">
           <div id="world-hud-weather-name">天气：晴朗</div>
           <div id="world-hud-weather-hint"></div>
         </div>
         <div id="world-hud-gear"></div>
-        <button id="world-extract" type="button">撤离并换积分</button>
-        <button id="world-return-home" type="button">返回用户中心</button>
+        <button id="world-extract" type="button" data-l10n="world-extract">撤离并换积分</button>
+        <button id="world-return-home" type="button" data-l10n="world-return-user-center">返回用户中心</button>
         <div id="world-hud-message"></div>
       </section>
     </div>
     <section id="world-result" class="world-result" aria-live="assertive" aria-labelledby="world-result-title">
       <div class="world-result-panel">
-        <div class="world-result-kicker">本局结算</div>
+        <div class="world-result-kicker" data-l10n="world-settlement-kicker">本局结算</div>
         <h2 id="world-result-title">撤离成功</h2>
         <p id="world-result-summary"></p>
         <div class="world-result-metrics">
           <div class="world-result-metric">
-            <span>本局积分</span>
+            <span data-l10n="world-result-reward-label">本局积分</span>
             <strong id="world-result-reward">+0</strong>
           </div>
           <div class="world-result-metric">
-            <span>结算前积分</span>
+            <span data-l10n="world-result-wallet-before-label">结算前积分</span>
             <strong id="world-result-wallet-before">0</strong>
           </div>
           <div class="world-result-metric">
-            <span>结算后积分</span>
+            <span data-l10n="world-result-wallet-after-label">结算后积分</span>
             <strong id="world-result-wallet-after">0</strong>
           </div>
         </div>
         <div class="world-result-list-section">
-          <h3 id="world-result-items-title">带出装备</h3>
+          <h3 id="world-result-items-title" data-l10n="world-settlement-items-extracted">带出并入库</h3>
           <ul id="world-result-items"></ul>
         </div>
         <div class="world-result-footer">
           <span id="world-result-warehouse"></span>
-          <button id="world-result-user-center" type="button">返回用户中心</button>
+          <button id="world-result-user-center" type="button" data-l10n="world-return-user-center">返回用户中心</button>
         </div>
       </div>
     </section>
@@ -675,7 +675,7 @@
       </div>
       <div id="start-main">
         <div id="start-top-left">
-          <div id="btn-hamburger" class="icon-hamburger"></div>
+          <div id="btn-hamburger" class="icon-hamburger" data-l10n="index-menu" data-l10n-attr="aria-label" aria-label="打开菜单" role="button" tabindex="0"></div>
         </div>
         <nav id="home-nav" aria-label="主导航">
           <a id="home-nav-play" class="home-nav-item home-nav-item-active" href="#start-menu" data-l10n="home-nav-play">进入战区</a>
@@ -696,26 +696,26 @@
         <div id="modal-account-name-change" class="modal modal-account">
           <div class="modal-content modal-close">
             <div class="modal-header modal-header-name">
-              <span class="close close-corner"></span>
+              <span class="close close-corner" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
               <h2 id="modal-account-name-title" data-l10n="index-create-account">创建帐号</h2>
             </div>
             <div class="modal-body modal-body-name">
               <div class="modal-settings-item">
-                <p id="modal-account-name-desc" class="modal-body-text" data-l10n="index-set-account-name">Set your account name:</p>
+                <p id="modal-account-name-desc" class="modal-body-text" data-l10n="index-set-account-name">设置您的账号名称：</p>
                 <div id="modal-body-warning"></div>
                 <input type="text" class="menu-option player-name-input" tabindex="0" data-l10n="index-enter-name" placeholder="请输入名称" id="modal-account-name-input" maxlength="16" />
               </div>
             </div>
             <div class="modal-footer modal-footer-name modal-footer-round">
               <button type="button" class="account-return-user-center" data-l10n="home-return-user-center">返回用户中心</button>
-              <h3 id="modal-account-name-finish" class="finish" data-l10n="index-finish">Finish</h3>
+              <h3 id="modal-account-name-finish" class="finish" data-l10n="index-finish">完成</h3>
             </div>
           </div>
         </div>
         <div id="modal-account-reset-stats" class="modal modal-account">
           <div class="modal-content modal-close">
             <div class="modal-header modal-header-reset-stats">
-              <span class="close close-corner"></span>
+              <span class="close close-corner" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
               <h2 id="modal-account-name-title" data-l10n="index-reset-stats">重置数据</h2>
             </div>
             <div class="modal-body modal-body-reset-stats">
@@ -734,7 +734,7 @@
         <div id="modal-account-delete" class="modal modal-account">
           <div class="modal-content modal-close">
             <div class="modal-header modal-header-delete">
-              <span class="close close-corner"></span>
+              <span class="close close-corner" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
               <h2 id="modal-account-name-title" data-l10n="index-delete-account">删除帐号</h2>
             </div>
             <div class="modal-body modal-body-delete">
@@ -753,7 +753,7 @@
         <div id="modal-mobile-account" class="modal">
           <div class="modal-content modal-close">
             <div class="modal-header">
-              <span class="close close-corner"></span>
+              <span class="close close-corner" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
               <h2 data-l10n="index-account">帐号</h2>
             </div>
             <div id="modal-mobile-account-body">
@@ -841,7 +841,7 @@
           <div id="start-turnstile-container"></div>
           <div id="start-row-top">
             <div id="start-rotate-reminder" class="menu-column menu-block">
-              <span data-l10n="index-rotate-reminder">Rotate to landscape for a better experience.</span>
+              <span data-l10n="index-rotate-reminder">旋转设备至横屏以获得更好的体验。</span>
             </div>
             <div id="start-menu" class="menu-column menu-block">
               <div class="play-loading-outer">
@@ -862,7 +862,7 @@
                 </div>
                 <div id="player-options">
                   <input type="text" class="menu-option player-name-input" tabindex="0" placeholder="请输入游戏昵称" data-l10n="index-enter-name-here" id="player-name-input-solo" maxlength="16" />
-                  <a class="btn-darken menu-option player-options-btn" id="btn-customize"></a>
+                  <a class="btn-darken menu-option player-options-btn" id="btn-customize" data-l10n="index-customize-loadout" data-l10n-attr="aria-label" aria-label="自定义表情"></a>
                 </div>
                 <select id="server-select-main" class="server-select menu-option btn-hollow btn-hollow-selected">
                   <optgroup id="server-opts" label="地区" data-l10n="index-region">
@@ -880,7 +880,7 @@
                 </div>
                 <div id="btn-help" class="menu-option btn-darken" data-l10n="index-how-to-play">如何游玩</div>
                 <div id="start-help">
-                  <h1 data-l10n="index-controls">Controls</h1>
+                  <h1 data-l10n="index-controls">控制</h1>
                   <p><span class="help-action" data-l10n="index-movement"></span>: <span class="help-control" data-l10n="index-movement-ctrl"></span></p>
                   <p><span class="help-action" data-l10n="index-aim"></span>: <span class="help-control" data-l10n="index-aim-ctrl"></span></p>
                   <p><span class="help-action" data-l10n="index-punch"></span>/<span class="help-action" data-l10n="index-shoot"></span>: <span class="help-control" data-l10n="index-shoot-ctrl"></span></p>
@@ -922,19 +922,19 @@
                 </div>
               </div>
               <div class="play-button-container">
-                <a class="btn-darken menu-option" id="btn-team-leave" data-l10n="index-leave-team">Leave Team</a>
+                <a class="btn-darken menu-option" id="btn-team-leave" data-l10n="index-leave-team">离开队伍</a>
                 <div id="team-menu-connecting">
                   <div class="ui-spinner"></div>
-                  <div class="team-menu-connecting-text" id="team-menu-joining-text"><span data-l10n="index-joining-team">Joining team</span> ...</div>
-                  <div class="team-menu-connecting-text" id="team-menu-creating-text"><span data-l10n="index-creating-team">Creating team</span> ...</div>
+                  <div class="team-menu-connecting-text" id="team-menu-joining-text"><span data-l10n="index-joining-team">加入队伍中</span> ...</div>
+                  <div class="team-menu-connecting-text" id="team-menu-creating-text"><span data-l10n="index-creating-team">创建队伍中</span> ...</div>
                 </div>
                 <div id="team-menu-contents">
                   <div id="team-desc">
-                    <div id="team-desc-text"><span id="invite-link-text" data-l10n="index-invite-link">Invite link</span>: <span id="team-url"></span>
+                    <div id="team-desc-text"><span id="invite-link-text" data-l10n="index-invite-link">邀请链接</span>: <span id="team-url"></span>
                     </div>
                     <a id="team-copy-url" class="copy-item btn-darken"></a>
                     <a id="team-hide-url" class="hide-item btn-darken"></a>
-                    <div id="team-code-text"><span id="invite-code-text" data-l10n="index-invite-code">Invite code</span>: <span id="team-code"></span></div>
+                    <div id="team-code-text"><span id="invite-code-text" data-l10n="index-invite-code">邀请代码</span>: <span id="team-code"></span></div>
                   </div>
                   <div id="team-menu-columns">
                     <div id="team-menu-members" class="team-menu-block">
@@ -942,19 +942,19 @@
                     </div>
                     <div id="team-menu-options" class="team-menu-block">
                       <select id="team-server-select" class="btn-hollow btn-hollow-selected server-select menu-option">
-                        <optgroup id="team-server-opts" label="Region">
+                        <optgroup id="team-server-opts" label="地区" data-l10n="index-region">
                         </optgroup>
                       </select>
                       <div class="team-menu-options-buttons">
-                        <a class="btn-hollow btn-hollow-selected btn-darken team-menu-option btn-team-queue" id="btn-team-queue-mode-1" data-l10n="index-duo">Duo</a>
-                        <a class="btn-hollow btn-hollow-selected btn-darken team-menu-option btn-team-queue" id="btn-team-queue-mode-2" data-l10n="index-squad">Squad</a>
+                        <a class="btn-hollow btn-hollow-selected btn-darken team-menu-option btn-team-queue" id="btn-team-queue-mode-1" data-l10n="index-duo">双人</a>
+                        <a class="btn-hollow btn-hollow-selected btn-darken team-menu-option btn-team-queue" id="btn-team-queue-mode-2" data-l10n="index-squad">小队</a>
                       </div>
                       <div class="team-menu-options-buttons">
-                        <a class="btn-hollow btn-hollow-selected btn-darken team-menu-option btn-team-fill" id="btn-team-fill-auto" data-l10n="index-auto-fill">Auto Fill</a>
-                        <a class="btn-hollow btn-darken team-menu-option btn-team-fill" id="btn-team-fill-none" data-l10n="index-no-fill">No Fill</a>
+                        <a class="btn-hollow btn-hollow-selected btn-darken team-menu-option btn-team-fill" id="btn-team-fill-auto" data-l10n="index-auto-fill">自动加入</a>
+                        <a class="btn-hollow btn-darken team-menu-option btn-team-fill" id="btn-team-fill-none" data-l10n="index-no-fill">手动加入</a>
                       </div>
                       <div id="team-menu-options-start">
-                        <a class="btn-green btn-darken menu-option" id="btn-start-team" data-label="Play" data-l10n="index-play">Play</a>
+                        <a class="btn-green btn-darken menu-option" id="btn-start-team" data-label="游玩" data-l10n="index-play">游玩</a>
                         <div id="msg-wait-reason"></div>
                       </div>
                     </div>
@@ -963,11 +963,11 @@
               </div>
             </div>
             <div id="team-mobile-link" class="menu-column menu-block">
-              <div id="team-mobile-link-desc" class="team-mobile-link-text" data-l10n="index-join-team-help">Got a team link or code? Paste it here:</div>
+              <div id="team-mobile-link-desc" class="team-mobile-link-text" data-l10n="index-join-team-help">是否拥有队伍链接或代码？请在此处粘贴：</div>
               <div id="team-mobile-link-warning" class="team-mobile-link-text" data-l10n="index-invalid-link">链接无效！</div>
               <input type="text" class="menu-option" contenteditable="false" tabindex="0" autofocus placeholder="粘贴队伍链接或输入代码" data-l10n="index-team-link-placeholder" id="team-link-input" />
-              <a class="btn-darken menu-option btn-team-option" id="btn-team-mobile-link-join" data-l10n="index-join-team">Join Team</a>
-              <a class="btn-darken menu-option" id="btn-team-mobile-link-leave" data-l10n="index-back-to-main">Back to Main Menu</a>
+              <a class="btn-darken menu-option btn-team-option" id="btn-team-mobile-link-join" data-l10n="index-join-team">加入队伍</a>
+              <a class="btn-darken menu-option" id="btn-team-mobile-link-leave" data-l10n="index-back-to-main">返回主菜单</a>
             </div>
             <div id="right-column" class="menu-column">
               <div id="pass-wrapper">
@@ -1007,7 +1007,7 @@
                   </div>
                   <div id="pass-quest-wrapper" class="">
                     <div id="pass-locked">
-                      <div id="btn-pass-locked" class="menu-option btn-darken" data-l10n="quest-login-prompt">Log in to get quests!</div>
+                      <div id="btn-pass-locked" class="menu-option btn-darken" data-l10n="quest-login-prompt">登录以获取任务！</div>
                     </div>
                     <div id="pass-quest-0" class="pass-quest">
                       <div class="pass-quest-timer"></div>
@@ -1015,7 +1015,7 @@
                         <div class="pass-quest-spinner"></div>
                       </div>
                       <div class="pass-quest-refresh-prompt">
-                        <div class="pass-quest-refresh-prompt-text" data-l10n="quest-refresh-prompt">Get a new quest?</div>
+                        <div class="pass-quest-refresh-prompt-text" data-l10n="quest-refresh-prompt">获取一个新的任务？</div>
                         <div class="pass-quest-refresh-confirm btn-pass-quest-refresh"></div>
                         <div class="pass-quest-refresh-cancel btn-pass-quest-refresh"></div>
                       </div>
@@ -1041,7 +1041,7 @@
                         <div class="pass-quest-spinner"></div>
                       </div>
                       <div class="pass-quest-refresh-prompt">
-                        <div class="pass-quest-refresh-prompt-text" data-l10n="quest-refresh-prompt">Get a new quest?</div>
+                        <div class="pass-quest-refresh-prompt-text" data-l10n="quest-refresh-prompt">获取一个新的任务？</div>
                         <div class="pass-quest-refresh-confirm btn-pass-quest-refresh"></div>
                         <div class="pass-quest-refresh-cancel btn-pass-quest-refresh"></div>
                       </div>
@@ -1072,7 +1072,7 @@
         <div class="ad-block-leaderboard-bottom" id="survevio_728x90"></div>
         <div id="start-bottom-left">
           <div id="mobile-settings-front">
-            <div class="btn-settings menu-option btn-darken btn-start-option"></div>
+            <div class="btn-settings menu-option btn-darken btn-start-option" data-l10n="index-settings" data-l10n-attr="aria-label" aria-label="设置" role="button" tabindex="0"></div>
           </div>
         </div>
         <div id="start-bottom-middle">
@@ -1085,10 +1085,10 @@
             <div class="language-select-wrap">
               <select class="language-select"></select>
             </div>
-            <div class="btn-settings menu-option btn-darken btn-start-option"></div>
-            <div class="btn-keybind menu-option btn-darken btn-start-option"></div>
-            <div id="btn-start-fullscreen" class="btn-fullscreen-toggle menu-option btn-darken btn-start-option"></div>
-            <div class="btn-start-mute btn-sound-toggle menu-option btn-darken btn-start-option audio-on-icon"></div>
+            <div class="btn-settings menu-option btn-darken btn-start-option" data-l10n="index-settings" data-l10n-attr="aria-label" aria-label="设置" role="button" tabindex="0"></div>
+            <div class="btn-keybind menu-option btn-darken btn-start-option" data-l10n="index-customize-keybinds" data-l10n-attr="aria-label" aria-label="自定义按键" role="button" tabindex="0"></div>
+            <div id="btn-start-fullscreen" class="btn-fullscreen-toggle menu-option btn-darken btn-start-option" data-l10n="game-full-screen" data-l10n-attr="aria-label" aria-label="全屏" role="button" tabindex="0"></div>
+            <div class="btn-start-mute btn-sound-toggle menu-option btn-darken btn-start-option audio-on-icon" data-l10n="game-sound" data-l10n-attr="aria-label" aria-label="音效" role="button" tabindex="0"></div>
           </div>
         </div>
       </div>
@@ -1096,15 +1096,15 @@
       <div id="ui-modal-keybind" class="ui-modal-keybind modal" oncontextmenu="return false;">
         <div class="ui-modal-keybind-content modal-content modal-close">
           <div id="ui-modal-keybind-header" class="modal-header">
-            <span id="ui-close-keybind" class="close close-corner"></span>
-            <h2 data-l10n="index-customize-keybinds">Customize Keybinds</h2>
+            <span id="ui-close-keybind" class="close close-corner" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
+            <h2 data-l10n="index-customize-keybinds">自定义按键</h2>
           </div>
           <div id="ui-modal-keybind-body" class="modal-body">
             <div id="ui-modal-keybind-list" class="js-keybind-list"></div>
             <div id="ui-modal-keybind-share">
               <div class="ui-modal-keybind-share-row">
                 <div class="ui-modal-keybind-share-elem">
-                  <span data-l10n="index-keybind-link">Share your keybinds with this code</span>:
+                  <span data-l10n="index-keybind-link">使用此代码分享按键设置</span>:
                 </div>
                 <div class="ui-modal-keybind-share-elem">
                   <div id="keybind-link-text">
@@ -1113,17 +1113,17 @@
                   </div>
                 </div>
               </div>
-              <span class="keybind-share-paste-text" data-l10n="index-keybind-paste">Load keybinds using a code here</span><span>:</span>
+              <span class="keybind-share-paste-text" data-l10n="index-keybind-paste">在此处输入代码加载按键设置</span><span>:</span>
               <div id="keybind-warning" class="link-warning" data-l10n="index-invalid-code">代码无效！</div>
               <div class="ui-modal-keybind-share-row">
-                <input type="text" class="menu-option" contenteditable="false" tabindex="0" autofocus placeholder="Paste a keybind code here" id="keybind-code-input" />
-                <a class="btn-game-menu btn-darken" id="btn-keybind-code-load" data-l10n="index-keybind-apply">Load</a>
+                <input type="text" class="menu-option" contenteditable="false" tabindex="0" autofocus placeholder="在此处粘贴按键代码" id="keybind-code-input" />
+                <a class="btn-game-menu btn-darken" id="btn-keybind-code-load" data-l10n="index-keybind-apply">加载</a>
               </div>
             </div>
           </div>
           <div id="ui-modal-keybind-footer" class="modal-footer modal-footer-round">
-            <a class="js-btn-keybind-share btn-game-menu btn-darken" data-l10n="game-share">Share</a>
-            <a class="js-btn-keybind-restore btn-game-menu btn-darken" data-l10n="game-restore-defaults">Restore Defaults</a>
+            <a class="js-btn-keybind-share btn-game-menu btn-darken" data-l10n="game-share">分享</a>
+            <a class="js-btn-keybind-restore btn-game-menu btn-darken" data-l10n="game-restore-defaults">恢复默认设置</a>
           </div>
         </div>
       </div>
@@ -1137,15 +1137,15 @@
             <div id="modal-customize-cat-title"></div>
             <div id="modal-customize-sort-wrap">
               <select id="modal-customize-sort">
-                <option id="customize-sort-newest" value="newest" data-l10n="loadout-newest">Newest</option>
-                <option id="customize-sort-alpha" value="alpha" data-l10n="loadout-alpha">Alpha</option>
-                <option id="customize-sort-rarity" value="rarity" data-l10n="loadout-rarity">Rarity</option>
-                <option id="customize-sort-subcat" value="subcat" data-l10n="loadout-subcat">Category</option>
+                <option id="customize-sort-newest" value="newest" data-l10n="loadout-newest">最新</option>
+                <option id="customize-sort-alpha" value="alpha" data-l10n="loadout-alpha">字母顺序</option>
+                <option id="customize-sort-rarity" value="rarity" data-l10n="loadout-rarity">稀有度</option>
+                <option id="customize-sort-subcat" value="subcat" data-l10n="loadout-subcat">分类</option>
               </select>
             </div>
             <div id="modal-customize-close">
               <button type="button" class="account-return-user-center" data-l10n="home-return-user-center">返回用户中心</button>
-              <span class="close close-corner"></span>
+            <span class="close close-corner" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
             </div>
             <div id="modal-customize-header" class="modal-header"></div>
             <div class="modal-disabled">
@@ -1179,11 +1179,11 @@
                 </div>
                 <section id="color-picker"></section>
                 <div class="crosshair-slider-container">
-                  <p class="" data-l10n="loadout-size">Size</p>
+                  <p class="" data-l10n="loadout-size">大小</p>
                   <input type="range" min="0.25" max="1.0" value="0.5" step="0.025" class="crosshair-slider" id="crosshair-size">
                 </div>
                 <div class="crosshair-slider-container">
-                  <p class="" data-l10n="loadout-stroke">Stroke</p>
+                  <p class="" data-l10n="loadout-stroke">描边</p>
                   <input type="range" min="0.0" max="1.5" value="0.0" step="0.025" class="crosshair-slider" id="crosshair-stroke">
                 </div>
               </div>
@@ -1249,8 +1249,8 @@
       <div id="modal-settings" class="modal">
         <div class="modal-content modal-close">
           <div class="modal-header">
-            <span class="close close-corner"></span>
-            <h2 data-l10n="index-settings">Settings</h2>
+            <span class="close close-corner" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
+            <h2 data-l10n="index-settings">设置</h2>
           </div>
           <div id="modal-settings-body" class="modal-body">
             <div id="language-select-mobile-wrapper" class="modal-settings-item">
@@ -1259,30 +1259,30 @@
               </div>
             </div>
             <div id="modal-settings-high-res" class="modal-settings-item">
-              <input id="highResTex" type="checkbox"><p class="modal-settings-checkbox-text" data-l10n="index-high-resolution">High resolution (check to increase visual quality)</p>
+              <input id="highResTex" type="checkbox"><p class="modal-settings-checkbox-text" data-l10n="index-high-resolution">高分辨率（可提升视觉效果）</p>
             </div>
             <div id="modal-settings-interp" class="modal-settings-item">
-              <input id="interpolation" type="checkbox"><p class="modal-settings-checkbox-text" data-l10n="index-client-side-interp">Client side interpolation</p>
+              <input id="interpolation" type="checkbox"><p class="modal-settings-checkbox-text" data-l10n="index-client-side-interp">客户端插值</p>
             </div>
               <div id="modal-settings-rotation" class="modal-settings-item hide-on-mobile">
-              <input id="localRotation" type="checkbox"><p class="modal-settings-checkbox-text" data-l10n="index-client-side-rotation">Client side player rotation</p>
+              <input id="localRotation" type="checkbox"><p class="modal-settings-checkbox-text" data-l10n="index-client-side-rotation">客户端玩家旋转</p>
             </div>
             <div class="modal-settings-item hide-on-mobile">
-              <input id="screenShake" type="checkbox"><p class="modal-settings-checkbox-text" data-l10n="index-screen-shake">Screen shake</p>
+              <input id="screenShake" type="checkbox"><p class="modal-settings-checkbox-text" data-l10n="index-screen-shake">屏幕震动</p>
             </div>
             <div class="modal-settings-item">
-              <input id="anonPlayerNames" type="checkbox"><p class="modal-settings-checkbox-text" data-l10n="index-anon-player-names">Anonymize player names</p>
+              <input id="anonPlayerNames" type="checkbox"><p class="modal-settings-checkbox-text" data-l10n="index-anon-player-names">隐去玩家名称</p>
             </div>
             <div class="modal-settings-item slider-container main-volume-slider">
-              <p class="modal-slider-text" data-l10n="index-master-volume">Master Volume</p>
+              <p class="modal-slider-text" data-l10n="index-master-volume">主音量</p>
               <input type="range" min="0" max="100" value="50" class="slider sl-master-volume" id="">
             </div>
             <div class="modal-settings-item slider-container main-volume-slider">
-              <p class="modal-slider-text" data-l10n="index-sfx-volume">SFX Volume</p>
+              <p class="modal-slider-text" data-l10n="index-sfx-volume">音效音量</p>
               <input type="range" min="0" max="100" value="50" class="slider sl-sound-volume" id="">
             </div>
             <div class="modal-settings-item slider-container main-volume-slider">
-              <p class="modal-slider-text" data-l10n="index-music-volume">Music Volume</p>
+              <p class="modal-slider-text" data-l10n="index-music-volume">音乐音量</p>
               <input type="range" min="0" max="100" value="50" class="slider sl-music-volume" id="">
             </div>
             <div id="settings-links">
@@ -1294,12 +1294,12 @@
       <div id="modal-hamburger" class="modal">
         <div class="modal-content modal-close">
           <div class="modal-header">
-            <span class="close close-hamburger icon-hamburger"></span>
+            <span class="close close-hamburger icon-hamburger" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
             <h2>&nbsp;</h2>
           </div>
           <div id="modal-hamburger-body" class="modal-body">
             <div id="modal-hamburger-leaderboards">
-              <a href="/stats" target="_blank" class="btn-leaderboard-stats-link menu-option btn-darken" data-l10n="index-leaderboards">Leaderboards</a>
+              <a href="/stats" target="_blank" class="btn-leaderboard-stats-link menu-option btn-darken" data-l10n="index-leaderboards">排行榜</a>
             </div>
             <div class="modal-divider"></div>
             <div id="modal-hamburger-bottom">
@@ -1312,7 +1312,7 @@
       <div id="modal-notification" class="modal">
         <div class="modal-content modal-close">
           <div class="modal-header">
-            <span class="close close-corner"></span>
+              <span class="close close-corner" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
             <h2 data-l10n="index-alert">提示</h2>
           </div>
           <div class="modal-body">
@@ -1326,7 +1326,7 @@
       <div id="modal-refresh" class="modal">
         <div class="modal-content modal-close">
           <div class="modal-header">
-            <span class="close close-corner"></span>
+            <span class="close close-corner" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
             <h2 data-l10n="index-update-title">发现新版本</h2>
           </div>
           <div class="modal-body">
@@ -1340,8 +1340,8 @@
       <div id="modal-ip-banned" class="modal">
         <div class="modal-content modal-close">
           <div class="modal-header">
-            <span class="close close-corner"></span>
-            <h2 data-l10n="index-ip-banned">Your IP has been banned.</h2>
+            <span class="close close-corner" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
+            <h2 data-l10n="index-ip-banned">您的 IP 已被封禁。</h2>
           </div>
           <div class="modal-body">
             <div id="modal-ip-banned-reason"></div>
@@ -1355,7 +1355,7 @@
       <div id="modal-create-account" class="modal modal-account">
         <div class="modal-content modal-close">
           <div class="modal-header modal-header-name">
-            <span class="close-loadouts close close-corner"></span>
+            <span class="close-loadouts close close-corner" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
             <h2 id="modal-account-name-title" data-l10n="index-log-in-desc">登录 / 注册</h2>
           </div>
           <div class="modal-body modal-body-name">
@@ -1370,7 +1370,7 @@
       <div id="modal-user-center" class="modal modal-account">
         <div class="modal-content modal-close">
           <div class="user-center-header">
-            <span class="close close-corner"></span>
+            <span class="close close-corner" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
             <div class="user-center-header-copy">
               <span class="home-menu-kicker" data-l10n="home-user-center-kicker">身份档案</span>
               <h2 data-l10n="home-user-center-title">用户中心</h2>
@@ -1383,27 +1383,27 @@
               <strong id="user-center-username">-</strong>
               <code id="user-center-id">-</code>
             </div>
-            <div class="user-center-metrics" aria-label="账号概览">
+            <div class="user-center-metrics" aria-label="账号概览" data-l10n="account-overview" data-l10n-attr="aria-label">
               <div class="user-center-metric">
-                <span class="user-center-metric-label">钱包积分</span>
+                <span class="user-center-metric-label" data-l10n="account-wallet-points">钱包积分</span>
                 <strong id="user-center-points">0</strong>
-                <small>钱包余额</small>
+                <small data-l10n="account-wallet-balance">钱包余额</small>
               </div>
               <div class="user-center-metric">
-                <span class="user-center-metric-label">仓库</span>
+                <span class="user-center-metric-label" data-l10n="account-warehouse">仓库</span>
                 <strong id="user-center-item-count">0</strong>
-                <small>已获取物品</small>
+                <small data-l10n="account-acquired-items">已获取物品</small>
               </div>
             </div>
             <section class="user-center-world-inventory" aria-labelledby="user-center-world-inventory-title">
               <div class="user-center-world-inventory-header">
-                <span id="user-center-world-inventory-title" class="user-center-metric-label">大世界装备</span>
+                <span id="user-center-world-inventory-title" class="user-center-metric-label" data-l10n="account-world-gear">大世界装备</span>
                 <strong id="user-center-world-item-count">0</strong>
               </div>
               <ul id="user-center-world-items" class="user-center-world-items"></ul>
               <div class="user-center-refresh-row">
-                <span id="user-center-refresh-status" role="status">数据来自最新账号状态</span>
-                <button id="user-center-refresh" type="button">刷新数据</button>
+                <span id="user-center-refresh-status" role="status" data-l10n="account-latest-state">数据来自最新账号状态</span>
+                <button id="user-center-refresh" type="button" data-l10n="account-refresh">刷新数据</button>
               </div>
             </section>
             <div class="user-center-grid">
@@ -1436,8 +1436,8 @@
               </div>
             </div>
             <div class="modal-footer modal-footer-name modal-footer-round">
-              <h3 class="close close-footer" data-l10n="index-confirm">Confirm</h3>
-              <h3 class='close close-footer' data-l10n='index-confirm-all' data-confirm-all="true">Confirm All</h3>
+              <h3 class="close close-footer" data-l10n="index-confirm">确认</h3>
+              <h3 class='close close-footer' data-l10n='index-confirm-all' data-confirm-all="true">全部确认</h3>
             </div>
           </div>
         </div>

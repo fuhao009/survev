@@ -75,15 +75,17 @@ export class Localization {
         return this.locale;
     }
 
-    translate(key: string) {
+    translate(key: string, replacements: Record<string, string | number> = {}) {
         // Also try spaces as dashes
         const spacedKey = key.replace(" ", "-");
-        return (
-            this.translations[this.locale]?.[key]
+        let translated = this.translations[this.locale]?.[key]
             || this.translations[this.locale]?.[spacedKey]
             || this.translations["en"][key]
-            || ""
-        );
+            || "";
+        for (const [name, value] of Object.entries(replacements)) {
+            translated = translated.replaceAll(`{${name}}`, String(value));
+        }
+        return translated;
     }
 
     localizeIndex() {
@@ -107,6 +109,17 @@ export class Localization {
                 if (el$.attr("placeholder")) {
                     el$.attr("placeholder", localizedText);
                     return true;
+                }
+                const localizedAttribute = el$.attr("data-l10n-attr");
+                if (localizedAttribute) {
+                    el$.attr(localizedAttribute, localizedText);
+                    return true;
+                }
+                if (el$.attr("aria-label")) {
+                    el$.attr("aria-label", localizedText);
+                }
+                if (el$.attr("title")) {
+                    el$.attr("title", localizedText);
                 }
                 el$.html(localizedText);
                 if (el$.attr("data-label")) {
