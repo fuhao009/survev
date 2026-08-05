@@ -10,8 +10,7 @@ import type { UiManager } from "./ui/ui.ts";
 
 const gasMode = GameConfig.GasMode;
 
-const overdraw = 100 * 1000;
-const segments = 512;
+const dangerBorderWidth = 12;
 
 export class GasRenderer {
     gasColorDOMString = "";
@@ -30,24 +29,6 @@ export class GasRenderer {
             this.gasColorDOMString = helpers.colorToDOMString(gasColor, 0.6);
         } else {
             this.display = new PIXI.Graphics();
-            const ctx = this.display as PIXI.Graphics;
-            ctx.clear();
-            ctx.beginFill(gasColor, 0.6);
-            ctx.moveTo(-overdraw, -overdraw);
-            ctx.lineTo(overdraw, -overdraw);
-            ctx.lineTo(overdraw, overdraw);
-            ctx.lineTo(-overdraw, overdraw);
-            ctx.closePath();
-            ctx.beginHole();
-            ctx.moveTo(0, 1);
-            for (let i = 1; i < segments; i++) {
-                const theta = i / segments;
-                const s = Math.sin(Math.PI * 2 * theta);
-                const c = Math.cos(Math.PI * 2 * theta);
-                ctx.lineTo(s, c);
-            }
-            ctx.endHole();
-            ctx.closePath();
         }
         this.display.visible = false;
     }
@@ -70,22 +51,21 @@ export class GasRenderer {
             const ctx = canvas.getContext("2d")!;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.beginPath();
-            ctx.fillStyle = this.gasColorDOMString;
-            ctx.rect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = this.gasColorDOMString;
+            ctx.lineWidth = dangerBorderWidth;
             ctx.arc(gasPos.x, gasPos.y, gasRad, 0, Math.PI * 2, true);
-            ctx.fill();
+            ctx.stroke();
         } else {
-            const center = v2.copy(gasPos);
-            // Once the hole gets small enough, just fill the entire
-            // screen with some random part of the geometry
-            let rad = gasRad;
-            if (rad < 0.1) {
-                rad = 1;
-                center.x += overdraw * 0.5;
-            }
-            const ctx = this.display!;
-            ctx.position.set(center.x, center.y);
-            ctx.scale.set(rad, rad);
+            const ctx = this.display as PIXI.Graphics;
+            ctx.clear();
+            ctx.lineStyle(
+                dangerBorderWidth / Math.max(gasRad, 1),
+                this.gasColor,
+                0.6,
+            );
+            ctx.drawCircle(0, 0, 1);
+            ctx.position.set(gasPos.x, gasPos.y);
+            ctx.scale.set(gasRad, gasRad);
         }
         this.display!.visible = active;
     }
