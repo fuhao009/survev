@@ -1,5 +1,5 @@
 import type { ItemInstance } from "../../shared/types/itemInstance.ts";
-import type { WorldSettlementState } from "../../shared/types/world.ts";
+import type { WorldExtractionQuote, WorldSettlementState } from "../../shared/types/world.ts";
 import type { WorldSnapshot } from "../../shared/types/worldApi.ts";
 
 const ITEM_LABELS: Record<string, string> = {
@@ -43,6 +43,7 @@ export interface WorldResultViewModel {
     carriedCount: number;
     warehouseCount: number;
     items: readonly WorldResultItem[];
+    extractionQuote?: WorldExtractionQuote;
 }
 
 export function getWorldItemLabel(type: string): string {
@@ -90,6 +91,9 @@ export function buildExtractedWorldResult(
     const rewardPoints = settlement.rewards
         .filter((reward) => reward.rewardType === "points")
         .reduce((total, reward) => total + reward.quantity, 0);
+    const extractionQuote = settlement.rewards.find((reward) => reward.rewardType === "points")?.quote
+        ?? before.extractionQuote
+        ?? undefined;
     return {
         outcome: "extracted",
         title: "撤离成功",
@@ -100,6 +104,7 @@ export function buildExtractedWorldResult(
         carriedCount: countItems(items),
         warehouseCount: after.inventory.filter((item) => item.state === "stash").length,
         items,
+        extractionQuote,
     };
 }
 

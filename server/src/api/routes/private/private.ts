@@ -234,7 +234,9 @@ export const PrivateRouter = new Hono<Context>()
         ),
         async (c) => {
             const { userId, cause } = c.req.valid("json");
+            server.logger.debug("/private/world/death request", { userId, cause });
             const applied = await worldService.markDeadForPlayer(userId, cause);
+            server.logger.debug("/private/world/death response", { userId, cause, applied });
             return c.json({ success: true, applied }, 200);
         },
     )
@@ -249,7 +251,9 @@ export const PrivateRouter = new Hono<Context>()
         ),
         async (c) => {
             const { userId, weaponType } = c.req.valid("json");
+            server.logger.debug("/private/world/fire request", { userId, weaponType });
             const applied = await worldService.wearWeaponForPlayer(userId, weaponType);
+            server.logger.debug("/private/world/fire response", { userId, weaponType, applied });
             return c.json({ success: true, applied }, 200);
         },
     )
@@ -269,6 +273,18 @@ export const PrivateRouter = new Hono<Context>()
         ),
         async (c) => {
             const { updates } = c.req.valid("json");
+            server.logger.debug("/private/world/position request", {
+                count: updates.length,
+                first: updates[0]
+                    ? {
+                        userId: updates[0].userId,
+                        x: updates[0].x,
+                        y: updates[0].y,
+                        layer: updates[0].layer,
+                        health: updates[0].health,
+                    }
+                    : null,
+            });
             let applied = 0;
             const terrainMovement: WorldPositionSyncResponse["terrainMovement"] = [];
             for (const update of updates) {
@@ -285,6 +301,11 @@ export const PrivateRouter = new Hono<Context>()
                 }
             }
             const runtime = await worldService.getWorldRuntimeSnapshot();
+            server.logger.debug("/private/world/position response", {
+                applied,
+                terrainMovement,
+                runtime,
+            });
             return c.json({
                 success: true,
                 applied,

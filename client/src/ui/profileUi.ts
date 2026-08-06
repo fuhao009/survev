@@ -378,10 +378,6 @@ export class ProfileUi {
                 $(event.currentTarget).trigger("click");
             }
         });
-        $("#home-login-primary").on("click", () => {
-            this.showLoginMenu({ modal: true });
-            return false;
-        });
         $(".btn-account-link").on("click", () => {
             this.userSettingsModal!.hide();
             this.showLoginMenu({
@@ -418,6 +414,12 @@ export class ProfileUi {
             this.account.logout();
             return false;
         });
+        $("#home-login-primary").on("click", (event) => {
+            event.preventDefault();
+            this.showLoginMenu({
+                modal: true,
+            });
+        });
         $("#btn-pass-locked").on("click", () => {
             this.showLoginMenu({
                 modal: true,
@@ -425,9 +427,7 @@ export class ProfileUi {
             return false;
         });
 
-        const loginSupported = !SDK.isAnySDK && proxy.anyLoginSupported();
-
-        $(".account-block").toggle(loginSupported);
+        $(".account-block").toggle(this.account.loggedIn);
 
         window.addEventListener("hashchange", this.openUserCenterFromHash.bind(this));
         this.openUserCenterFromHash();
@@ -626,6 +626,7 @@ export class ProfileUi {
             this.account.loggedIn ? "block" : "none",
         );
         $("#account-login").css("display", this.account.loggedIn ? "none" : "block");
+        $(".account-block").toggle(this.account.loggedIn);
         $("#start-menu").toggleClass("is-logged-in", this.account.loggedIn);
         $("#start-menu-wrapper").toggleClass("is-logged-in", this.account.loggedIn);
         $("#start-top-right").toggleClass("home-account-visible", this.account.loggedIn);
@@ -633,12 +634,6 @@ export class ProfileUi {
         $("#home-nav-stats").toggleClass("home-nav-account-visible", this.account.loggedIn);
         this.renderUserCenter();
         this.updateUserIcon();
-        $("#home-menu-title").text(
-            this.localization.translate(this.account.loggedIn ? "home-menu-title-logged-in" : "home-menu-title"),
-        );
-        $("#home-login-desc").text(
-            this.localization.translate(this.account.loggedIn ? "home-login-desc-logged-in" : "home-login-desc"),
-        );
         $("#home-brief-access-value").text(
             this.localization.translate(
                 this.account.loggedIn ? "home-brief-access-value-logged-in" : "home-brief-access-value",

@@ -9,6 +9,8 @@ import { Action, GameConfig, GasMode, TeamMode } from "../../../shared/gameConfi
 import type { PlayerStatsMsg } from "../../../shared/net/playerStatsMsg.ts";
 import { SpectateAction } from "../../../shared/net/spectateMsg.ts";
 import type { MapIndicator, PlayerStatus } from "../../../shared/net/updateMsg.ts";
+import type { WorldExtractionZone } from "../../../shared/types/world.ts";
+import { worldPositionToGameMap } from "../../../shared/types/world.ts";
 import { coldet } from "../../../shared/utils/coldet.ts";
 import { math } from "../../../shared/utils/math.ts";
 import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
@@ -213,6 +215,18 @@ export class UiManager {
     mapIndicatorBarn!: MapIndicatorBarn;
     playerMapSprites: MapSprite[] = [];
     playerPingSprites = {} as Record<number, MapSprite[]>;
+    worldExtractionZone: WorldExtractionZone | null = null;
+    worldExtractionOverlay = new PIXI.Container();
+    worldExtractionRing = new PIXI.Graphics();
+    worldExtractionLabel = new PIXI.Text("撤离点", new PIXI.TextStyle({
+        fontFamily: "Roboto Condensed, Arial, sans-serif",
+        fontSize: 13,
+        fontWeight: "700",
+        fill: "#ffe0a0",
+        stroke: "#1d1608",
+        strokeThickness: 3,
+        align: "center",
+    }));
     container = new PIXI.Container() as ContainerWithMask;
 
     resetWeapSlotStyling!: () => void;
@@ -482,6 +496,10 @@ export class UiManager {
         this.container.addChild(this.display.gasSafeZone);
         this.container.addChild(this.display.airstrikeZones);
         this.container.addChild(this.display.mapSprites);
+        this.worldExtractionOverlay.addChild(this.worldExtractionRing);
+        this.worldExtractionLabel.anchor.set(0.5, 1);
+        this.worldExtractionOverlay.addChild(this.worldExtractionLabel);
+        this.container.addChild(this.worldExtractionOverlay);
         this.container.addChild(this.display.teammates);
         this.container.addChild(this.display.player);
         this.container.addChild(this.display.border);
@@ -1196,6 +1214,40 @@ export class UiManager {
 
     updateMapIndicators(data: MapIndicator[]) {
         this.mapIndicatorBarn.updateIndicatorData(data);
+    }
+
+    setWorldExtractionZone(zone: WorldExtractionZone | null) {
+        this.worldExtractionZone = zone ? {
+            ...zone,
+            center: { ...zone.center },
+        } : null;
+    }
+
+    private renderWorldExtractionZone(map: Map) {
+        const zone = this.worldExtractionZone;
+        if (!zone) {
+            this.worldExtractionOverlay.visible = false;
+            return;
+        }
+        const centerWorld = worldPositionToGameMap(zone.center, map.width, map.height);
+        const edgeWorld = worldPositionToGameMap(
+            v2.add(zone.center, v2.create(zone.radius, 0)),
+            map.width,
+            map.height,
+        );
+        const center = this.getMapPosFromWorldPos(centerWorld, map);
+        const edge = this.getMapPosFromWorldPos(edgeWorld, map);
+        const radius = v2.length(v2.sub(edge, center));
+        this.worldExtractionRing.clear();
+        this.worldExtractionRing.lineStyle(this.bigmapDisplayed ? 4 : 3, 0xffd27c, 0.95);
+        this.worldExtractionRing.beginFill(0xffd27c, 0.08);
+        this.worldExtractionRing.drawCircle(center.x, center.y, radius);
+        this.worldExtractionRing.endFill();
+        this.worldExtractionRing.lineStyle(2, 0x1a1206, 0.9);
+        this.worldExtractionRing.drawCircle(center.x, center.y, Math.max(6, radius - 10));
+        this.worldExtractionLabel.text = `${zone.label} · ${zone.zoneId}`;
+        this.worldExtractionLabel.position.set(center.x, center.y - radius - 6);
+        this.worldExtractionOverlay.visible = true;
     }
 
     getMapPosFromWorldPos(worldPos: Vec2, map: Map) {
@@ -2007,6 +2059,8 @@ export class UiManager {
     }
 
     m_render(playerPos: Vec2, gas: Gas, map: Map, planeBarn: PlaneBarn) {
+        this.renderWorldExtractionZone(map);
+
         // Gas
         const circle = gas.getCircle(1);
         const gasPos = this.getMapPosFromWorldPos(circle.pos, map);

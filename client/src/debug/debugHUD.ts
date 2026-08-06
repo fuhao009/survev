@@ -1,4 +1,5 @@
 import * as PIXI from "pixi.js-legacy";
+import { GasMode } from "../../../shared/gameConfig.ts";
 import type { ConfigManager } from "../config.ts";
 import type { Game } from "../game.ts";
 import type { Pool } from "../objects/objectPool.ts";
@@ -141,8 +142,19 @@ export class DebugHUD {
 
         if (cfg.position) {
             const activePlayer = game.m_activePlayer;
+            this.addLine(`Mode:    ${game.m_world ? "World" : "Match"}`);
+            if (activePlayer) {
+                this.addLine(
+                    `Pos:     X: ${activePlayer.m_pos.x.toFixed(2)}   Y: ${activePlayer.m_pos.y.toFixed(2)}`,
+                );
+                this.addLine(
+                    `Vitals:  HP ${activePlayer.m_localData.m_health.toFixed(0)}   Boost ${activePlayer.m_localData.m_boost.toFixed(0)}   Layer ${activePlayer.layer}`,
+                );
+            } else {
+                this.addLine("Player:  (waiting for spawn)");
+            }
             this.addLine(
-                `Pos:     X: ${activePlayer.m_pos.x.toFixed(2)}   Y: ${activePlayer.m_pos.y.toFixed(2)}`,
+                `Gas:     ${GasMode[game.m_gas.mode]}   t ${game.m_gas.circleT.toFixed(2)}   Rad ${game.m_gas.circleNew.rad.toFixed(1)}`,
             );
         }
 

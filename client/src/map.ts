@@ -16,6 +16,41 @@ import {
 } from "../../shared/utils/terrainGen.ts";
 import { util } from "../../shared/utils/util.ts";
 import { v2, type Vec2 } from "../../shared/utils/v2.ts";
+
+const MAP_PLACE_NAME_ZH: Record<string, string> = {
+    "The Killpit": "杀戮坑",
+    Sweatbath: "血汗浴场",
+    Tarkhany: "塔尔哈尼",
+    "Ytyk-Kyuyol": "伊特克库约尔",
+    Todesfelde: "图德斯费尔德",
+    Pineapple: "菠萝湾",
+    "Fowl Forest": "禽林",
+    "Ranchito Pollo": "鸡场庄园",
+    Beach: "海滩",
+    "The Sandpit": "沙坑",
+    Sunburn: "日晒镇",
+    Okhotsk: "鄂霍次克",
+    "Ytyk-Plaz": "伊特克广场",
+    Todesinsel: "死亡岛",
+    Coconut: "椰子湾",
+    "Sandy Shores": "沙岸",
+    "Playa Pollo": "鸡滩",
+    "Cordial Creek": "和风溪",
+    "Blood Gulch": "血谷",
+    Southhaven: "南港",
+    Atonement: "赎罪地",
+    "Los Perdidos": "失落镇",
+    Riverside: "河岸镇",
+    Normal: "常规战区",
+    Savannah: "萨凡纳",
+    Desert: "沙漠战区",
+    Woods: "森林战区",
+};
+
+function translateMapPlaceName(name: string) {
+    return MAP_PLACE_NAME_ZH[name] || name;
+}
+
 import type { Ambiance } from "./ambiance.ts";
 import type { AudioManager } from "./audioManager.ts";
 import type { Camera } from "./camera.ts";
@@ -643,7 +678,7 @@ export class Map {
                     wordWrap: false,
                     align: "center",
                 });
-                const richText = new PIXI.Text(place.name, style);
+                const richText = new PIXI.Text(translateMapPlaceName(place.name), style);
                 richText.anchor.set(0.5, 0.5);
                 richText.x = (place.pos.x * this.height) / scale;
                 richText.y = (place.pos.y * this.height) / scale;

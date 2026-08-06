@@ -20,11 +20,89 @@ export interface WorldCircle {
     radius: number;
 }
 
-/** Server-owned extraction area for the first persistent world shard. */
+export interface WorldExtractionZone extends WorldCircle {
+    readonly kind: "world_extraction_zone";
+    /** Stable only for this extraction cycle; changes when the dynamic zone refreshes. */
+    zoneId: string;
+    /** Player-facing map label. */
+    label: string;
+    /** Monotonic cycle revision inside the shard. */
+    revision: number;
+    activeFrom: WorldTimestamp;
+    activeUntil: WorldTimestamp;
+}
+
+export const WORLD_MAP_SIZE = 4096;
+export const WORLD_EXTRACTION_CYCLE_DURATION_MS = 3 * 60 * 1000;
+export const WORLD_EXTRACTION_ZONE_RADIUS = 280;
+const WORLD_EXTRACTION_ZONE_MARGIN = 460;
+
+/** Server-owned fallback extraction area for compatibility with older callers. */
 export const WORLD_EXTRACTION_ZONE = {
-    center: { x: 2048, y: 2048 },
+    kind: "world_extraction_zone",
+    zoneId: "extract-center-legacy",
+    label: "撤离点",
+    revision: 0,
+    center: { x: WORLD_MAP_SIZE / 2, y: WORLD_MAP_SIZE / 2 },
     radius: 320,
-} as const satisfies WorldCircle;
+    activeFrom: 0,
+    activeUntil: WORLD_EXTRACTION_CYCLE_DURATION_MS,
+} as const satisfies WorldExtractionZone;
+
+function stableHash(value: string): number {
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index++) {
+        hash ^= value.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+}
+
+function normalizedHash(value: string): number {
+    return stableHash(value) / 0xffffffff;
+}
+
+function boundedExtractionCoordinate(seed: string, cycle: number, axis: "x" | "y"): number {
+    const span = WORLD_MAP_SIZE - WORLD_EXTRACTION_ZONE_MARGIN * 2;
+    return Math.round(WORLD_EXTRACTION_ZONE_MARGIN + normalizedHash(`${seed}:extract:${cycle}:${axis}`) * span);
+}
+
+/** Derive a dynamic extraction point without mutable process state. */
+export function getWorldExtractionZone(seed: string, createdAt: number, now = Date.now()): WorldExtractionZone {
+    const elapsed = Math.max(0, now - createdAt);
+    const cycle = Math.floor(elapsed / WORLD_EXTRACTION_CYCLE_DURATION_MS);
+    const revision = cycle + 1;
+    const activeFrom = createdAt + cycle * WORLD_EXTRACTION_CYCLE_DURATION_MS;
+    const center = {
+        x: boundedExtractionCoordinate(seed, cycle, "x"),
+        y: boundedExtractionCoordinate(seed, cycle, "y"),
+    };
+
+    return {
+        kind: "world_extraction_zone",
+        zoneId: `extract-${revision}-${center.x}-${center.y}`,
+        label: "撤离点",
+        revision,
+        center,
+        radius: WORLD_EXTRACTION_ZONE_RADIUS,
+        activeFrom,
+        activeUntil: activeFrom + WORLD_EXTRACTION_CYCLE_DURATION_MS,
+    };
+}
+
+export function worldPositionToGameMap(position: Vec2, mapWidth: number, mapHeight: number): Vec2 {
+    return {
+        x: Math.max(0, Math.min(mapWidth, (position.x / WORLD_MAP_SIZE) * mapWidth)),
+        y: Math.max(0, Math.min(mapHeight, (position.y / WORLD_MAP_SIZE) * mapHeight)),
+    };
+}
+
+export function gameMapPositionToWorld(position: Vec2, mapWidth: number, mapHeight: number): Vec2 {
+    return {
+        x: Math.max(0, Math.min(WORLD_MAP_SIZE, (position.x / mapWidth) * WORLD_MAP_SIZE)),
+        y: Math.max(0, Math.min(WORLD_MAP_SIZE, (position.y / mapHeight) * WORLD_MAP_SIZE)),
+    };
+}
 
 //
 // Persistent world shards
@@ -287,6 +365,98 @@ export type WorldLife =
 export interface WorldSettlementReward {
     rewardType: string;
     quantity: number;
+    source?: string;
+    quote?: WorldExtractionQuote;
+}
+
+export interface WorldExtractionQuoteInput {
+    extractionZoneId: string;
+    extractionRevision: number;
+    updatedAt: WorldTimestamp;
+    baseItemPoints: number;
+    durabilityRatio: number;
+    lifeRevision: number;
+    elapsedMs: number;
+    onlinePlayers: number;
+    recentExtractions: number;
+    weatherIntensity: number;
+    terrainSpeedMultiplier: number;
+    lightningEventCount: number;
+}
+
+export interface WorldExtractionQuote {
+    readonly kind: "world_extraction_quote";
+    quoteId: string;
+    extractionZoneId: string;
+    revision: number;
+    updatedAt: WorldTimestamp;
+    baseItemPoints: number;
+    survivalPoints: number;
+    durabilityMultiplier: number;
+    competitionMultiplier: number;
+    scarcityMultiplier: number;
+    riskMultiplier: number;
+    totalPoints: number;
+    onlinePlayers: number;
+    recentExtractions: number;
+}
+
+function clampUnit(value: number): number {
+    return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
+}
+
+function roundMultiplier(value: number): number {
+    return Math.round(value * 100) / 100;
+}
+
+/**
+ * Dynamic extraction exchange quote. It intentionally depends on current
+ * competitive state instead of a fixed per-run reward.
+ */
+export function getWorldExtractionQuote(input: WorldExtractionQuoteInput): WorldExtractionQuote {
+    const onlinePlayers = Math.max(1, Math.trunc(input.onlinePlayers));
+    const recentExtractions = Math.max(0, Math.trunc(input.recentExtractions));
+    const baseItemPoints = Math.max(0, Math.round(input.baseItemPoints));
+    const durabilityMultiplier = roundMultiplier(0.35 + clampUnit(input.durabilityRatio) * 0.65);
+    const competitionMultiplier = roundMultiplier(
+        1 + Math.min(0.72, Math.log2(onlinePlayers) * 0.14),
+    );
+    const scarcityMultiplier = roundMultiplier(
+        Math.max(0.68, 1.22 - Math.min(10, recentExtractions) * 0.055),
+    );
+    const terrainPenalty = Math.max(0, 1 - Math.max(0.25, Math.min(1, input.terrainSpeedMultiplier)));
+    const riskMultiplier = roundMultiplier(
+        1
+            + clampUnit(input.weatherIntensity) * 0.22
+            + terrainPenalty * 0.18
+            + Math.min(3, Math.max(0, input.lightningEventCount)) * 0.04,
+    );
+    const survivalPoints = Math.min(
+        40,
+        Math.max(0, Math.floor(input.elapsedMs / 60_000) * 2)
+            + Math.max(0, Math.floor((input.lifeRevision - 1) / 3)),
+    );
+    const totalPoints = Math.max(
+        1,
+        Math.round((baseItemPoints * durabilityMultiplier + survivalPoints) * competitionMultiplier * scarcityMultiplier * riskMultiplier),
+    );
+
+    return {
+        kind: "world_extraction_quote",
+        quoteId: `${input.extractionZoneId}:quote:${input.lifeRevision}:${totalPoints}`,
+        extractionZoneId: input.extractionZoneId,
+        revision: input.extractionRevision,
+        updatedAt: input.updatedAt,
+        baseItemPoints,
+        survivalPoints,
+        durabilityMultiplier,
+        competitionMultiplier,
+        scarcityMultiplier,
+        riskMultiplier,
+        totalPoints,
+        onlinePlayers,
+        recentExtractions,
+    };
 }
 
 interface WorldSettlementBase {

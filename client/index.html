@@ -627,16 +627,27 @@
         </div>
       </div>
       <section id="world-hud" aria-live="polite">
-        <div class="world-hud-title" data-l10n="world-hud-title">大世界</div>
-        <div id="world-hud-life">生命 100</div>
-        <div id="world-hud-weather" role="status">
-          <div id="world-hud-weather-name">天气：晴朗</div>
-          <div id="world-hud-weather-hint"></div>
+        <div class="world-hud-header">
+          <div class="world-hud-title" data-l10n="world-hud-title">大世界</div>
+          <button id="world-hud-toggle" type="button" aria-expanded="true" data-l10n="world-hud-collapse">收起</button>
         </div>
-        <div id="world-hud-gear"></div>
-        <button id="world-extract" type="button" data-l10n="world-extract">撤离并换积分</button>
-        <button id="world-return-home" type="button" data-l10n="world-return-user-center">返回用户中心</button>
-        <div id="world-hud-message"></div>
+        <div id="world-hud-collapsed-summary"></div>
+        <div class="world-hud-body">
+          <div id="world-hud-life">生命 100</div>
+          <div id="world-hud-extraction" role="status">
+            <div id="world-hud-extraction-zone">撤离点：更新中</div>
+            <div id="world-hud-extraction-quote">预计兑换：0 积分</div>
+          </div>
+          <div id="world-hud-weather" role="status">
+            <div id="world-hud-weather-name">天气：晴朗</div>
+            <div id="world-hud-weather-hint"></div>
+          </div>
+          <div id="world-hud-terrain"></div>
+          <div id="world-hud-gear"></div>
+          <button id="world-extract" type="button" data-l10n="world-extract">撤离并换积分</button>
+          <button id="world-return-home" type="button" data-l10n="world-return-user-center">返回用户中心</button>
+          <div id="world-hud-message"></div>
+        </div>
       </section>
     </div>
     <section id="world-result" class="world-result" aria-live="assertive" aria-labelledby="world-result-title">
@@ -648,6 +659,7 @@
           <div class="world-result-metric">
             <span data-l10n="world-result-reward-label">本局积分</span>
             <strong id="world-result-reward">+0</strong>
+            <small id="world-result-reward-detail"></small>
           </div>
           <div class="world-result-metric">
             <span data-l10n="world-result-wallet-before-label">结算前积分</span>
@@ -678,7 +690,6 @@
           <div id="btn-hamburger" class="icon-hamburger" data-l10n="index-menu" data-l10n-attr="aria-label" aria-label="打开菜单" role="button" tabindex="0"></div>
         </div>
         <nav id="home-nav" aria-label="主导航">
-          <a id="home-nav-play" class="home-nav-item home-nav-item-active" href="#start-menu" data-l10n="home-nav-play">进入战区</a>
           <a id="home-nav-loadout" class="home-nav-item account-loadout-link" href="#user-center" data-l10n="index-loadout">配装</a>
           <a id="home-nav-stats" class="home-nav-item account-stats-link" href="#user-center" data-l10n="index-my-stats">我的数据</a>
           <a class="home-nav-item account-leaderboard-link" href="/stats" target="_blank" data-l10n="index-leaderboards">排行榜</a>
@@ -834,7 +845,7 @@
             <div id="server-warning"></div>
             <div class="home-brand-copy">
               <span class="home-brand-kicker" data-l10n="home-brand-kicker">岛屿行动</span>
-              <strong class="home-brand-title" data-l10n="home-brand-title">生存战区</strong>
+              <strong class="home-brand-title" data-l10n="home-brand-title">枪战世界</strong>
               <span class="home-brand-caption" data-l10n="home-brand-caption">登录 · 搜索 · 生还</span>
             </div>
           </div>
@@ -850,14 +861,7 @@
                 </div>
               </div>
               <div class="play-button-container">
-                <div class="home-menu-heading">
-                  <div>
-                    <span class="home-menu-kicker" data-l10n="home-menu-kicker">进入战区</span>
-                    <h2 id="home-menu-title" data-l10n="home-menu-title">登录后开始任务</h2>
-                  </div>
-                </div>
-                <div id="home-login-cta">
-                  <p id="home-login-desc" data-l10n="home-login-desc">登录账号，保存你的战绩与配装。</p>
+                <div id="home-login-cta" class="home-login-cta">
                   <a id="home-login-primary" class="home-primary-action menu-option btn-darken" href="#" data-l10n="home-login-action">登录 / 注册</a>
                 </div>
                 <div id="player-options">
@@ -868,106 +872,9 @@
                   <optgroup id="server-opts" label="地区" data-l10n="index-region">
                   </optgroup>
                 </select>
-                <a class="btn-green btn-darken menu-option" id="btn-start-mode-0" data-l10n="index-play-solo">单人游玩</a>
-                <a class="btn-world btn-darken menu-option" id="btn-start-world">进入大世界</a>
-                <div id="btns-quick-start">
-                  <a class="btn-green btn-darken menu-option" id="btn-start-mode-1" data-l10n="index-play-duo">双人游玩</a>
-                  <a class="btn-green btn-darken menu-option" id="btn-start-mode-2" data-l10n="index-play-squad">小队游玩</a>
-                </div>
-                <div class="btns-double-row">
-                  <a class="btn-darken menu-option btn-team-option" id="btn-join-team" data-l10n="index-join-team">加入队伍</a>
-                  <a class="btn-darken menu-option btn-team-option" id="btn-create-team" data-l10n="index-create-team">创建队伍</a>
-                </div>
-                <div id="btn-help" class="menu-option btn-darken" data-l10n="index-how-to-play">如何游玩</div>
-                <div id="start-help">
-                  <h1 data-l10n="index-controls">控制</h1>
-                  <p><span class="help-action" data-l10n="index-movement"></span>: <span class="help-control" data-l10n="index-movement-ctrl"></span></p>
-                  <p><span class="help-action" data-l10n="index-aim"></span>: <span class="help-control" data-l10n="index-aim-ctrl"></span></p>
-                  <p><span class="help-action" data-l10n="index-punch"></span>/<span class="help-action" data-l10n="index-shoot"></span>: <span class="help-control" data-l10n="index-shoot-ctrl"></span></p>
-                  <p><span class="help-action" data-l10n="index-change-weapons"></span>: <span class="help-control" data-l10n="index-change-weapons-ctrl"></span></p>
-                  <p class="hide-on-mobile"><span class="help-action" data-l10n="index-stow-weapons"></span>: <span class="help-control" data-l10n="index-stow-weapons-ctrl"></span></p>
-                  <p class="hide-on-mobile"><span class="help-action" data-l10n="index-swap-weapons"></span>: <span class="help-control" data-l10n="index-swap-weapons-ctrl"></span></p>
-                  <p class="hide-on-mobile"><span class="help-action" data-l10n="index-swap-weapon-slots"></span>: <span class="help-control" data-l10n="index-swap-weapon-slots-ctrl"></span></p>
-                  <p><span class="help-action" data-l10n="index-reload"></span>: <span class="help-control" data-l10n="index-reload-ctrl"></span></p>
-                  <p><span class="help-action" data-l10n="index-scope-zoom"></span>: <span class="help-control" data-l10n="index-scope-zoom-ctrl"></span></p>
-                  <p><span class="help-action" data-l10n="index-pickup"></span>/<span class="help-action" data-l10n="index-loot"></span>/<span class="help-action" data-l10n="index-revive"></span>: <span class="help-control" data-l10n="index-pickup-ctrl"></span></p>
-                  <p><span class="help-action" data-l10n="index-use-medical"></span>: <span class="help-control" data-l10n="index-use-medical-ctrl"></span></p>
-                  <p><span class="help-action" data-l10n="index-drop-item"></span>: <span class="help-control" data-l10n="index-drop-item-ctrl"></span></p>
-                  <p><span class="help-action" data-l10n="index-cancel-action"></span>: <span class="help-control" data-l10n="index-cancel-action-ctrl"></span></p>
-                  <p><span class="help-action" data-l10n="index-view-map"></span>: <span class="help-control" data-l10n="index-view-map-ctrl"></span></p>
-                  <p class="hide-on-mobile"><span class="help-action" data-l10n="index-toggle-minimap"></span>: <span class="help-control" data-l10n="index-toggle-minimap-ctrl"></span></p>
-                  <p><span class="help-action" data-l10n="index-use-ping"></span>: <span class="help-control" data-l10n="index-use-ping-ctrl"></span></p>
-                  <p><span class="help-action" data-l10n="index-use-emote"></span>: <span class="help-control" data-l10n="index-use-emote-ctrl"></span></p>
-                </div>
+                <a class="btn-world btn-darken menu-option" id="btn-start-world" data-l10n="home-start-world">进入大世界</a>
+                <a id="home-user-center" class="btn-darken menu-option account-details-user" href="#user-center" data-l10n="home-user-center-title">用户中心</a>
               </div>
-            </div>
-            <aside id="home-side-panel" class="home-panel">
-              <div class="home-panel-heading">
-                <div>
-                  <span class="home-menu-kicker" data-l10n="home-brief-kicker">战区信息</span>
-                  <h2 data-l10n="home-brief-title">本局设置</h2>
-                </div>
-              </div>
-              <div class="home-panel-list">
-                <div class="home-panel-row"><span data-l10n="home-brief-map">地图</span><strong data-l10n="home-brief-map-value">海岛战区</strong></div>
-                <div class="home-panel-row"><span data-l10n="home-brief-mode">模式</span><strong data-l10n="home-brief-mode-value">单人 / 双人 / 小队</strong></div>
-                  <div class="home-panel-row"><span data-l10n="home-brief-access">准入</span><strong id="home-brief-access-value" data-l10n="home-brief-access-value">登录后开放</strong></div>
-              </div>
-              <div class="home-panel-footer" data-l10n="home-brief-footer">装备好自己，再进入战区。</div>
-            </aside>
-            <div id="team-menu" class="menu-column menu-block">
-              <div class="play-loading-outer">
-                <div class="play-loading-inner">
-                  <div class="play-loading-spinner"></div>
-                </div>
-              </div>
-              <div class="play-button-container">
-                <a class="btn-darken menu-option" id="btn-team-leave" data-l10n="index-leave-team">离开队伍</a>
-                <div id="team-menu-connecting">
-                  <div class="ui-spinner"></div>
-                  <div class="team-menu-connecting-text" id="team-menu-joining-text"><span data-l10n="index-joining-team">加入队伍中</span> ...</div>
-                  <div class="team-menu-connecting-text" id="team-menu-creating-text"><span data-l10n="index-creating-team">创建队伍中</span> ...</div>
-                </div>
-                <div id="team-menu-contents">
-                  <div id="team-desc">
-                    <div id="team-desc-text"><span id="invite-link-text" data-l10n="index-invite-link">邀请链接</span>: <span id="team-url"></span>
-                    </div>
-                    <a id="team-copy-url" class="copy-item btn-darken"></a>
-                    <a id="team-hide-url" class="hide-item btn-darken"></a>
-                    <div id="team-code-text"><span id="invite-code-text" data-l10n="index-invite-code">邀请代码</span>: <span id="team-code"></span></div>
-                  </div>
-                  <div id="team-menu-columns">
-                    <div id="team-menu-members" class="team-menu-block">
-                      <div id="team-menu-member-list"></div>
-                    </div>
-                    <div id="team-menu-options" class="team-menu-block">
-                      <select id="team-server-select" class="btn-hollow btn-hollow-selected server-select menu-option">
-                        <optgroup id="team-server-opts" label="地区" data-l10n="index-region">
-                        </optgroup>
-                      </select>
-                      <div class="team-menu-options-buttons">
-                        <a class="btn-hollow btn-hollow-selected btn-darken team-menu-option btn-team-queue" id="btn-team-queue-mode-1" data-l10n="index-duo">双人</a>
-                        <a class="btn-hollow btn-hollow-selected btn-darken team-menu-option btn-team-queue" id="btn-team-queue-mode-2" data-l10n="index-squad">小队</a>
-                      </div>
-                      <div class="team-menu-options-buttons">
-                        <a class="btn-hollow btn-hollow-selected btn-darken team-menu-option btn-team-fill" id="btn-team-fill-auto" data-l10n="index-auto-fill">自动加入</a>
-                        <a class="btn-hollow btn-darken team-menu-option btn-team-fill" id="btn-team-fill-none" data-l10n="index-no-fill">手动加入</a>
-                      </div>
-                      <div id="team-menu-options-start">
-                        <a class="btn-green btn-darken menu-option" id="btn-start-team" data-label="游玩" data-l10n="index-play">游玩</a>
-                        <div id="msg-wait-reason"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div id="team-mobile-link" class="menu-column menu-block">
-              <div id="team-mobile-link-desc" class="team-mobile-link-text" data-l10n="index-join-team-help">是否拥有队伍链接或代码？请在此处粘贴：</div>
-              <div id="team-mobile-link-warning" class="team-mobile-link-text" data-l10n="index-invalid-link">链接无效！</div>
-              <input type="text" class="menu-option" contenteditable="false" tabindex="0" autofocus placeholder="粘贴队伍链接或输入代码" data-l10n="index-team-link-placeholder" id="team-link-input" />
-              <a class="btn-darken menu-option btn-team-option" id="btn-team-mobile-link-join" data-l10n="index-join-team">加入队伍</a>
-              <a class="btn-darken menu-option" id="btn-team-mobile-link-leave" data-l10n="index-back-to-main">返回主菜单</a>
             </div>
             <div id="right-column" class="menu-column">
               <div id="pass-wrapper">
@@ -1359,7 +1266,6 @@
             <h2 id="modal-account-name-title" data-l10n="index-log-in-desc">登录 / 注册</h2>
           </div>
           <div class="modal-body modal-body-name">
-            <p class="modal-body-text" data-l10n="index-create-account-prompt-1">登录后即可使用此功能。</p>
             <div class="login-options-content"></div>
           </div>
           <div class="modal-footer modal-footer-name modal-footer-round">
@@ -1407,7 +1313,7 @@
               </div>
             </section>
             <div class="user-center-grid">
-              <a class="user-center-option user-center-world-link" href="#start-menu" data-l10n="home-nav-play">进入战区</a>
+              <a class="user-center-option user-center-world-link" href="#start-menu" data-l10n="home-nav-play">枪战世界</a>
               <a class="user-center-option account-loadout-link" href="#user-center"><span class="user-center-option-title">仓库</span><span class="user-center-option-caption" data-l10n="index-loadout">配装</span></a>
               <a class="user-center-option account-stats-link" href="#user-center" data-l10n="index-my-stats">我的数据</a>
               <a class="user-center-option account-leaderboard-link" href="/stats" target="_blank" data-l10n="index-leaderboards">排行榜</a>

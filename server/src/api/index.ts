@@ -13,8 +13,12 @@ import { GIT_VERSION } from "../utils/gitRevision.ts";
 import { logErrorToWebhook } from "../utils/logger.ts";
 import { isBehindProxy } from "../utils/proxyCheck.ts";
 import { HTTPRateLimit } from "../utils/rateLimit.ts";
-import { getFindGamePlayerData } from "./apiHelpers.ts";
-import { getHonoIp, verifyTurnsStile } from "./apiHelpers.ts";
+import {
+    getDebugRequestContext,
+    getFindGamePlayerData,
+    getHonoIp,
+    verifyTurnsStile,
+} from "./apiHelpers.ts";
 import { server } from "./apiServer.ts";
 import { deleteExpiredSessions, validateSessionToken } from "./auth/index.ts";
 import { rateLimitMiddleware, validateParams } from "./auth/middleware.ts";
@@ -146,6 +150,30 @@ app.post("/api/find_game_v2", validateParams(zFindGameBody), async (c) => {
     }
 
     const body = c.req.valid("json");
+    const debug = getDebugRequestContext(c);
+    server.logger.debug("/api/find_game_v2 request", {
+        debug,
+        ip,
+        userId: user.id,
+        region: body.region,
+        zones: body.zones,
+        gameModeIdx: body.gameModeIdx,
+        world: body.world,
+        worldPosition: body.worldPosition,
+        worldHealth: body.worldHealth,
+        worldBoost: body.worldBoost,
+    });
+
+    if (!body.world) {
+        server.logger.warn("/api/find_game_v2 blocked non-world request", {
+            debug,
+            ip,
+            userId: user.id,
+            region: body.region,
+            gameModeIdx: body.gameModeIdx,
+        });
+        return c.json<FindGameResponse>({ type: "error", error: "mode_disabled" });
+    }
 
     const mode = server.modes[body.gameModeIdx];
     if (!mode || !mode.enabled) {
@@ -172,6 +200,9 @@ app.post("/api/find_game_v2", validateParams(zFindGameBody), async (c) => {
             token,
             userId: user?.id || null,
             ip,
+            worldPosition: body.worldPosition,
+            worldHealth: body.worldHealth,
+            worldBoost: body.worldBoost,
         },
     ]);
 
@@ -186,9 +217,28 @@ app.post("/api/find_game_v2", validateParams(zFindGameBody), async (c) => {
     });
 
     if ("error" in data) {
+        server.logger.warn("/api/find_game_v2 failed", {
+            debug,
+            ip,
+            userId: user.id,
+            region: body.region,
+            gameModeIdx: body.gameModeIdx,
+            world: body.world,
+            error: data.error,
+        });
         return c.json<FindGameResponse>({ type: "error", error: data.error });
     }
 
+    server.logger.debug("/api/find_game_v2 success", {
+        debug,
+        ip,
+        userId: user.id,
+        region: body.region,
+        gameModeIdx: body.gameModeIdx,
+        world: body.world,
+        gameId: data.gameId,
+        hostCount: data.hosts.length,
+    });
     return c.json<FindGameResponse>({
         type: "success",
         res: {

@@ -3,6 +3,7 @@ import {
     getDefaultWorldTerrainBulletModifier,
     type WorldTerrainBulletModifier,
 } from "../../../shared/types/worldTerrain.ts";
+import type { WorldPosition } from "../../../shared/types/world.ts";
 import type { Loadout } from "../../../shared/utils/loadout.ts";
 import { math } from "../../../shared/utils/math.ts";
 import type { Vec2 } from "../../../shared/utils/v2.ts";
@@ -34,6 +35,9 @@ export interface JoinTokenData {
     findGameIp: string;
     loadout?: Loadout;
     quests?: string[];
+    worldPosition?: WorldPosition;
+    worldHealth?: number;
+    worldBoost?: number;
     groupData: {
         autoFill: boolean;
         playerCount: number;
@@ -382,6 +386,9 @@ export class Game {
                 findGameIp: token.ip,
                 loadout: token.loadout,
                 quests: token.quests,
+                worldPosition: token.worldPosition,
+                worldHealth: token.worldHealth,
+                worldBoost: token.worldBoost,
             });
         }
     }

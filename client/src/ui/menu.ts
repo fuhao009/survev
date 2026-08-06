@@ -36,60 +36,6 @@ function createToast(
     );
 }
 function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
-    const startMenuWrapper = $("#start-menu");
-    const helpButton = $("#btn-help");
-    const helpPanel = $("#start-help");
-    helpButton.attr("aria-expanded", "false");
-    helpButton.on("click", () => {
-        const isOpen = startMenuWrapper.hasClass("display-help");
-        startMenuWrapper.toggleClass("display-help", !isOpen);
-        helpButton.toggleClass("is-open", !isOpen).attr("aria-expanded", String(!isOpen));
-        helpPanel.stop(true, true)[isOpen ? "slideUp" : "slideDown"](180);
-
-        if (isOpen) {
-            startMenuWrapper.stop(true).animate({ scrollTop: 0 }, 220);
-        } else {
-            helpPanel.promise().done(() => {
-                startMenuWrapper.stop(true).animate(
-                    { scrollTop: startMenuWrapper[0].scrollHeight },
-                    320,
-                );
-            });
-        }
-        return false;
-    });
-    const teamMobileLink = $("#team-mobile-link");
-    const teamMobileLinkDesc = $("#team-mobile-link-desc");
-    const teamMobileLinkWarning = $("#team-mobile-link-warning");
-    const teamMobileLinkInput = $("#team-link-input");
-
-    // Team mobile link
-    $("#btn-join-team").on("click", () => {
-        $("#server-warning").css("display", "none");
-        teamMobileLinkInput.val("");
-        teamMobileLink.css("display", "block");
-        teamMobileLinkDesc.css("display", "block");
-        teamMobileLinkWarning.css("display", "none");
-        startMenuWrapper.css("display", "none");
-        $("#right-column").css("display", "none");
-        return false;
-    });
-    $("#btn-team-mobile-link-leave").on("click", () => {
-        teamMobileLink.css("display", "none");
-        teamMobileLinkInput.val("");
-        startMenuWrapper.css("display", "block");
-        $("#right-column").css("display", "block");
-        return false;
-    });
-
-    // Auto submit link or code on enter
-    $("#team-link-input").on("keypress", (e) => {
-        if (e.key === "Enter") {
-            $("#btn-team-mobile-link-join").trigger("click");
-            e.target.blur();
-        }
-    });
-
     // Blur name input on enter
     $("#player-name-input-solo").on("keypress", (e) => {
         if (e.key === "Enter") {

@@ -18,6 +18,7 @@ import { Editor } from "./debug/editor.ts";
 
 import { GameObjectDefs } from "../../shared/defs/register.ts";
 import { SpectateAction } from "../../shared/net/spectateMsg.ts";
+import type { WorldExtractionZone } from "../../shared/types/world.ts";
 import type { GameWsDisconnectReason } from "../../shared/types/api.ts";
 import { device } from "./device.ts";
 import { EmoteBarn } from "./emote.ts";
@@ -63,6 +64,7 @@ export class Game {
     initialized = false;
     teamMode: TeamMode = TeamMode.Solo;
     m_world = false;
+    m_worldExtractionZone: WorldExtractionZone | null = null;
 
     victoryMusic: SoundHandle | null = null;
     m_ws: WebSocket | null = null;
@@ -142,8 +144,33 @@ export class Game {
         }
     }
 
+    private debugTrace(event: string, payload?: unknown) {
+        if (!IS_DEV) return;
+        const context = {
+            world: this.m_world,
+            initialized: this.initialized,
+            connecting: this.connecting,
+            connected: this.connected,
+            playing: this.m_playing,
+            gameOver: this.m_gameOver,
+            spectating: this.m_spectating,
+        };
+        if (payload === undefined) {
+            console.debug(`[debug][game] ${event}`, context);
+        } else {
+            console.debug(`[debug][game] ${event}`, { ...context, payload });
+        }
+    }
+
     setWorldMode(world: boolean) {
         this.m_world = world;
+        this.debugTrace("world-mode:set", { world });
+    }
+
+    setWorldExtractionZone(zone: WorldExtractionZone | null) {
+        this.m_worldExtractionZone = zone ? { ...zone, center: { ...zone.center } } : null;
+        this.m_uiManager?.setWorldExtractionZone(this.m_worldExtractionZone);
+        this.debugTrace("world-extraction-zone:set", { zone: this.m_worldExtractionZone });
     }
 
     tryJoinGame(
@@ -152,7 +179,12 @@ export class Game {
         onConnectFail: () => void,
     ) {
         if (!this.connecting && !this.connected && !this.initialized) {
+            this.debugTrace("join:requested", {
+                url,
+                matchPrivLength: matchPriv.length,
+            });
             if (this.m_ws) {
+                this.debugTrace("join:closing-stale-websocket");
                 this.m_ws.onerror = function() {};
                 this.m_ws.onopen = function() {};
                 this.m_ws.onmessage = function() {};
@@ -166,6 +198,7 @@ export class Game {
                 this.m_ws = new WebSocket(url);
                 this.m_ws.binaryType = "arraybuffer";
                 this.m_ws.onerror = (_err) => {
+                    this.debugTrace("websocket:error", { url });
                     this.m_ws?.close();
                 };
                 this.m_ws.onopen = () => {
@@ -180,18 +213,32 @@ export class Game {
                     joinMessage.isMobile = device.mobile || window.mobile!;
                     joinMessage.bot = false;
                     joinMessage.loadout = this.m_config.get("loadout")!;
+                    this.debugTrace("websocket:open:send-join", {
+                        url,
+                        protocol: joinMessage.protocol,
+                        nameLength: name.length,
+                        useTouch: joinMessage.useTouch,
+                        isMobile: joinMessage.isMobile,
+                        loadout: joinMessage.loadout,
+                    });
                     this.m_sendMessage(net.MsgType.Join, joinMessage, 8192);
                 };
                 this.m_ws.onmessage = (e) => {
                     const msgStream = new net.MsgStream(e.data);
+                    let messageCount = 0;
                     while (true) {
                         const type = msgStream.deserializeMsgType();
                         if (type == net.MsgType.None) {
                             break;
                         }
+                        messageCount++;
                         this.m_onMsg(type, msgStream.getStream());
                         msgStream.stream.readAlignToNextByte();
                     }
+                    this.debugTrace("websocket:message-batch", {
+                        byteLength: msgStream.stream.buffer.byteLength,
+                        messageCount,
+                    });
                     this.debugHUD?.netInGraph.addEntry(
                         msgStream.stream.buffer.byteLength,
                     );
@@ -202,6 +249,15 @@ export class Game {
                     const connected = this.connected;
                     this.connecting = false;
                     this.connected = false;
+                    this.debugTrace("websocket:close", {
+                        code: e.code,
+                        reason: e.reason,
+                        wasClean: e.wasClean,
+                        connecting,
+                        connected,
+                        gameOver: this.m_gameOver,
+                        displayingStats,
+                    });
                     if (connecting) {
                         onConnectFail();
                     } else if (connected && !this.m_gameOver && !displayingStats) {
@@ -211,10 +267,15 @@ export class Game {
                 };
             } catch (err) {
                 console.error(err);
+                this.debugTrace("join:exception", {
+                    error: err instanceof Error ? err.message : String(err),
+                });
                 this.connecting = false;
                 this.connected = false;
                 onConnectFail();
             }
+        } else {
+            this.debugTrace("join:ignored-busy", { url });
         }
     }
 
@@ -250,6 +311,7 @@ export class Game {
             this.m_inputBinds,
             this.m_inputBindUi,
         );
+        this.m_uiManager.setWorldExtractionZone(this.m_worldExtractionZone);
         this.m_ui2Manager = new UiManager2(this.m_localization, this.m_inputBinds);
         this.m_emoteBarn = new EmoteBarn(
             this.m_audioManager,

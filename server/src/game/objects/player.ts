@@ -31,6 +31,7 @@ import { collider } from "../../../../shared/utils/collider.ts";
 import { math } from "../../../../shared/utils/math.ts";
 import { assert, util } from "../../../../shared/utils/util.ts";
 import { v2, type Vec2 } from "../../../../shared/utils/v2.ts";
+import { worldPositionToGameMap } from "../../../../shared/types/world.ts";
 import { Config } from "../../config.ts";
 import { validateUserName } from "../../utils/badWords.ts";
 import { IDAllocator } from "../../utils/IDAllocator.ts";
@@ -147,9 +148,17 @@ export class PlayerBarn {
             ? this.getSmallestTeam()
             : result?.team;
 
+        const worldSpawn = this.game.world ? joinData.worldPosition : undefined;
         let pos: Vec2;
         let layer: number;
-        if (this.game.map.perkMode && this.game.map.perkModeTwinsBunker) {
+        if (worldSpawn) {
+            pos = worldPositionToGameMap(
+                worldSpawn.position,
+                this.game.map.width,
+                this.game.map.height,
+            );
+            layer = worldSpawn.layer;
+        } else if (this.game.map.perkMode && this.game.map.perkModeTwinsBunker) {
             // intermediate spawn point while the player chooses a role before theyre moved to their real spawn point
             const spawnBuilding = this.game.map.perkModeTwinsBunker;
             pos = spawnBuilding.pos;
@@ -190,6 +199,13 @@ export class PlayerBarn {
             joinMsg.isMobile,
             joinData.quests,
         );
+
+        if (joinData.worldHealth !== undefined) {
+            player.health = joinData.worldHealth;
+        }
+        if (joinData.worldBoost !== undefined) {
+            player.boost = joinData.worldBoost;
+        }
 
         this.activatePlayer(player, group, team);
         player.setLoadout(
@@ -2471,6 +2487,33 @@ export class Player extends BaseGameObject {
                 // If the player lacks the perk, kill the player
                 finalDamage = this.health;
             }
+        }
+
+        if (Config.logging.debugLogs) {
+            this.game.logger.debug("Player.damage", {
+                userId: this.userId,
+                playerId: this.__id,
+                world: this.game.world,
+                damageType: params.damageType,
+                amount: params.amount,
+                finalDamage,
+                healthBefore: this.health,
+                healthAfter: Math.max(0, this.health - finalDamage),
+                gameSourceType: params.gameSourceType,
+                mapSourceType: params.mapSourceType,
+                weaponSourceType: params.weaponSourceType,
+                isExplosion: params.isExplosion ?? false,
+                sourceId: playerSource?.__id ?? null,
+                sourceUserId: playerSource?.userId ?? null,
+                position: { x: this.pos.x, y: this.pos.y, layer: this.layer },
+                gas: {
+                    mode: this.game.gas.mode,
+                    stage: this.game.gas.stage,
+                    damage: this.game.gas.damage,
+                    doDamage: this.game.gas.doDamage,
+                    inside: this.game.gas.isInGas(this.pos),
+                },
+            });
         }
 
         this.damageTaken += finalDamage;

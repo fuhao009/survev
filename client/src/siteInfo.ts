@@ -1,6 +1,5 @@
 import $ from "jquery";
-import { type MapDefKey, MapDefs } from "../../shared/defs/mapDefs.ts";
-import { GameConfig } from "../../shared/gameConfig.ts";
+import { MapDefs } from "../../shared/defs/mapDefs.ts";
 import type { SiteInfoRes } from "../../shared/types/api.ts";
 import { api } from "./api.ts";
 import type { ConfigManager } from "./config.ts";
@@ -50,64 +49,17 @@ export class SiteInfo {
             });
     }
 
-    getGameModeStyles() {
-        const availableModes = [];
-        const modes = this.info.modes || [];
-        for (let i = 0; i < modes.length; i++) {
-            const mode = modes[i];
-            const mapDef = (MapDefs[mode.mapName as MapDefKey] || MapDefs.main)
-                .desc;
-            const buttonText = mapDef.buttonText
-                ? mapDef.buttonText
-                : GameConfig.TeamModeToString[mode.teamMode];
-            availableModes.push({
-                icon: mapDef.icon,
-                buttonCss: mapDef.buttonCss,
-                buttonText,
-                enabled: mode.enabled,
-            });
-        }
-        return availableModes;
+    getGameModeStyles(): Array<{
+        icon?: string;
+        buttonCss: string;
+        buttonText: string;
+        enabled: boolean;
+    }> {
+        return [];
     }
 
     updatePageFromInfo() {
         if (this.loaded) {
-            const getGameModeStyles = this.getGameModeStyles();
-            for (let i = 0; i < getGameModeStyles.length; i++) {
-                const style = getGameModeStyles[i];
-                const selector = `index-play-${style.buttonText}`;
-                const btn = $(`#btn-start-mode-${i}`);
-                btn.data("l10n", selector);
-                btn.html(this.localization.translate(selector));
-                if (style.icon || style.buttonCss) {
-                    if (i == 0) {
-                        btn.addClass("btn-custom-mode-no-indent");
-                    } else {
-                        btn.addClass("btn-custom-mode-main");
-                    }
-                    btn.addClass(style.buttonCss);
-                    btn.css({
-                        "background-image": `url(${style.icon})`,
-                    });
-                }
-                const l = $(`#btn-team-queue-mode-${i}`);
-                if (l.length) {
-                    const c = `index-${style.buttonText}`;
-                    l.data("l10n", c);
-                    l.html(this.localization.translate(c));
-                    if (style.icon) {
-                        l.addClass("btn-custom-mode-select");
-                        l.css({
-                            "background-image": `url(${style.icon})`,
-                        });
-                    }
-                }
-
-                btn.toggle(style.enabled);
-            }
-            const supportsTeam = this.info.modes.some((s) => s.enabled && s.teamMode > 1);
-            $("#btn-join-team, #btn-create-team").toggle(supportsTeam);
-
             // Region pops
             const pops = this.info.pops;
             if (pops) {

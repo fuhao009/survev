@@ -103,7 +103,7 @@ const defaultConfig = {
     profile: null as { slug: string } | null,
     playerName: "",
     region: "na",
-    gameModeIdx: 2,
+    gameModeIdx: 0,
     teamAutoFill: true,
     language: "zh-cn" as Locale,
     prerollGamesPlayed: 0,
@@ -215,6 +215,12 @@ export class ConfigManager {
         if (this.config.version < 2) {
             this.config.language = "zh-cn";
             this.config.version = 2;
+            this.store();
+        }
+
+        // 普通模式已经关闭；旧浏览器配置如果还记着双人/小队，也强制回到大世界入口使用的承载位。
+        if (this.config.gameModeIdx !== 0) {
+            this.config.gameModeIdx = 0;
             this.store();
         }
 

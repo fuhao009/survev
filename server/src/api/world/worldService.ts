@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { MapDefs } from "../../../../shared/defs/mapDefs.ts";
 import { GameObjectDefs } from "../../../../shared/defs/register.ts";
@@ -12,15 +12,16 @@ import {
 } from "../../../../shared/types/itemDurability.ts";
 import { parseItemInstance } from "../../../../shared/types/itemInstance.ts";
 import type { ItemInstance } from "../../../../shared/types/itemInstance.ts";
+import { getWorldExtractionQuote, getWorldExtractionZone } from "../../../../shared/types/world.ts";
 import type {
     WorldCarriedItems,
     WorldCarriedItemsSnapshot,
+    WorldExtractionZone,
     WorldLife,
     WorldSafeZone,
     WorldSettlementState,
     WorldShard,
 } from "../../../../shared/types/world.ts";
-import { WORLD_EXTRACTION_ZONE } from "../../../../shared/types/world.ts";
 import type { WorldActionResponse, WorldSnapshot } from "../../../../shared/types/worldApi.ts";
 import { getWorldLightning } from "../../../../shared/types/worldLightning.ts";
 import { getWorldTerrain, getWorldTerrainMovementModifier } from "../../../../shared/types/worldTerrain.ts";
@@ -41,10 +42,26 @@ import {
 const WORLD_ID = "gun-world";
 const SHARD_ID = "gun-world-local-1";
 const WORLD_SEED = "gun-world-seed-1";
-const BASE_POSITION = { position: { ...WORLD_EXTRACTION_ZONE.center }, layer: 0 } as const;
 const INITIAL_GEAR = ["ak47", "m9"] as const;
 const INITIAL_EQUIPMENT = ["backpack01", "helmet01", "chest01"] as const;
 const LOCKS = new Map<string, Promise<void>>();
+const RECENT_EXTRACTION_WINDOW_MS = 15 * 60 * 1000;
+
+const WORLD_ITEM_BASE_POINTS: Readonly<Record<string, number>> = {
+    ak47: 42,
+    m9: 14,
+    fists: 0,
+    backpack01: 8,
+    helmet01: 10,
+    chest01: 12,
+    outfitBase: 2,
+    crosshair_default: 1,
+};
+
+interface CompetitiveWorldMetrics {
+    onlinePlayers: number;
+    recentExtractions: number;
+}
 
 function withForUpdate<T>(query: T): T {
     if (Config.database.driver === "postgres") {
@@ -63,11 +80,43 @@ const safeZone: WorldSafeZone = {
     outsideDamagePerSecond: 2,
 };
 
-function isWithinExtractionZone(position: { x: number; y: number }) {
+const BASE_POSITION = { position: { ...safeZone.current.center }, layer: 0 } as const;
+
+function worldItemBasePoints(item: Pick<typeof worldItemInstancesTable.$inferSelect, "type" | "durability" | "durabilityMax">) {
+    const direct = WORLD_ITEM_BASE_POINTS[item.type];
+    if (direct !== undefined) return direct;
+
+    const def = GameObjectDefs.typeToDefSafe(item.type);
+    if (!def) return 4;
+    switch (def.type) {
+        case "gun":
+            return 34;
+        case "melee":
+            return 16;
+        case "helmet":
+        case "chest":
+            return 14;
+        case "backpack":
+            return 10;
+        case "outfit":
+            return 5;
+        case "scope":
+            return 6;
+        default:
+            return item.durabilityMax > 0 ? 4 : 1;
+    }
+}
+
+function durabilityRatio(item: Pick<typeof worldItemInstancesTable.$inferSelect, "durability" | "durabilityMax">) {
+    if (item.durabilityMax <= 0) return 1;
+    return Math.max(0, Math.min(1, item.durability / item.durabilityMax));
+}
+
+function isWithinExtractionZone(position: { x: number; y: number }, zone: WorldExtractionZone) {
     return Math.hypot(
-        position.x - WORLD_EXTRACTION_ZONE.center.x,
-        position.y - WORLD_EXTRACTION_ZONE.center.y,
-    ) <= WORLD_EXTRACTION_ZONE.radius;
+        position.x - zone.center.x,
+        position.y - zone.center.y,
+    ) <= zone.radius;
 }
 
 function toWorldShard(row: typeof worldShardsTable.$inferSelect, now = Date.now()): WorldShard {
@@ -121,13 +170,14 @@ function toWorldLife(row: typeof worldLivesTable.$inferSelect): WorldLife {
         startedAt: row.startedAt,
     };
     if (row.status === "extracted") {
+        const carriedItems = row.carriedItems as Extract<WorldCarriedItems, { state: "secured_on_extraction" }>;
         return {
             ...base,
             status: "extracted",
             extractedAt: row.extractedAt?.getTime() ?? row.updatedAt.getTime(),
-            extractionId: "base-alpha",
+            extractionId: carriedItems.extractionId,
             settlementId: "pending",
-            carriedItems: row.carriedItems as Extract<WorldCarriedItems, { state: "secured_on_extraction" }>,
+            carriedItems,
         };
     }
     if (row.status === "dead") {
@@ -184,6 +234,15 @@ function itemSnapshot(
 }
 
 export class WorldService {
+    private trace(event: string, payload?: unknown) {
+        if (!Config.logging.debugLogs) return;
+        if (payload === undefined) {
+            console.debug("[debug][world]", event);
+        } else {
+            console.debug("[debug][world]", event, payload);
+        }
+    }
+
     private async withLock<T>(userId: string, operation: () => Promise<T>): Promise<T> {
         const previous = LOCKS.get(userId) ?? Promise.resolve();
         let release!: () => void;
@@ -267,9 +326,61 @@ export class WorldService {
         return Number(result[0]?.balance ?? 0);
     }
 
+    private async competitiveMetrics(shardId: string, now = Date.now()): Promise<CompetitiveWorldMetrics> {
+        const online = await db.select({ count: sql<number>`count(*)` }).from(worldLivesTable).where(
+            and(eq(worldLivesTable.shardId, shardId), eq(worldLivesTable.status, "alive")),
+        );
+        const recent = await db.select({ count: sql<number>`count(*)` }).from(worldSettlementsTable).where(
+            and(
+                eq(worldSettlementsTable.shardId, shardId),
+                gte(worldSettlementsTable.createdAt, new Date(now - RECENT_EXTRACTION_WINDOW_MS)),
+            ),
+        );
+        return {
+            onlinePlayers: Number(online[0]?.count ?? 0),
+            recentExtractions: Number(recent[0]?.count ?? 0),
+        };
+    }
+
+    private buildExtractionQuote(
+        life: typeof worldLivesTable.$inferSelect,
+        carriedItems: Array<typeof worldItemInstancesTable.$inferSelect>,
+        worldShard: WorldShard,
+        extractionZone: WorldExtractionZone,
+        metrics: CompetitiveWorldMetrics,
+        now = Date.now(),
+    ) {
+        const quotedItems = carriedItems.filter((item) =>
+            item.lifeId === life.lifeId && (item.state === "carried" || item.state === "equipped")
+        );
+        const baseItemPoints = quotedItems.reduce((total, item) => {
+            return total + worldItemBasePoints(item) * durabilityRatio(item);
+        }, 0);
+        const durabilityAverage = quotedItems.length
+            ? quotedItems.reduce((total, item) => total + durabilityRatio(item), 0) / quotedItems.length
+            : 1;
+        const terrainMovement = getWorldTerrainMovementModifier(extractionZone.center, worldShard.terrain);
+        return getWorldExtractionQuote({
+            extractionZoneId: extractionZone.zoneId,
+            extractionRevision: extractionZone.revision,
+            updatedAt: now,
+            baseItemPoints,
+            durabilityRatio: durabilityAverage,
+            lifeRevision: life.revision,
+            elapsedMs: Math.max(0, now - life.startedAt),
+            onlinePlayers: Math.max(1, metrics.onlinePlayers),
+            recentExtractions: metrics.recentExtractions,
+            weatherIntensity: worldShard.weather.intensity,
+            terrainSpeedMultiplier: terrainMovement.speedMultiplier,
+            lightningEventCount: worldShard.lightning.events.length,
+        });
+    }
+
     private async snapshot(userId: string, shardRow?: typeof worldShardsTable.$inferSelect): Promise<WorldSnapshot> {
         const shard = shardRow ?? await this.ensureShard();
-        const worldShard = toWorldShard(shard);
+        const now = Date.now();
+        const worldShard = toWorldShard(shard, now);
+        const extractionZone = getWorldExtractionZone(shard.seed, shard.createdAt.getTime(), now);
         const lifeRow = await db.query.worldLivesTable.findFirst({
             where: and(
                 eq(worldLivesTable.playerId, userId),
@@ -293,17 +404,19 @@ export class WorldService {
                 ownerId: item.userId,
             })
         );
-        const online = await db.select({ count: sql<number>`count(*)` }).from(worldLivesTable).where(
-            and(eq(worldLivesTable.shardId, shard.shardId), eq(worldLivesTable.status, "alive")),
-        );
+        const metrics = await this.competitiveMetrics(shard.shardId, now);
+        const extractionQuote = lifeRow.status === "alive"
+            ? this.buildExtractionQuote(lifeRow, inventoryRows, worldShard, extractionZone, metrics, now)
+            : null;
         return {
             shard: worldShard,
             life,
             inventory,
             walletBalance: await this.walletBalance(userId),
-            onlinePlayers: Number(online[0]?.count ?? 0),
-            extractionZone: WORLD_EXTRACTION_ZONE,
-            canExtract: lifeRow.status === "alive" && isWithinExtractionZone(lifeRow.position.position),
+            onlinePlayers: metrics.onlinePlayers,
+            extractionZone,
+            extractionQuote,
+            canExtract: lifeRow.status === "alive" && isWithinExtractionZone(lifeRow.position.position, extractionZone),
             terrain: worldShard.terrain,
             terrainMovement: "position" in life
                 ? getWorldTerrainMovementModifier(life.position.position, worldShard.terrain)
@@ -315,6 +428,7 @@ export class WorldService {
 
     async enter(userId: string, loadout: Loadout, newLife = false): Promise<WorldSnapshot> {
         return this.withLock(userId, async () => {
+            this.trace("enter:start", { userId, newLife });
             const shard = await this.ensureShard();
             const active = await db.query.worldLivesTable.findFirst({
                 where: and(
@@ -323,18 +437,41 @@ export class WorldService {
                     eq(worldLivesTable.status, "alive"),
                 ),
             });
-            if (active) return this.snapshot(userId, shard);
+            if (active) {
+                this.trace("enter:reuse-alive", {
+                    userId,
+                    lifeId: active.lifeId,
+                    revision: active.revision,
+                    health: active.health,
+                    position: active.position,
+                });
+                return this.snapshot(userId, shard);
+            }
 
             if (!newLife) {
                 const latest = await db.query.worldLivesTable.findFirst({
                     where: and(eq(worldLivesTable.playerId, userId), eq(worldLivesTable.shardId, SHARD_ID)),
                     orderBy: [desc(worldLivesTable.updatedAt)],
                 });
-                if (latest) return this.snapshot(userId, shard);
+                if (latest) {
+                    this.trace("enter:reuse-latest", {
+                        userId,
+                        lifeId: latest.lifeId,
+                        status: latest.status,
+                        revision: latest.revision,
+                    });
+                    return this.snapshot(userId, shard);
+                }
             }
 
             const items = await this.ensureStarterItems(userId, loadout);
             const lifeId = randomUUID();
+            this.trace("enter:create-life", {
+                userId,
+                lifeId,
+                starterItemCount: items.length,
+                loadout,
+            });
             const carried = {
                 state: "carried" as const,
                 snapshot: itemSnapshot(items, userId, 1),
@@ -356,12 +493,24 @@ export class WorldService {
                         inArray(worldItemInstancesTable.state, ["stash", "equipped"]),
                     ),
                 );
-            return this.snapshot(userId, shard);
+            const snapshot = await this.snapshot(userId, shard);
+            this.trace("enter:created", {
+                userId,
+                lifeId,
+                snapshot: {
+                    status: snapshot.life.status,
+                    revision: snapshot.life.revision,
+                    canExtract: snapshot.canExtract,
+                    weather: snapshot.weather.type,
+                },
+            });
+            return snapshot;
         });
     }
 
     async action(userId: string, action: WorldAction): Promise<WorldActionResponse> {
         return this.withLock(userId, async () => {
+            this.trace("action:start", { userId, type: action.type, expectedRevision: action.expectedRevision });
             const shard = await this.ensureShard();
             const life = await db.query.worldLivesTable.findFirst({
                 where: and(
@@ -372,6 +521,12 @@ export class WorldService {
             });
             if (!life) throw new WorldActionError("no_alive_life");
             if (action.expectedRevision !== undefined && action.expectedRevision !== life.revision) {
+                this.trace("action:stale-revision", {
+                    userId,
+                    type: action.type,
+                    expectedRevision: action.expectedRevision,
+                    actualRevision: life.revision,
+                });
                 throw new WorldActionError("stale_revision");
             }
             let settlement: WorldSettlementState | undefined;
@@ -385,6 +540,11 @@ export class WorldService {
                     revision: life.revision + 1,
                     updatedAt: new Date(),
                 }).where(eq(worldLivesTable.lifeId, life.lifeId));
+                this.trace("action:move", {
+                    userId,
+                    from: life.position,
+                    to: nextPosition,
+                });
             } else if (action.type === "fire") {
                 const item = await db.query.worldItemInstancesTable.findFirst({
                     where: and(
@@ -408,23 +568,67 @@ export class WorldService {
                 await db.update(worldLivesTable).set({ revision: life.revision + 1, updatedAt: new Date() }).where(
                     eq(worldLivesTable.lifeId, life.lifeId),
                 );
+                this.trace("action:fire", {
+                    userId,
+                    instanceId: action.instanceId,
+                    itemType: item.type,
+                    durability: transition.durability,
+                    state: transition.state,
+                });
             } else if (action.type === "damage") {
                 await this.wearDamageEquipment(userId, life.lifeId);
                 const health = Math.max(0, life.health - action.amount);
                 if (health > 0) {
                     await db.update(worldLivesTable).set({ health, revision: life.revision + 1, updatedAt: new Date() })
                         .where(eq(worldLivesTable.lifeId, life.lifeId));
+                    this.trace("action:damage", {
+                        userId,
+                        amount: action.amount,
+                        cause: action.cause ?? "player",
+                        health,
+                    });
                 } else {
+                    this.trace("action:damage:dead", {
+                        userId,
+                        amount: action.amount,
+                        cause: action.cause ?? "player",
+                    });
                     await this.markDead(userId, life, action.cause ?? "player");
                 }
             } else if (action.type === "extract") {
                 const pos = life.position.position;
-                if (!isWithinExtractionZone(pos)) throw new WorldActionError("outside_extraction_zone");
-                settlement = await this.extract(userId, life, shard);
+                const now = Date.now();
+                const extractionZone = getWorldExtractionZone(shard.seed, shard.createdAt.getTime(), now);
+                if (!isWithinExtractionZone(pos, extractionZone)) throw new WorldActionError("outside_extraction_zone");
+                settlement = await this.extract(userId, life, shard, extractionZone, now);
+                this.trace("action:extract", {
+                    userId,
+                    lifeId: life.lifeId,
+                    settlementId: settlement.settlementId,
+                    extractionZone,
+                    rewards: settlement.status === "finalized" ? settlement.rewards : undefined,
+                });
             } else if (action.type === "repair") {
-                await this.repair(userId, life.lifeId, action.instanceId);
+                const repaired = await this.repair(userId, life.lifeId, action.instanceId);
+                this.trace("action:repair", {
+                    userId,
+                    instanceId: action.instanceId,
+                    repaired,
+                });
             }
-            return { success: true, snapshot: await this.snapshot(userId, shard), settlement };
+            const snapshot = await this.snapshot(userId, shard);
+            this.trace("action:done", {
+                userId,
+                type: action.type,
+                snapshot: {
+                    status: snapshot.life.status,
+                    revision: snapshot.life.revision,
+                    health: snapshot.life.status === "alive" ? snapshot.life.health : undefined,
+                    canExtract: snapshot.canExtract,
+                },
+                settlement: settlement?.status,
+            });
+            return { success: true, snapshot, settlement };
         });
     }
 
@@ -459,7 +663,15 @@ export class WorldService {
                 && life.position.position.y === position.position.y
                 && life.position.layer === position.layer
                 && life.health === nextHealth;
-            if (unchanged) return terrainMovement;
+            if (unchanged) {
+                this.trace("position:unchanged", {
+                    userId,
+                    position,
+                    health: nextHealth,
+                    terrainMovement,
+                });
+                return terrainMovement;
+            }
 
             await db.update(worldLivesTable).set({
                 position,
@@ -467,6 +679,13 @@ export class WorldService {
                 revision: life.revision + 1,
                 updatedAt: new Date(),
             }).where(eq(worldLivesTable.lifeId, life.lifeId));
+            this.trace("position:applied", {
+                userId,
+                previous: life.position,
+                next: position,
+                health: nextHealth,
+                terrainMovement,
+            });
             return terrainMovement;
         });
     }
@@ -476,6 +695,11 @@ export class WorldService {
         life: typeof worldLivesTable.$inferSelect,
         cause: "player" | "safe_zone" | "fire" | "hazard",
     ) {
+        this.trace("dead:start", {
+            userId,
+            lifeId: life.lifeId,
+            cause,
+        });
         const droppedAt = Date.now();
         const dropped = {
             state: "dropped_on_death" as const,
@@ -501,30 +725,46 @@ export class WorldService {
         await db.update(worldItemInstancesTable).set({ lifeId: null, updatedAt: new Date() }).where(
             and(eq(worldItemInstancesTable.userId, userId), eq(worldItemInstancesTable.lifeId, life.lifeId)),
         );
+        this.trace("dead:done", {
+            userId,
+            lifeId: life.lifeId,
+            cause,
+        });
     }
 
     private async extract(
         userId: string,
         life: typeof worldLivesTable.$inferSelect,
         shard: typeof worldShardsTable.$inferSelect,
+        extractionZone: WorldExtractionZone,
+        now = Date.now(),
     ): Promise<WorldSettlementState> {
-        const extractionId = randomUUID();
+        this.trace("extract:start", {
+            userId,
+            lifeId: life.lifeId,
+            revision: life.revision,
+            extractionZone,
+        });
+        const extractionId = `${extractionZone.zoneId}:${life.lifeId}`;
         const settlementId = randomUUID();
         const secured = {
             state: "secured_on_extraction" as const,
             snapshot: life.carriedItems.snapshot,
             extractionId,
-            securedAt: Date.now(),
+            securedAt: now,
         } satisfies WorldCarriedItems;
-        const rewardPoints = Math.max(25, life.carriedItems.snapshot.weapons.length * 15 + life.revision);
+        const items = await db.select().from(worldItemInstancesTable).where(
+            and(
+                eq(worldItemInstancesTable.userId, userId),
+                eq(worldItemInstancesTable.lifeId, life.lifeId),
+            ),
+        );
+        const worldShard = toWorldShard(shard, now);
+        const metrics = await this.competitiveMetrics(shard.shardId, now);
+        const quote = this.buildExtractionQuote(life, items, worldShard, extractionZone, metrics, now);
+        const rewardPoints = quote.totalPoints;
         let securedInventory: ItemInstance[] = [];
         await db.transaction(async (tx) => {
-            const items = await tx.select().from(worldItemInstancesTable).where(
-                and(
-                    eq(worldItemInstancesTable.userId, userId),
-                    eq(worldItemInstancesTable.lifeId, life.lifeId),
-                ),
-            );
             securedInventory = items.map((item) =>
                 parseItemInstance({
                     instanceId: item.instanceId,
@@ -561,7 +801,7 @@ export class WorldService {
                 and(eq(worldItemInstancesTable.userId, userId), eq(worldItemInstancesTable.lifeId, life.lifeId)),
             );
         });
-        return {
+        const settlement: WorldSettlementState = {
             kind: "world_settlement",
             authority: "server",
             settlementId,
@@ -572,12 +812,21 @@ export class WorldService {
             sourceWorldRevision: shard.worldRevision,
             sourceLifeRevision: life.revision,
             status: "finalized",
-            finalizedAt: Date.now(),
+            finalizedAt: now,
             receiptId: settlementId,
             securedItems: secured,
             securedInventory,
-            rewards: [{ rewardType: "points", quantity: rewardPoints }],
+            rewards: [{ rewardType: "points", quantity: rewardPoints, source: "dynamic_extraction_quote", quote }],
         };
+        this.trace("extract:done", {
+            userId,
+            lifeId: life.lifeId,
+            settlementId,
+            rewardPoints,
+            quote,
+            securedInventoryCount: securedInventory.length,
+        });
+        return settlement;
     }
 
     private async repair(userId: string, lifeId: string, instanceId: string) {
@@ -627,6 +876,14 @@ export class WorldService {
             await tx.update(worldLivesTable).set({ revision: life.revision + 1, updatedAt: new Date() }).where(
                 eq(worldLivesTable.lifeId, lifeId),
             );
+            this.trace("repair:done", {
+                userId,
+                lifeId,
+                instanceId,
+                cost,
+                durability: transition.durability,
+                state: transition.state,
+            });
             return true;
         });
     }
@@ -648,6 +905,14 @@ export class WorldService {
                 state: transition.state,
                 updatedAt: new Date(),
             }).where(eq(worldItemInstancesTable.instanceId, item.instanceId));
+            this.trace("wear:damage", {
+                userId,
+                lifeId,
+                instanceId: item.instanceId,
+                itemType: item.type,
+                durability: transition.durability,
+                state: transition.state,
+            });
         }
     }
 
@@ -696,6 +961,14 @@ export class WorldService {
             await db.update(worldLivesTable).set({ revision: life.revision + 1, updatedAt: new Date() }).where(
                 eq(worldLivesTable.lifeId, life.lifeId),
             );
+            this.trace("wear:weapon", {
+                userId,
+                lifeId: life.lifeId,
+                weaponType,
+                instanceId: item.instanceId,
+                durability: transition.durability,
+                state: transition.state,
+            });
             return true;
         });
     }

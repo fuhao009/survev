@@ -2,7 +2,16 @@ import { z } from "zod";
 import type { MapDefKey } from "../../../shared/defs/mapDefs.ts";
 import { TeamMode } from "../../../shared/gameConfig.ts";
 import { type FindGamePrivateError, loadoutSchema } from "../../../shared/types/api.ts";
+import type { WorldPosition } from "../../../shared/types/world.ts";
 import type { MatchDataTable } from "../api/db/schema.ts";
+
+const zWorldPosition = z.object({
+    position: z.object({
+        x: z.number(),
+        y: z.number(),
+    }),
+    layer: z.number().int(),
+}) satisfies z.ZodType<WorldPosition>;
 
 export const zUpdateRegionBody = z.object({
     regionId: z.string(),
@@ -47,6 +56,9 @@ export const zFindGamePrivateBody = z.object({
             ip: z.string(),
             loadout: loadoutSchema.optional(),
             quests: z.array(z.string()).optional(),
+            worldPosition: zWorldPosition.optional(),
+            worldHealth: z.number().finite().min(0).max(100).optional(),
+            worldBoost: z.number().finite().min(0).max(100).optional(),
         }),
     ),
 });

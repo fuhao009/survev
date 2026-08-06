@@ -77,7 +77,26 @@ const finalizedSettlement = {
         securedAt: 2,
     },
     securedInventory: [item("ak47", "stash", 742), item("helmet01", "stash", 1000)],
-    rewards: [{ rewardType: "points", quantity: 35 }],
+    rewards: [{
+        rewardType: "points",
+        quantity: 35,
+        quote: {
+            kind: "world_extraction_quote" as const,
+            quoteId: "quote-1",
+            extractionZoneId: "extraction-1",
+            revision: 4,
+            updatedAt: 2,
+            baseItemPoints: 30,
+            survivalPoints: 5,
+            durabilityMultiplier: 1,
+            competitionMultiplier: 1.2,
+            scarcityMultiplier: 0.98,
+            riskMultiplier: 1.05,
+            totalPoints: 35,
+            onlinePlayers: 12,
+            recentExtractions: 3,
+        },
+    }],
 } satisfies Extract<WorldSettlementState, { status: "finalized" }>;
 
 describe("world settlement presentation", () => {
@@ -89,6 +108,7 @@ describe("world settlement presentation", () => {
         expect(result.outcome).toBe("extracted");
         expect(result.title).toBe("撤离成功");
         expect(result.rewardPoints).toBe(35);
+        expect(result.extractionQuote?.totalPoints).toBe(35);
         expect(result.walletBefore).toBe(46);
         expect(result.walletAfter).toBe(81);
         expect(result.carriedCount).toBe(5);

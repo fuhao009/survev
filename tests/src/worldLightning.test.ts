@@ -6,7 +6,25 @@ import {
     WORLD_LIGHTNING_DURATION_MS,
     type WorldLightning,
 } from "../../shared/types/worldLightning.ts";
-import { getWorldTerrainLightningModifier } from "../../shared/types/worldTerrain.ts";
+import { getWorldTerrainLightningModifier, type WorldTerrainPatch, type WorldTerrainPatchType } from "../../shared/types/worldTerrain.ts";
+
+function terrainPatch(
+    id: string,
+    type: WorldTerrainPatchType,
+    bounds: WorldTerrainPatch["bounds"],
+    revision = 1,
+): WorldTerrainPatch {
+    return {
+        kind: "world_terrain_patch",
+        id,
+        type,
+        bounds,
+        intensity: 1,
+        revision,
+        updatedAt: 1_700_000_000_000,
+        expiresAt: 1_700_000_300_000,
+    };
+}
 
 describe("authoritative world lightning schedule", () => {
     const seed = "gun-world-lightning-seed";
@@ -82,11 +100,14 @@ describe("authoritative world lightning schedule", () => {
         const playerPosition = { x: 260, y: 100 };
         const terrain = {
             revision: 3,
-            patches: [{
-                id: "flooded-a",
-                type: "flooded" as const,
-                bounds: { min: { x: 200, y: 50 }, max: { x: 300, y: 150 } },
-            }],
+            patches: [
+                terrainPatch(
+                    "flooded-a",
+                    "flooded",
+                    { min: { x: 200, y: 50 }, max: { x: 300, y: 150 } },
+                    3,
+                ),
+            ],
         };
 
         expect(getWorldLightningImpact(event, playerPosition)).toBeNull();
@@ -107,16 +128,8 @@ describe("authoritative world lightning schedule", () => {
         const terrain = {
             revision: 8,
             patches: [
-                {
-                    id: "mud",
-                    type: "mud" as const,
-                    bounds: { min: { x: 0, y: 0 }, max: { x: 20, y: 20 } },
-                },
-                {
-                    id: "flooded",
-                    type: "flooded" as const,
-                    bounds: { min: { x: 10, y: 10 }, max: { x: 30, y: 30 } },
-                },
+                terrainPatch("mud", "mud", { min: { x: 0, y: 0 }, max: { x: 20, y: 20 } }, 8),
+                terrainPatch("flooded", "flooded", { min: { x: 10, y: 10 }, max: { x: 30, y: 30 } }, 8),
             ],
         };
         const position = { x: 15, y: 15 };

@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import type { Context } from "hono";
 import { isIP } from "node:net";
 import { db } from "../api/db/index.ts";
@@ -14,6 +14,15 @@ export function getHonoIp(c: Context, proxyHeader?: string): string | undefined 
     if (!ip || isIP(ip) == 0) return undefined;
     if (ip.includes("::ffff:")) return ip.split("::ffff:")[1];
     return ip;
+}
+
+export function getDebugRequestContext(c: Context) {
+    return {
+        debugSession: c.req.header("x-survev-debug-session") || undefined,
+        debugFlow: c.req.header("x-survev-debug-flow") || undefined,
+        method: c.req.method,
+        path: c.req.path,
+    };
 }
 
 export async function verifyTurnsStile(token: string, ip: string): Promise<boolean> {
@@ -39,7 +48,7 @@ export async function verifyTurnsStile(token: string, ip: string): Promise<boole
 }
 
 export async function getFindGamePlayerData(
-    players: Pick<FindGamePrivateBody["playerData"][number], "token" | "userId" | "ip">[],
+    players: FindGamePrivateBody["playerData"],
 ): Promise<FindGamePrivateBody["playerData"]> {
     const userIds = [
         ...new Set(players.map((p) => p.userId).filter((id) => id !== null)),
@@ -54,26 +63,50 @@ export async function getFindGamePlayerData(
     > = {};
 
     if (userIds.length) {
-        const query = await db
-            .select({
+        const [users, quests] = await Promise.all([
+            db.select({
                 userId: usersTable.id,
                 loadout: usersTable.loadout,
-                quests: sql<
-                    string[]
-                >`array_agg(${userQuestTable.questType}) filter (where ${userQuestTable.questType} is not null)`,
             })
-            .from(usersTable)
-            .leftJoin(userQuestTable, and(eq(userQuestTable.userId, usersTable.id)))
-            .where(inArray(usersTable.id, userIds))
-            .groupBy(usersTable.id);
+                .from(usersTable)
+                .where(inArray(usersTable.id, userIds)),
+            db.select({
+                userId: userQuestTable.userId,
+                questType: userQuestTable.questType,
+            })
+                .from(userQuestTable)
+                .where(inArray(userQuestTable.userId, userIds))
+                .orderBy(userQuestTable.userId, userQuestTable.idx),
+        ]);
 
-        accountData = Object.fromEntries(query.map((r) => [r.userId, r]));
+        const questData = new Map<string, string[]>();
+        for (const quest of quests) {
+            const questList = questData.get(quest.userId);
+            if (questList) {
+                questList.push(quest.questType);
+            } else {
+                questData.set(quest.userId, [quest.questType]);
+            }
+        }
+
+        accountData = Object.fromEntries(
+            users.map((user) => [
+                user.userId,
+                {
+                    loadout: user.loadout,
+                    quests: questData.get(user.userId) ?? [],
+                },
+            ]),
+        );
     }
 
-    return players.map(({ token, userId, ip }) => ({
+    return players.map(({ token, userId, ip, worldPosition, worldHealth, worldBoost }) => ({
         token,
         userId,
         ip,
+        worldPosition,
+        worldHealth,
+        worldBoost,
         loadout: userId ? accountData[userId]?.loadout : undefined,
         quests: userId ? (accountData[userId]?.quests ?? []) : [],
     }));

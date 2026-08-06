@@ -24,7 +24,6 @@ import { helpers } from "./helpers.ts";
 import { InputHandler } from "./input.ts";
 import { InputBinds, InputBindUi } from "./inputBinds.ts";
 import { PingTest } from "./pingTest.ts";
-import { proxy } from "./proxy.ts";
 import { ResourceManager } from "./resources.ts";
 import { SDK } from "./sdk/sdk.ts";
 import { SiteInfo } from "./siteInfo.ts";
@@ -52,13 +51,18 @@ const WORLD_WEATHER_LABELS: Record<WorldWeatherType, string> = {
     fog: "浓雾",
     thunderstorm: "雷暴",
 };
+const WORLD_TERRAIN_LABELS: Record<string, string> = {
+    mud: "泥地",
+    flooded: "积水地",
+    rockslide: "落石区",
+    scorched: "焦土区",
+};
+const WORLD_HUD_COLLAPSED_KEY = "survev-world-hud-collapsed";
+const WORLD_GAME_MODE_IDX = 0;
 
 export class Application {
     nameInput = $("#player-name-input-solo");
     serverSelect = $("#server-select-main");
-    playMode0Btn = $("#btn-start-mode-0");
-    playMode1Btn = $("#btn-start-mode-1");
-    playMode2Btn = $("#btn-start-mode-2");
     worldPlayBtn = $("#btn-start-world");
     muteBtns = $(".btn-sound-toggle");
     aimLineBtn = $("#btn-game-aim-line");
@@ -110,6 +114,7 @@ export class Application {
     worldPlayPending = false;
     worldSessionActive = false;
     worldSnapshot: WorldSnapshot | null = null;
+    worldHudCollapsed = false;
     worldDeathPending = false;
     worldPollTimer: number | null = null;
     worldResultView: WorldResultViewModel | null = null;
@@ -119,6 +124,106 @@ export class Application {
     wasPlayingVideo = false;
     checkedPingTest = false;
     hasFocus = true;
+
+    private getDebugContext() {
+        return {
+            debugSession: this.sessionId,
+            account: {
+                loggedIn: this.account?.loggedIn ?? false,
+                slug: this.account?.profile.slug || undefined,
+                username: this.account?.profile.username || undefined,
+            },
+            app: {
+                active: this.active,
+                worldSessionActive: this.worldSessionActive,
+                worldDeathPending: this.worldDeathPending,
+                worldPlayPending: this.worldPlayPending,
+                quickPlayPendingModeIdx: this.quickPlayPendingModeIdx,
+                hash: window.location.hash || undefined,
+            },
+        };
+    }
+
+    private debugJsonHeaders(flow: string, contentType = "application/json"): Record<string, string> {
+        return {
+            "Content-Type": contentType,
+            "x-survev-debug-session": this.sessionId,
+            "x-survev-debug-flow": flow,
+        };
+    }
+
+    private debugTrace(event: string, payload?: unknown) {
+        if (!IS_DEV) return;
+        const debugContext = this.getDebugContext();
+        if (payload === undefined) {
+            console.debug(`[debug][app][${this.sessionId}] ${event}`, debugContext);
+        } else {
+            console.debug(`[debug][app][${this.sessionId}] ${event}`, {
+                ...debugContext,
+                payload,
+            });
+        }
+    }
+
+    private setWorldSnapshot(snapshot: WorldSnapshot | null) {
+        this.worldSnapshot = snapshot;
+        this.game?.setWorldExtractionZone(snapshot?.extractionZone ?? null);
+    }
+
+    private setWorldHudCollapsed(collapsed: boolean, persist = true) {
+        this.worldHudCollapsed = collapsed;
+        $("#world-hud").toggleClass("world-hud-collapsed", collapsed);
+        $("#world-hud-toggle")
+            .attr("aria-expanded", String(!collapsed))
+            .text(this.localization.translate(collapsed ? "world-hud-expand" : "world-hud-collapse"));
+        if (persist) {
+            try {
+                window.localStorage.setItem(WORLD_HUD_COLLAPSED_KEY, collapsed ? "1" : "0");
+            } catch (_err) {
+                // Local storage can be unavailable in private or embedded contexts.
+            }
+        }
+    }
+
+    private summarizeWorldSnapshot(snapshot: WorldSnapshot | null) {
+        if (!snapshot) return null;
+        const { life, shard, canExtract } = snapshot;
+        return {
+            canExtract,
+            shardId: shard.shardId,
+            worldRevision: shard.worldRevision,
+            extractionZone: snapshot.extractionZone,
+            extractionQuote: snapshot.extractionQuote,
+            life: life.status === "alive"
+                ? {
+                    status: life.status,
+                    lifeId: life.lifeId,
+                    revision: life.revision,
+                    position: life.position,
+                    health: life.health,
+                    boost: life.boost,
+                }
+                : {
+                    status: life.status,
+                    lifeId: life.lifeId,
+                    revision: life.revision,
+                },
+            weather: shard.weather,
+            safeZone: shard.safeZone.current,
+        };
+    }
+
+    private summarizeFindGameBody(matchArgs: FindGameBody) {
+        return {
+            region: matchArgs.region,
+            zones: matchArgs.zones,
+            gameModeIdx: matchArgs.gameModeIdx,
+            world: matchArgs.world,
+            worldPosition: matchArgs.worldPosition,
+            worldHealth: matchArgs.worldHealth,
+            worldBoost: matchArgs.worldBoost,
+        };
+    }
 
     updateLogoBasedOnLanguage(lang: string) {
         const header = $("#start-row-header");
@@ -188,27 +293,6 @@ export class Application {
 
             this.nameInput.attr("maxLength", net.Constants.PlayerNameMaxLen);
 
-            this.playMode0Btn.on("click", () => {
-                this.runWhenLoggedIn(() => {
-                    SDK.requestMidGameAd(() => {
-                        this.tryQuickStartGame(0);
-                    });
-                });
-            });
-            this.playMode1Btn.on("click", () => {
-                this.runWhenLoggedIn(() => {
-                    SDK.requestMidGameAd(() => {
-                        this.tryQuickStartGame(1);
-                    });
-                });
-            });
-            this.playMode2Btn.on("click", () => {
-                this.runWhenLoggedIn(() => {
-                    SDK.requestMidGameAd(() => {
-                        this.tryQuickStartGame(2);
-                    });
-                });
-            });
             this.worldPlayBtn.on("click", () => {
                 this.runWhenLoggedIn(() => {
                     void this.startWorld();
@@ -223,6 +307,16 @@ export class Application {
             $("#world-result-user-center").on("click", () => {
                 this.returnToUserCenter();
             });
+            $("#world-hud-toggle").on("click", () => {
+                this.setWorldHudCollapsed(!this.worldHudCollapsed);
+                this.refreshWorldHud();
+            });
+            try {
+                this.worldHudCollapsed = window.localStorage.getItem(WORLD_HUD_COLLAPSED_KEY) === "1";
+            } catch (_err) {
+                this.worldHudCollapsed = false;
+            }
+            this.setWorldHudCollapsed(this.worldHudCollapsed, false);
 
             this.serverSelect.on("change", () => {
                 const t = this.serverSelect.find(":selected").val();
@@ -284,31 +378,6 @@ export class Application {
                     this.updateLogoBasedOnLanguage(r);
                 }
             });
-            $("#btn-create-team").on("click", () => {
-                this.tryJoinTeam(true);
-            });
-            $("#btn-team-mobile-link-join").on("click", () => {
-                let t = $<HTMLInputElement>("#team-link-input").val()!.trim()!;
-                const r = t.indexOf("#");
-                if (r >= 0) {
-                    t = t.slice(r + 1);
-                }
-                if (t.length > 0) {
-                    $("#team-mobile-link").css("display", "none");
-                    this.tryJoinTeam(false, t);
-                } else {
-                    $("#team-mobile-link-desc").css("display", "none");
-                    $("#team-mobile-link-warning").css("display", "none").fadeIn(100);
-                }
-            });
-            $("#btn-team-leave").on("click", () => {
-                if (window.history) {
-                    window.history.replaceState("", "", "/");
-                }
-                this.game?.free();
-                this.teamMenu.leave();
-            });
-
             $("#pass-wrapper").show();
             this.setDOMFromConfig();
             this.setAppActive(true);
@@ -409,8 +478,6 @@ export class Application {
             this.onResize();
             if (isUserCenterHash(window.location.hash)) {
                 this.profileUi.openUserCenterFromHash();
-            } else {
-                this.tryJoinTeam(false);
             }
             Menu.setupModals(this.inputBinds, this.inputBindUi);
             this.onConfigModified();
@@ -495,9 +562,14 @@ export class Application {
     }
 
     onTeamMenuJoinGame(data: FindGameMatchData) {
-        this.waitOnAccount(() => {
-            this.joinGame(data, false);
+        void data;
+        this.debugTrace("match:team-mode-blocked", {
+            reason: "world_only",
         });
+        this.errorMessage = this.localization.translate("index-mode-disabled");
+        this.quickPlayPendingModeIdx = -1;
+        this.worldPlayPending = false;
+        this.refreshUi();
     }
 
     onTeamMenuLeave(errTxt?: string) {
@@ -607,19 +679,10 @@ export class Application {
         });
         this.serverWarning.html(this.errorMessage);
 
-        const updateButton = (ele: JQuery<HTMLElement>, gameModeIdx: number) => {
-            ele.html(
-                this.quickPlayPendingModeIdx === gameModeIdx
-                    ? "<div class=\"ui-spinner\"></div>"
-                    : this.localization.translate(ele.data("l10n")),
-            );
-        };
-
-        updateButton(this.playMode0Btn, 0);
-        updateButton(this.playMode1Btn, 1);
-        updateButton(this.playMode2Btn, 2);
         this.worldPlayBtn.html(
-            this.worldPlayPending ? "<div class=\"ui-spinner\"></div>" : "进入大世界",
+            this.worldPlayPending
+                ? "<div class=\"ui-spinner\"></div>"
+                : this.localization.translate("home-start-world"),
         );
     }
 
@@ -627,6 +690,10 @@ export class Application {
         if (!this.ensureLoggedIn() || this.worldPlayPending || this.quickPlayPendingModeIdx !== -1) {
             return;
         }
+        this.debugTrace("world:start:request", {
+            snapshot: this.summarizeWorldSnapshot(this.worldSnapshot),
+            active: this.active,
+        });
         this.worldResultView = null;
         this.refreshWorldResult();
         this.worldPlayPending = true;
@@ -635,20 +702,26 @@ export class Application {
         try {
             const response = await fetch(api.resolveUrl("/api/world/enter"), {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: this.debugJsonHeaders("world-enter-new-life"),
                 body: JSON.stringify({ newLife: true }),
-                credentials: proxy.anyLoginSupported() ? "include" : "omit",
+                credentials: "include",
                 signal: helpers.abortSignal(10 * 1000),
             });
             if (!response.ok) throw new Error(`world_enter_${response.status}`);
             const data = await response.json() as WorldEnterResponse;
-            this.worldSnapshot = data.snapshot;
+            this.debugTrace("world:start:response", {
+                snapshot: this.summarizeWorldSnapshot(data.snapshot),
+            });
+            this.setWorldSnapshot(data.snapshot);
             this.worldDeathPending = false;
             this.worldSessionActive = true;
             this.startWorldPolling();
             this.refreshWorldHud();
-            this.tryQuickStartGame(0, true);
-        } catch (_err) {
+            this.tryQuickStartGame(WORLD_GAME_MODE_IDX, true);
+        } catch (err) {
+            this.debugTrace("world:start:error", {
+                error: err instanceof Error ? err.message : String(err),
+            });
             this.worldPlayPending = false;
             this.errorMessage = "大世界暂时无法进入";
             this.refreshUi();
@@ -657,19 +730,26 @@ export class Application {
 
     startWorldPolling() {
         if (this.worldPollTimer !== null) window.clearInterval(this.worldPollTimer);
+        this.debugTrace("world:poll:start");
         this.worldPollTimer = window.setInterval(() => {
             if (!this.worldSessionActive) return;
             void fetch(api.resolveUrl("/api/world/enter"), {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: this.debugJsonHeaders("world-enter-poll"),
                 body: "{}",
-                credentials: proxy.anyLoginSupported() ? "include" : "omit",
+                credentials: "include",
             }).then(async (response) => {
                 if (!response.ok) return;
                 const data = await response.json() as WorldEnterResponse;
-                this.worldSnapshot = data.snapshot;
+                this.debugTrace("world:poll:response", {
+                    snapshot: this.summarizeWorldSnapshot(data.snapshot),
+                });
+                this.setWorldSnapshot(data.snapshot);
                 this.refreshWorldHud();
                 if (data.snapshot.life.status === "dead" && !this.worldResultView) {
+                    this.debugTrace("world:poll:dead", {
+                        snapshot: this.summarizeWorldSnapshot(data.snapshot),
+                    });
                     this.game?.free();
                     this.stopWorldPolling();
                     this.worldResultView = buildDeadWorldResult(data.snapshot);
@@ -689,7 +769,7 @@ export class Application {
 
     stopWorldSession() {
         this.worldSessionActive = false;
-        this.worldSnapshot = null;
+        this.setWorldSnapshot(null);
         this.worldDeathPending = false;
         this.stopWorldPolling();
         $("#world-hud").hide();
@@ -721,6 +801,17 @@ export class Application {
             ),
         );
         $("#world-result-reward").text(result.rewardPoints > 0 ? `+${result.rewardPoints}` : "0");
+        const quote = result.extractionQuote;
+        $("#world-result-reward-detail").text(
+            quote
+                ? this.localization.translate("world-extraction-quote", {
+                    points: quote.totalPoints,
+                    competition: quote.competitionMultiplier.toFixed(2),
+                    scarcity: quote.scarcityMultiplier.toFixed(2),
+                    risk: quote.riskMultiplier.toFixed(2),
+                })
+                : "",
+        );
         $("#world-result-wallet-before").text(result.walletBefore.toLocaleString());
         $("#world-result-wallet-after").text(result.walletAfter.toLocaleString());
         $("#world-result-items-title").text(
@@ -782,6 +873,36 @@ export class Application {
                 ? this.localization.translate("world-life", { health: life.health })
                 : this.localization.translate("world-life-ended"),
         );
+        const extractionZone = snapshot.extractionZone;
+        const extractionSecondsLeft = Math.max(0, Math.ceil((extractionZone.activeUntil - Date.now()) / 1000));
+        const extractionPosition = life.status === "alive"
+            ? life.position.position
+            : extractionZone.center;
+        const extractionDistance = Math.max(
+            0,
+            Math.round(Math.hypot(
+                extractionPosition.x - extractionZone.center.x,
+                extractionPosition.y - extractionZone.center.y,
+            ) - extractionZone.radius),
+        );
+        $("#world-hud-extraction-zone").text(
+            this.localization.translate("world-extraction-zone", {
+                label: extractionZone.label,
+                x: Math.round(extractionZone.center.x),
+                y: Math.round(extractionZone.center.y),
+                seconds: extractionSecondsLeft,
+            }),
+        );
+        $("#world-hud-extraction-quote").text(
+            snapshot.extractionQuote
+                ? this.localization.translate("world-extraction-quote", {
+                    points: snapshot.extractionQuote.totalPoints,
+                    competition: snapshot.extractionQuote.competitionMultiplier.toFixed(2),
+                    scarcity: snapshot.extractionQuote.scarcityMultiplier.toFixed(2),
+                    risk: snapshot.extractionQuote.riskMultiplier.toFixed(2),
+                })
+                : this.localization.translate("world-extraction-quote-unavailable"),
+        );
         const weather = snapshot.weather;
         const weatherLabel = WORLD_WEATHER_LABELS[weather.type];
         const nextWeatherLabel = WORLD_WEATHER_LABELS[weather.nextType || weather.type];
@@ -807,6 +928,15 @@ export class Application {
                 })
                 : this.localization.translate("world-weather-stable"),
         );
+        const terrain = snapshot.terrainMovement;
+        $("#world-hud-terrain").text(
+            terrain?.matchedPatches.length
+                ? this.localization.translate("world-terrain-current", {
+                    terrain: terrain.matchedPatches.map((patch) => WORLD_TERRAIN_LABELS[patch.type] || patch.type).join("、"),
+                    speed: Math.round(terrain.speedMultiplier * 100),
+                })
+                : this.localization.translate("world-terrain-normal"),
+        );
         const gear = snapshot.inventory
             .filter((item) => item.state === "carried" || item.state === "equipped")
             .filter((item) => item.durabilityMax > 0)
@@ -814,6 +944,15 @@ export class Application {
             .join(" · ");
         $("#world-hud-gear").text(gear || this.localization.translate("world-gear-empty"));
         const canExtract = !dead && life.status === "alive" && snapshot.canExtract;
+        $("#world-hud-collapsed-summary").text(
+            dead
+                ? this.localization.translate("world-life-ended")
+                : this.localization.translate("world-hud-collapsed-summary", {
+                    health: life.status === "alive" ? life.health : 0,
+                    distance: extractionDistance,
+                    points: snapshot.extractionQuote?.totalPoints ?? 0,
+                }),
+        );
         $("#world-extract")
             .toggle(!dead)
             .prop("disabled", !canExtract)
@@ -826,6 +965,9 @@ export class Application {
                 ? this.localization.translate("world-message-extracted")
                 : this.localization.translate("world-message-extract-unavailable"),
         );
+        if (this.game) {
+            this.game.setWorldExtractionZone(snapshot.extractionZone);
+        }
     }
 
     returnToWorldHome() {
@@ -856,6 +998,9 @@ export class Application {
 
     onWorldPlayerDeath() {
         if (!this.worldSessionActive) return;
+        this.debugTrace("world:player:death", {
+            snapshot: this.summarizeWorldSnapshot(this.worldSnapshot),
+        });
         this.worldDeathPending = true;
         this.refreshWorldHud();
     }
@@ -867,15 +1012,25 @@ export class Application {
             message.text(this.localization.translate("world-message-extract-unavailable"));
             return;
         }
+        this.debugTrace("world:extract:request", {
+            snapshot: this.summarizeWorldSnapshot(this.worldSnapshot),
+        });
         message.text(this.localization.translate("world-settlement-settling"));
         try {
             const response = await fetch(api.resolveUrl("/api/world/action"), {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: this.debugJsonHeaders("world-action-extract"),
                 body: JSON.stringify({ type: "extract", expectedRevision: this.worldSnapshot?.life.revision }),
-                credentials: proxy.anyLoginSupported() ? "include" : "omit",
+                credentials: "include",
             });
             const data = await response.json() as WorldActionResponse | { success: false; error?: string };
+            this.debugTrace("world:extract:response", {
+                ok: response.ok,
+                success: data.success,
+                error: data.success === false ? data.error : undefined,
+                settlement: data.success && data.settlement ? data.settlement.status : undefined,
+                snapshot: data.success ? this.summarizeWorldSnapshot(data.snapshot) : undefined,
+            });
             if (!response.ok || !data.success) {
                 message.text(
                     data.success === false
@@ -942,32 +1097,18 @@ export class Application {
         });
     }
 
-    tryJoinTeam(create: boolean, url?: string) {
-        let roomUrl = url || window.location.hash.slice(1);
-        const sdkRoom = SDK.getRoomInviteParam();
-        if (sdkRoom) {
-            roomUrl = sdkRoom;
-            create = false;
-        }
-
-        if (!create && roomUrl == "") {
+    tryQuickStartGame(gameModeIdx = WORLD_GAME_MODE_IDX, world = true) {
+        if (!world) {
+            this.debugTrace("match:ordinary-mode-blocked", {
+                gameModeIdx,
+            });
+            this.errorMessage = this.localization.translate("index-mode-disabled");
+            this.quickPlayPendingModeIdx = -1;
+            this.worldPlayPending = false;
+            this.refreshUi();
             return;
         }
-
-        this.runWhenLoggedIn(() => {
-            if (this.active && this.quickPlayPendingModeIdx === -1) {
-                // The main menu and squad menus have separate
-                // DOM elements for input, such as player name and
-                // selected region. We will stash the menu values
-                // into the config so the team menu can read them.
-                this.setConfigFromDOM();
-                this.teamMenu.connect(create, roomUrl);
-                this.refreshUi();
-            }
-        });
-    }
-
-    tryQuickStartGame(gameModeIdx: number, world = false) {
+        gameModeIdx = WORLD_GAME_MODE_IDX;
         if (!this.ensureLoggedIn()) {
             return;
         }
@@ -1005,6 +1146,7 @@ export class Application {
             if (paramZone !== undefined && paramZone.length > 0) {
                 zones = [paramZone];
             }
+            const worldLife = this.worldSnapshot?.life;
 
             const matchArgs: FindGameBody = {
                 version,
@@ -1014,6 +1156,13 @@ export class Application {
                 autoFill: true,
                 gameModeIdx,
                 world,
+                ...(world && worldLife?.status === "alive"
+                    ? {
+                        worldPosition: worldLife.position,
+                        worldHealth: worldLife.health,
+                        worldBoost: worldLife.boost,
+                    }
+                    : {}),
             };
 
             const tryQuickStartGameImpl = () => {
@@ -1057,6 +1206,12 @@ export class Application {
                 cbs.error("full");
                 return;
             }
+            this.debugTrace("match:findGame:request", {
+                iter,
+                maxAttempts,
+                tokenPreview: token.slice(0, 8),
+                args: this.summarizeFindGameBody(matchArgs),
+            });
             const retry = () => {
                 setTimeout(() => {
                     helpers.verifyTurnstile(
@@ -1072,12 +1227,16 @@ export class Application {
             fetch(api.resolveUrl("/api/find_game_v2"), {
                 method: "POST",
                 body: JSON.stringify(matchArgs),
-                headers: {
-                    "Content-Type": "application/json; charset=utf-8",
-                },
-                credentials: proxy.anyLoginSupported() ? "include" : "omit",
+                headers: this.debugJsonHeaders("find-game-v2", "application/json; charset=utf-8"),
+                credentials: "include",
                 signal: helpers.abortSignal(10 * 1000),
             }).then(res => res.json()).then((data: FindGameResponse) => {
+                this.debugTrace("match:findGame:response", {
+                    type: data.type,
+                    error: data.type === "error" ? data.error : undefined,
+                    gameId: data.type === "success" ? data.res.gameId : undefined,
+                    hosts: data.type === "success" ? data.res.hosts : undefined,
+                });
                 if (data.type === "error") {
                     cbs.error(data.error);
                 } else if (data.type === "banned") {
@@ -1105,18 +1264,36 @@ export class Application {
             }, 250);
             return;
         }
+        this.debugTrace("match:joinGame:start", {
+            world,
+            gameId: matchData.gameId,
+            urls: matchData.urls,
+        });
         const urls = [...matchData.urls];
-
         const joinGameImpl = (urls: string[], matchData: FindGameMatchData) => {
             const url = urls.shift();
             if (!url) {
+                this.debugTrace("match:joinGame:failed", {
+                    world,
+                    gameId: matchData.gameId,
+                });
                 this.onJoinGameError("join_game_failed");
                 return;
             }
-            const onFailure = function() {
+            const onFailure = () => {
+                this.debugTrace("match:joinGame:retry", {
+                    world,
+                    gameId: matchData.gameId,
+                    remainingHosts: urls.length,
+                });
                 joinGameImpl(urls, matchData);
             };
             this.game!.setWorldMode(world);
+            this.debugTrace("match:joinGame:attempt", {
+                world,
+                url,
+                remainingHosts: urls.length,
+            });
             this.game!.tryJoinGame(
                 url,
                 matchData.data,
@@ -1137,6 +1314,7 @@ export class Application {
             invalid_packet: this.localization.translate("index-invalid-packet"),
             invalid_protocol: this.localization.translate("index-invalid-protocol"),
             login_required: this.localization.translate("index-login-required"),
+            mode_disabled: this.localization.translate("index-mode-disabled"),
             ip_banned: this.localization.translate("index-ip-banned"),
             join_game_failed: this.localization.translate("index-failed-joining-game"),
             rate_limited: this.localization.translate("index-rate-limited"),
@@ -1282,11 +1460,6 @@ window.addEventListener("resize", () => {
 });
 window.addEventListener("orientationchange", () => {
     App.onResize();
-});
-window.addEventListener("hashchange", () => {
-    if (!isUserCenterHash(window.location.hash)) {
-        App.tryJoinTeam(false);
-    }
 });
 window.addEventListener("beforeunload", (e) => {
     if (App.game?.warnPageReload()) {

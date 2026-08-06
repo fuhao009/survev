@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { MapDefs } from "../../shared/defs/mapDefs.ts";
 import { describe, expect, test } from "vitest";
 
 const indexHtml = readFileSync(
@@ -15,6 +16,13 @@ const simplifiedChinese = JSON.parse(
         "utf8",
     ),
 ) as Record<string, string>;
+const clientMapTs = readFileSync(
+    fileURLToPath(new URL("../../client/src/map.ts", import.meta.url)),
+    "utf8",
+);
+const mapPlaceNames = [...new Set(Object.values(MapDefs).flatMap((map: any) =>
+    map?.mapGen?.places?.map((place: { name: string }) => place.name) ?? []
+))].sort();
 
 const startMenuHtml = indexHtml.slice(indexHtml.indexOf("<div id=\"start-menu-wrapper\">"));
 const startMenuKeys = [...startMenuHtml.matchAll(/data-l10n=['"]([^'"]+)['"]/g)]
@@ -46,12 +54,20 @@ const dynamicPageKeys = [
     "account-refresh",
     "account-no-world-items",
     "world-hud-title",
+    "world-hud-collapse",
+    "world-hud-expand",
+    "world-hud-collapsed-summary",
     "world-life",
     "world-life-ended",
+    "world-extraction-zone",
+    "world-extraction-quote",
+    "world-extraction-quote-unavailable",
     "world-weather",
     "world-weather-transition",
     "world-weather-hint",
     "world-weather-stable",
+    "world-terrain-current",
+    "world-terrain-normal",
     "world-gear-empty",
     "world-extract",
     "world-return-user-center",
@@ -81,6 +97,18 @@ const dynamicPageKeys = [
 ];
 
 describe("Simplified Chinese page coverage", () => {
+    test("home launch surface only exposes the open world entry", () => {
+        expect(indexHtml).toContain("id=\"btn-start-world\"");
+        expect(indexHtml).toContain("data-l10n=\"home-start-world\"");
+        expect(indexHtml).not.toContain("id=\"btn-start-mode-0\"");
+        expect(indexHtml).not.toContain("id=\"btn-start-mode-1\"");
+        expect(indexHtml).not.toContain("id=\"btn-start-mode-2\"");
+        expect(indexHtml).not.toContain("id=\"btns-quick-start\"");
+        expect(indexHtml).not.toContain("id=\"team-menu\"");
+        expect(indexHtml).not.toContain("id=\"btn-join-team\"");
+        expect(indexHtml).not.toContain("id=\"btn-create-team\"");
+    });
+
     test("all start-menu localization keys exist in zh-cn", () => {
         expect(startMenuKeys.filter(key => !(key in simplifiedChinese))).toEqual([]);
         expect(previouslyMissingStartKeys.filter(key => !(key in simplifiedChinese))).toEqual([]);
@@ -122,5 +150,17 @@ describe("Simplified Chinese page coverage", () => {
         expect(closeControls.every(control => control.includes("aria-label=\"关闭\""))).toBe(true);
         expect(startMenuHtml).toContain("id=\"user-center-refresh\" type=\"button\" data-l10n=\"account-refresh\"");
         expect(startMenuHtml).toContain("aria-label=\"账号概览\"");
+    });
+
+    test("map place names render through the Chinese map label adapter", () => {
+        expect(clientMapTs).toContain("translateMapPlaceName(place.name)");
+        expect(mapPlaceNames.filter((name) => {
+            const quoted = `"${name}"`;
+            return !clientMapTs.includes(`${quoted}:`) && !clientMapTs.includes(`${name}:`);
+        })).toEqual([]);
+        expect(clientMapTs).toContain("\"The Killpit\": \"杀戮坑\"");
+        expect(clientMapTs).toContain("Riverside: \"河岸镇\"");
+        expect(clientMapTs).toContain("\"Cordial Creek\": \"和风溪\"");
+        expect(clientMapTs).not.toContain("new PIXI.Text(place.name");
     });
 });

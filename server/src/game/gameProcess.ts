@@ -16,6 +16,7 @@ import {
 import type { WorldWeather } from "../../../shared/types/worldWeather.ts";
 import { Logger } from "../../../shared/utils/logger.ts";
 import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
+import { gameMapPositionToWorld } from "../../../shared/types/world.ts";
 import { Config } from "../config.ts";
 import { apiPrivateRouter } from "../utils/apiRouter.ts";
 import { logErrorToWebhook } from "../utils/logger.ts";
@@ -91,6 +92,10 @@ async function flushWorldPositions() {
     const updates = [...pendingWorldPositions.values()];
     pendingWorldPositions.clear();
     try {
+        procLogger.debug("world position flush:start", {
+            count: updates.length,
+            sample: updates[0] ?? null,
+        });
         const req = await apiPrivateRouter.world.position.$post({ json: { updates } });
         if (!req.ok) {
             procLogger.warn("Failed to persist world positions", await req.text());
@@ -98,6 +103,13 @@ async function flushWorldPositions() {
             const res = await req.json() as WorldPositionSyncResponse;
             cacheWorldMovementSpeedMultipliers(res.terrainMovement);
             cacheWorldRuntime(res);
+            procLogger.debug("world position flush:done", {
+                requested: updates.length,
+                applied: res.applied,
+                terrainMovement: res.terrainMovement,
+                weather: res.weather,
+                worldSeed: res.worldSeed,
+            });
         }
     } catch (err) {
         procLogger.error("Failed to persist world positions", err);
@@ -271,7 +283,8 @@ class ServerGame extends Game {
 
     override onWorldPlayerUpdate(userId: string | null, x: number, y: number, layer: number, health: number) {
         if (!this.world || !userId) return;
-        pendingWorldPositions.set(userId, { userId, x, y, layer, health });
+        const worldPos = gameMapPositionToWorld({ x, y }, this.map.width, this.map.height);
+        pendingWorldPositions.set(userId, { userId, x: worldPos.x, y: worldPos.y, layer, health });
         scheduleWorldPositionFlush();
     }
 

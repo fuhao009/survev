@@ -1,6 +1,15 @@
 import { z } from "zod";
 import type { MapDefKey } from "../defs/mapDefs.ts";
 import type { TeamMode } from "../gameConfig.ts";
+import type { WorldPosition } from "./world.ts";
+
+const zWorldPosition = z.object({
+    position: z.object({
+        x: z.number(),
+        y: z.number(),
+    }),
+    layer: z.number().int(),
+}) satisfies z.ZodType<WorldPosition>;
 
 export const zFindGameBody = z.object({
     region: z.string(),
@@ -10,6 +19,9 @@ export const zFindGameBody = z.object({
     autoFill: z.boolean(),
     gameModeIdx: z.number(),
     world: z.boolean().optional(),
+    worldPosition: zWorldPosition.optional(),
+    worldHealth: z.number().finite().min(0).max(100).optional(),
+    worldBoost: z.number().finite().min(0).max(100).optional(),
     turnstileToken: z.string().optional(),
 });
 
