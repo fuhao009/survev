@@ -383,6 +383,9 @@ export class AudioManager {
     }
 
     allLoaded() {
+        if (CreateJS.Sound.isDeferred()) {
+            return true;
+        }
         const keys = Object.keys(this.sounds);
         for (let i = 0; i < keys.length; i++) {
             const sound = this.sounds[keys[i]];

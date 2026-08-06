@@ -1022,5 +1022,149 @@ class WebAudioEngine {
     }
 }
 
+class LazyWebAudioEngine {
+    private engine: WebAudioEngine | null = null;
+    private _volume = 1.0;
+    private muted = false;
+    private pendingReverbLevels: { cathedral: number } | null = null;
+    private pendingSounds: Array<{
+        path: string;
+        name: string;
+        params: Parameters<WebAudioEngine["registerSound"]>[2];
+    }> = [];
+    private pendingReverbs: Array<{
+        path: string;
+        name: string;
+        params: ReverbDef;
+    }> = [];
+    private fileLoadHandler: {
+        eventHandler: (...args: any[]) => void;
+        that?: AudioManager;
+    } | null = null;
+
+    PLAY_INITED = "playInited";
+    PLAY_SUCCEEDED = "playSucceeded";
+    PLAY_INTERRUPTED = "playInterrupted";
+    PLAY_FINISHED = "playFinished";
+    PLAY_FAILED = "playFailed";
+
+    get volume() {
+        return this._volume;
+    }
+
+    set volume(value: number) {
+        this._volume = value;
+        if (this.engine) {
+            this.engine.volume = value;
+        }
+    }
+
+    isDeferred() {
+        return !this.engine;
+    }
+
+    private ensureEngine() {
+        if (this.engine) {
+            return this.engine;
+        }
+
+        const engine = new WebAudioEngine();
+        this.engine = engine;
+        engine.volume = this._volume;
+        engine.setMute(this.muted);
+        if (this.fileLoadHandler) {
+            engine.on(
+                "fileload",
+                this.fileLoadHandler.eventHandler,
+                this.fileLoadHandler.that,
+            );
+        }
+
+        for (let i = 0; i < this.pendingSounds.length; i++) {
+            const sound = this.pendingSounds[i];
+            engine.registerSound(sound.path, sound.name, sound.params);
+        }
+        this.pendingSounds = [];
+
+        for (let i = 0; i < this.pendingReverbs.length; i++) {
+            const reverb = this.pendingReverbs[i];
+            engine.registerReverb(reverb.path, reverb.name, reverb.params);
+        }
+        this.pendingReverbs = [];
+
+        if (this.pendingReverbLevels) {
+            engine.setReverbs(this.pendingReverbLevels);
+            this.pendingReverbLevels = null;
+        }
+
+        return engine;
+    }
+
+    registerSound(
+        path: string,
+        name: string,
+        params: Parameters<WebAudioEngine["registerSound"]>[2],
+    ) {
+        if (this.engine) {
+            this.engine.registerSound(path, name, params);
+            return;
+        }
+        this.pendingSounds.push({
+            path,
+            name,
+            params,
+        });
+    }
+
+    play(name: string, params: Partial<Params>) {
+        const handle = this.ensureEngine().play(name, params);
+        if (!handle || handle.playState != this.PLAY_SUCCEEDED) {
+            return null;
+        }
+        return handle;
+    }
+
+    registerReverb(path: string, name: string, params: ReverbDef) {
+        if (this.engine) {
+            this.engine.registerReverb(path, name, params);
+            return;
+        }
+        this.pendingReverbs.push({
+            path,
+            name,
+            params,
+        });
+    }
+
+    setReverbs(reverbLevels: { cathedral: number }) {
+        if (!this.engine) {
+            this.pendingReverbLevels = reverbLevels;
+            return;
+        }
+        this.engine.setReverbs(reverbLevels);
+    }
+
+    stop(retainAmbient = true) {
+        this.engine?.stop(retainAmbient);
+    }
+
+    update(dt: unknown) {
+        this.engine?.update(dt);
+    }
+
+    setMute(mute: boolean) {
+        this.muted = mute;
+        this.engine?.setMute(mute);
+    }
+
+    on(eventName: string, eventHandler: (...args: any[]) => void, that?: AudioManager) {
+        this.fileLoadHandler = {
+            eventHandler,
+            that,
+        };
+        this.engine?.on(eventName, eventHandler, that);
+    }
+}
+
 // Use soundjs's API
-export const CreateJS = { Sound: new WebAudioEngine() };
+export const CreateJS = { Sound: new LazyWebAudioEngine() };
