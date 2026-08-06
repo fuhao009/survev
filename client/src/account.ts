@@ -145,12 +145,12 @@ export class Account {
     setSessionCookies() {
         this.clearSessionCookies();
         document.cookie = this.config.get("sessionCookie")!;
-        document.cookie = `app-data=${Date.now()}`;
+        document.cookie = `app-data=${Date.now()};path=/`;
     }
 
     clearSessionCookies() {
         document.cookie = "app-sid=;expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-        document.cookie = "app-data=;expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+        document.cookie = "app-data=;expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/";
     }
 
     login() {

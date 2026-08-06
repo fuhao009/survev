@@ -237,7 +237,7 @@ app.post("/api/find_game_v2", validateParams(zFindGameBody), async (c) => {
         gameModeIdx: body.gameModeIdx,
         world: body.world,
         gameId: data.gameId,
-        hostCount: data.hosts.length,
+        urlCount: data.urls.length,
     });
     return c.json<FindGameResponse>({
         type: "success",

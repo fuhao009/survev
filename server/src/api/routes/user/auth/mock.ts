@@ -1,10 +1,9 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { setCookie } from "hono/cookie";
 import { Config } from "../../../../config.ts";
 import { db } from "../../../db/index.ts";
 import { usersTable } from "../../../db/schema.ts";
-import { createNewUser, generateId, setSessionTokenCookie } from "./authUtils.ts";
+import { createNewUser, generateId, setAppDataCookie, setSessionTokenCookie } from "./authUtils.ts";
 
 export const MockRouter = new Hono();
 
@@ -18,9 +17,7 @@ MockRouter.get("/", async (c) => {
         },
     });
 
-    setCookie(c, "app-data", "1", {
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-    });
+    setAppDataCookie(c);
 
     if (existingUser) {
         await setSessionTokenCookie(existingUser.id, c);

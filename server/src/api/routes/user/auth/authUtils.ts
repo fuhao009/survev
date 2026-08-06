@@ -16,6 +16,8 @@ if (URL.canParse(Config.oauthBasePath)) {
     oauthBaseURL = new URL(Config.oauthBasePath);
 }
 export const cookieDomain = oauthBaseURL?.hostname;
+const appDataCookieName = "app-data";
+const appDataCookieMaxAgeMs = 1000 * 60 * 60 * 24 * 30;
 
 const random = {
     read(bytes: Uint8Array<ArrayBuffer>) {
@@ -61,10 +63,25 @@ export async function setSessionTokenCookie(userId: string, c: Context) {
     return session;
 }
 
+export function setAppDataCookie(c: Context) {
+    setCookie(c, appDataCookieName, "1", {
+        expires: new Date(Date.now() + appDataCookieMaxAgeMs),
+        path: "/",
+        ...(cookieDomain ? { domain: cookieDomain } : {}),
+    });
+}
+
+export function clearAppDataCookie(c: Context) {
+    deleteCookie(c, appDataCookieName, {
+        path: "/",
+        ...(cookieDomain ? { domain: cookieDomain } : {}),
+    });
+}
+
 export async function logoutUser(c: Context, sessionId: string) {
     await invalidateSession(sessionId);
     deleteSessionTokenCookie(c);
-    deleteCookie(c, "app-data");
+    clearAppDataCookie(c);
 }
 
 export function deleteSessionTokenCookie(c: Context) {
@@ -88,10 +105,7 @@ export async function handleAuthUser(c: Context, provider: Provider, authId: str
         },
     });
 
-    setCookie(c, "app-data", "1", {
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-        domain: cookieDomain,
-    });
+    setAppDataCookie(c);
 
     if (existingUser) {
         await setSessionTokenCookie(existingUser.id, c);

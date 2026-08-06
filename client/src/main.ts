@@ -1235,7 +1235,7 @@ export class Application {
                     type: data.type,
                     error: data.type === "error" ? data.error : undefined,
                     gameId: data.type === "success" ? data.res.gameId : undefined,
-                    hosts: data.type === "success" ? data.res.hosts : undefined,
+                    urls: data.type === "success" ? data.res.urls : undefined,
                 });
                 if (data.type === "error") {
                     cbs.error(data.error);

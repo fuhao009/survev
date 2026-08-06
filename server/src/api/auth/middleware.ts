@@ -1,12 +1,16 @@
 import { zValidator } from "@hono/zod-validator";
 import type { Context, Next } from "hono";
-import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { getCookie, setCookie } from "hono/cookie";
 import type { z } from "zod";
 import { Config } from "../../config.ts";
 import { HTTPRateLimit } from "../../utils/rateLimit.ts";
 import { getHonoIp } from "../apiHelpers.ts";
 import { server } from "../apiServer.ts";
-import { cookieDomain, deleteSessionTokenCookie } from "../routes/user/auth/authUtils.ts";
+import {
+    clearAppDataCookie,
+    cookieDomain,
+    deleteSessionTokenCookie,
+} from "../routes/user/auth/authUtils.ts";
 import { validateSessionToken } from "./index.ts";
 
 export const authMiddleware = async (c: Context, next: Next) => {
@@ -35,7 +39,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
             });
         } else {
             deleteSessionTokenCookie(c);
-            deleteCookie(c, "app-data");
+            clearAppDataCookie(c);
         }
 
         c.set("user", user);

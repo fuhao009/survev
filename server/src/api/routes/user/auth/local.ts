@@ -1,12 +1,17 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { setCookie } from "hono/cookie";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import z from "zod";
 import { rateLimitMiddleware, validateParams } from "../../../auth/middleware.ts";
 import { db } from "../../../db/index.ts";
 import { usersTable } from "../../../db/schema.ts";
-import { createNewUser, generateId, sanitizeSlug, setSessionTokenCookie } from "./authUtils.ts";
+import {
+    createNewUser,
+    generateId,
+    sanitizeSlug,
+    setAppDataCookie,
+    setSessionTokenCookie,
+} from "./authUtils.ts";
 
 const credentialsSchema = z.object({
     mode: z.enum(["login", "register"]),
@@ -36,9 +41,7 @@ function verifyPassword(password: string, encodedHash: string) {
 }
 
 async function setAccountCookies(userId: string, c: Parameters<typeof setSessionTokenCookie>[1]) {
-    setCookie(c, "app-data", "1", {
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-    });
+    setAppDataCookie(c);
     await setSessionTokenCookie(userId, c);
 }
 
