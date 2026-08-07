@@ -47,6 +47,15 @@ const INITIAL_EQUIPMENT = ["backpack01", "helmet01", "chest01"] as const;
 const LOCKS = new Map<string, Promise<void>>();
 const RECENT_EXTRACTION_WINDOW_MS = 15 * 60 * 1000;
 
+const WORLD_DURABLE_GAME_OBJECT_TYPES = new Set([
+    "gun",
+    "melee",
+    "helmet",
+    "chest",
+    "backpack",
+    "outfit",
+]);
+
 const WORLD_ITEM_BASE_POINTS: Readonly<Record<string, number>> = {
     ak47: 42,
     m9: 14,
@@ -112,6 +121,26 @@ function worldItemBasePoints(
 function durabilityRatio(item: Pick<typeof worldItemInstancesTable.$inferSelect, "durability" | "durabilityMax">) {
     if (item.durabilityMax <= 0) return 1;
     return Math.max(0, Math.min(1, item.durability / item.durabilityMax));
+}
+
+function worldDurableItemTypes(snapshot: WorldCarriedItemsSnapshot): Set<string> {
+    const types = new Set<string>();
+    for (const weapon of snapshot.weapons) {
+        const def = GameObjectDefs.typeToDefSafe(weapon.itemType);
+        if (def && (def.type === "gun" || def.type === "melee")) types.add(weapon.itemType);
+    }
+    for (
+        const itemType of [
+            snapshot.equipment.outfit,
+            snapshot.equipment.backpack,
+            snapshot.equipment.helmet,
+            snapshot.equipment.chest,
+        ]
+    ) {
+        const def = GameObjectDefs.typeToDefSafe(itemType);
+        if (def && WORLD_DURABLE_GAME_OBJECT_TYPES.has(def.type)) types.add(itemType);
+    }
+    return types;
 }
 
 function isWithinExtractionZone(position: { x: number; y: number }, zone: WorldExtractionZone) {
@@ -692,6 +721,95 @@ export class WorldService {
         });
     }
 
+    async syncInventoryForPlayer(userId: string, snapshot: WorldCarriedItemsSnapshot) {
+        return this.withLock(userId, async () => {
+            if (snapshot.ownerId !== userId) return false;
+
+            return db.transaction(async (tx) => {
+                const life = (await tx.select().from(worldLivesTable).where(
+                    and(
+                        eq(worldLivesTable.playerId, userId),
+                        eq(worldLivesTable.shardId, SHARD_ID),
+                        eq(worldLivesTable.status, "alive"),
+                    ),
+                ))[0];
+                if (!life) return false;
+
+                const desiredTypes = worldDurableItemTypes(snapshot);
+                const currentItems = await tx.select().from(worldItemInstancesTable).where(
+                    and(
+                        eq(worldItemInstancesTable.userId, userId),
+                        eq(worldItemInstancesTable.lifeId, life.lifeId),
+                        inArray(worldItemInstancesTable.state, ["carried", "equipped"]),
+                    ),
+                );
+                const retainedIds = new Set<string>();
+
+                for (const type of desiredTypes) {
+                    const existing = currentItems.find((item) =>
+                        item.type === type && !retainedIds.has(item.instanceId)
+                    );
+                    if (existing) {
+                        retainedIds.add(existing.instanceId);
+                        continue;
+                    }
+
+                    await tx.insert(worldItemInstancesTable).values({
+                        instanceId: randomUUID(),
+                        userId,
+                        lifeId: life.lifeId,
+                        type,
+                        ...getInitialItemDurability(type),
+                        state: "carried",
+                    });
+                }
+
+                const droppedIds = currentItems
+                    .filter((item) => !retainedIds.has(item.instanceId) && !desiredTypes.has(item.type))
+                    .map((item) => item.instanceId);
+                if (droppedIds.length) {
+                    await tx.update(worldItemInstancesTable).set({
+                        state: "world",
+                        lifeId: null,
+                        updatedAt: new Date(),
+                    }).where(inArray(worldItemInstancesTable.instanceId, droppedIds));
+                }
+
+                const nextRevision = life.revision + 1;
+                const nextSnapshot: WorldCarriedItemsSnapshot = {
+                    ...snapshot,
+                    ownerId: userId,
+                    revision: nextRevision,
+                    stacks: snapshot.stacks.map((stack) => ({ ...stack })),
+                    weapons: snapshot.weapons.map((weapon) => ({ ...weapon })),
+                    equipment: {
+                        ...snapshot.equipment,
+                        perks: [...snapshot.equipment.perks],
+                    },
+                };
+                await tx.update(worldLivesTable).set({
+                    carriedItems: {
+                        state: "carried",
+                        snapshot: nextSnapshot,
+                        capturedAt: Date.now(),
+                    } satisfies WorldCarriedItems,
+                    revision: nextRevision,
+                    updatedAt: new Date(),
+                }).where(eq(worldLivesTable.lifeId, life.lifeId));
+                this.trace("inventory:applied", {
+                    userId,
+                    lifeId: life.lifeId,
+                    revision: nextRevision,
+                    createdTypes: [...desiredTypes].filter((type) => !currentItems.some((item) => item.type === type)),
+                    droppedTypes: currentItems.filter((item) => droppedIds.includes(item.instanceId)).map((item) =>
+                        item.type
+                    ),
+                });
+                return true;
+            });
+        });
+    }
+
     private async markDead(
         userId: string,
         life: typeof worldLivesTable.$inferSelect,
@@ -973,7 +1091,7 @@ export class WorldService {
                 ),
             });
             if (!life || !isWeaponWearItemType(weaponType)) return false;
-            const item = await db.query.worldItemInstancesTable.findFirst({
+            let item = await db.query.worldItemInstancesTable.findFirst({
                 where: and(
                     eq(worldItemInstancesTable.userId, userId),
                     eq(worldItemInstancesTable.lifeId, life.lifeId),
@@ -981,6 +1099,26 @@ export class WorldService {
                     inArray(worldItemInstancesTable.state, ["carried", "equipped"]),
                 ),
             });
+            if (!item) {
+                const initial = getInitialItemDurability(weaponType);
+                if (initial.durabilityMax <= 0) return false;
+                await db.insert(worldItemInstancesTable).values({
+                    instanceId: randomUUID(),
+                    userId,
+                    lifeId: life.lifeId,
+                    type: weaponType,
+                    ...initial,
+                    state: "carried",
+                });
+                item = await db.query.worldItemInstancesTable.findFirst({
+                    where: and(
+                        eq(worldItemInstancesTable.userId, userId),
+                        eq(worldItemInstancesTable.lifeId, life.lifeId),
+                        eq(worldItemInstancesTable.type, weaponType),
+                        inArray(worldItemInstancesTable.state, ["carried", "equipped"]),
+                    ),
+                });
+            }
             if (!item) return false;
             const transition = wearItem(item);
             if (!transition.changed) return false;

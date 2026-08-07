@@ -3,6 +3,7 @@ import { platform } from "node:os";
 import path from "node:path";
 import { DamageType } from "../../../shared/gameConfig.ts";
 import { gameMapPositionToWorld } from "../../../shared/types/world.ts";
+import type { WorldCarriedItemsSnapshot } from "../../../shared/types/world.ts";
 import type { WorldPositionSyncResponse, WorldPositionTerrainMovement } from "../../../shared/types/worldApi.ts";
 import {
     getWorldLightning,
@@ -219,6 +220,28 @@ async function markWorldFire(userId: string, weaponType: string) {
     }
 }
 
+async function syncWorldInventory(userId: string, snapshot: WorldCarriedItemsSnapshot) {
+    try {
+        const req = await apiPrivateRouter.world.inventory.$post({
+            json: {
+                userId,
+                snapshot: {
+                    ...snapshot,
+                    stacks: snapshot.stacks.map((stack) => ({ ...stack })),
+                    weapons: snapshot.weapons.map((weapon) => ({ ...weapon })),
+                    equipment: {
+                        ...snapshot.equipment,
+                        perks: [...snapshot.equipment.perks],
+                    },
+                },
+            },
+        });
+        if (!req.ok) procLogger.warn("Failed to persist world inventory", await req.text());
+    } catch (err) {
+        procLogger.error("Failed to persist world inventory", err);
+    }
+}
+
 async function markWorldDamage(userId: string) {
     try {
         const req = await apiPrivateRouter.world.damage.$post({
@@ -291,6 +314,11 @@ class ServerGame extends Game {
     override onWeaponFired(userId: string | null, weaponType: string) {
         if (!this.world || !userId) return;
         void markWorldFire(userId, weaponType);
+    }
+
+    override onWorldPlayerInventoryChanged(userId: string | null, snapshot: WorldCarriedItemsSnapshot) {
+        if (!this.world || !userId) return;
+        void syncWorldInventory(userId, snapshot);
     }
 
     override onWorldPlayerDamaged(userId: string | null) {

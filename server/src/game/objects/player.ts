@@ -95,6 +95,14 @@ const WorldWeaponSlotToGameSlot: Record<WorldWeaponSlot, number> = {
 };
 
 const WorldStackGameObjectTypes = new Set<GameObjectDef["type"]>(["ammo", "heal", "boost", "throwable"]);
+const WorldDurableGameObjectTypes = new Set<GameObjectDef["type"]>([
+    "gun",
+    "melee",
+    "helmet",
+    "chest",
+    "backpack",
+    "outfit",
+]);
 
 function positiveInt(value: number): number {
     return Math.max(0, Math.trunc(value));
@@ -1504,6 +1512,39 @@ export class Player extends BaseGameObject {
         this.weapsDirty = true;
         this.recalculateScale();
         this.setDirty();
+    }
+
+    private getWorldCarriedItemsSnapshot(): WorldCarriedItemsSnapshot {
+        const weaponSlots: Array<[number, WorldWeaponSlot]> = [
+            [GameConfig.WeaponSlot.Primary, "primary"],
+            [GameConfig.WeaponSlot.Secondary, "secondary"],
+            [GameConfig.WeaponSlot.Melee, "melee"],
+        ];
+        const weapons = weaponSlots.flatMap(([slot, worldSlot]) => {
+            const weapon = this.weapons[slot];
+            const def = weapon ? GameObjectDefs.typeToDefSafe(weapon.type) : undefined;
+            if (!weapon?.type || !def || (def.type !== "gun" && def.type !== "melee")) return [];
+            return [{
+                itemType: weapon.type,
+                slot: worldSlot,
+                loadedAmmo: def.type === "gun" ? Math.max(0, Math.trunc(weapon.ammo)) : 0,
+            }];
+        });
+
+        return {
+            kind: "carried_items_snapshot",
+            ownerId: this.userId!,
+            revision: 0,
+            stacks: [],
+            weapons,
+            equipment: {
+                outfit: this.outfit,
+                backpack: this.backpack,
+                helmet: this.helmet,
+                chest: this.chest,
+                perks: this.perks.map((perk) => perk.type),
+            },
+        };
     }
 
     update(dt: number): void {
@@ -4000,6 +4041,14 @@ export class Player extends BaseGameObject {
 
         obj.destroy();
         this.client.sendMsg(net.MsgType.Pickup, pickupMsg);
+        if (
+            this.game.world
+            && this.userId
+            && pickupMsg.type === net.PickupMsgType.Success
+            && WorldDurableGameObjectTypes.has(def.type)
+        ) {
+            this.game.onWorldPlayerInventoryChanged(this.userId, this.getWorldCarriedItemsSnapshot());
+        }
     }
 
     // in original game, only called on snowball or potato collision

@@ -13,7 +13,7 @@ const zWorldPosition = z.object({
     layer: z.number().int(),
 }) satisfies z.ZodType<WorldPosition>;
 
-const zWorldCarriedItemsSnapshot = z.object({
+export const zWorldCarriedItemsSnapshot = z.object({
     kind: z.literal("carried_items_snapshot"),
     ownerId: z.string().min(1),
     revision: z.number().int().nonnegative(),

@@ -9,6 +9,8 @@ import {
     WORLD_MAP_SIZE,
     worldPositionToGameMap,
 } from "../../shared/types/world.ts";
+import type { WorldCarriedItemsSnapshot } from "../../shared/types/world.ts";
+import { v2 } from "../../shared/utils/v2.ts";
 
 describe("open-world survival loop", () => {
     test("keeps big-world players out of battle-royale gas damage", () => {
@@ -76,6 +78,35 @@ describe("open-world survival loop", () => {
         expect(player.helmet).toBe("helmet01");
         expect(player.chest).toBe("chest01");
         expect(player.inventory["9mm"]).toBe(30);
+    });
+
+    test("emits the picked-up gun in the authoritative inventory snapshot", () => {
+        const game = new Game("world-pickup-test", {
+            mapName: "main",
+            teamMode: TeamMode.Solo,
+            world: true,
+        });
+        const player = game.playerBarn.addTestPlayer({ userId: "world-player" });
+        const snapshots: WorldCarriedItemsSnapshot[] = [];
+        game.onWorldPlayerInventoryChanged = (_userId, snapshot) => snapshots.push(snapshot);
+
+        game.lootBarn.addLoot("ak47", player.pos, player.layer, 1, {
+            noSideAmmo: true,
+            pushSpeed: 0,
+            dir: v2.create(1, 0),
+        });
+        const loot = game.lootBarn.loots.at(-1)!;
+        expect(loot).toBeDefined();
+
+        player.pickupLoot(loot);
+
+        expect(snapshots).toHaveLength(1);
+        expect(snapshots[0].ownerId).toBe("world-player");
+        expect(snapshots[0].weapons).toContainEqual({
+            itemType: "ak47",
+            slot: "primary",
+            loadedAmmo: 0,
+        });
     });
 
     test("derives a dynamic extraction point that refreshes by world cycle", () => {

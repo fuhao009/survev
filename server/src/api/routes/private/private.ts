@@ -10,7 +10,13 @@ import { zGiveItemParams, zRemoveItemParams } from "../../../../../shared/types/
 import type { WorldPositionSyncResponse } from "../../../../../shared/types/worldApi.ts";
 import { serverConfigPath } from "../../../config.ts";
 import { isBehindProxy } from "../../../utils/proxyCheck.ts";
-import { type SaveGameBody, zSetClientThemeBody, zSetGameModeBody, zUpdateRegionBody } from "../../../utils/types.ts";
+import {
+    type SaveGameBody,
+    zSetClientThemeBody,
+    zSetGameModeBody,
+    zUpdateRegionBody,
+    zWorldCarriedItemsSnapshot,
+} from "../../../utils/types.ts";
 import { server } from "../../apiServer.ts";
 import { databaseEnabledMiddleware, privateMiddleware, validateParams } from "../../auth/middleware.ts";
 import { getRedisClient } from "../../cache/index.ts";
@@ -254,6 +260,27 @@ export const PrivateRouter = new Hono<Context>()
             server.logger.debug("/private/world/fire request", { userId, weaponType });
             const applied = await worldService.wearWeaponForPlayer(userId, weaponType);
             server.logger.debug("/private/world/fire response", { userId, weaponType, applied });
+            return c.json({ success: true, applied }, 200);
+        },
+    )
+    .post(
+        "/world/inventory",
+        databaseEnabledMiddleware,
+        validateParams(
+            z.object({
+                userId: z.string().min(1),
+                snapshot: zWorldCarriedItemsSnapshot,
+            }),
+        ),
+        async (c) => {
+            const { userId, snapshot } = c.req.valid("json");
+            server.logger.debug("/private/world/inventory request", {
+                userId,
+                revision: snapshot.revision,
+                weaponTypes: snapshot.weapons.map((weapon) => weapon.itemType),
+            });
+            const applied = await worldService.syncInventoryForPlayer(userId, snapshot);
+            server.logger.debug("/private/world/inventory response", { userId, applied });
             return c.json({ success: true, applied }, 200);
         },
     )

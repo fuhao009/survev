@@ -418,6 +418,8 @@ export class Game {
 
     onWeaponFired(_userId: string | null, _weaponType: string) {}
 
+    onWorldPlayerInventoryChanged(_userId: string | null, _snapshot: WorldCarriedItemsSnapshot) {}
+
     onWorldPlayerDamaged(_userId: string | null) {}
 
     onWorldPlayerUpdate(
