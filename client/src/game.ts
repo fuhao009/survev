@@ -18,8 +18,10 @@ import { Editor } from "./debug/editor.ts";
 
 import { GameObjectDefs } from "../../shared/defs/register.ts";
 import { SpectateAction } from "../../shared/net/spectateMsg.ts";
-import type { WorldExtractionZone } from "../../shared/types/world.ts";
 import type { GameWsDisconnectReason } from "../../shared/types/api.ts";
+import type { ItemInstance } from "../../shared/types/itemInstance.ts";
+import type { WorldExtractionZone } from "../../shared/types/world.ts";
+import type { DurabilityDisplayMode } from "./config.ts";
 import { device } from "./device.ts";
 import { EmoteBarn } from "./emote.ts";
 import { errorLogManager } from "./errorLogs.ts";
@@ -65,6 +67,8 @@ export class Game {
     teamMode: TeamMode = TeamMode.Solo;
     m_world = false;
     m_worldExtractionZone: WorldExtractionZone | null = null;
+    m_worldInventory: ItemInstance[] = [];
+    m_durabilityDisplayMode: DurabilityDisplayMode = "value";
 
     victoryMusic: SoundHandle | null = null;
     m_ws: WebSocket | null = null;
@@ -171,6 +175,20 @@ export class Game {
         this.m_worldExtractionZone = zone ? { ...zone, center: { ...zone.center } } : null;
         this.m_uiManager?.setWorldExtractionZone(this.m_worldExtractionZone);
         this.debugTrace("world-extraction-zone:set", { zone: this.m_worldExtractionZone });
+    }
+
+    setWorldInventory(inventory: readonly ItemInstance[] | null) {
+        this.m_worldInventory = inventory ? inventory.map((item) => ({ ...item })) : [];
+        this.m_ui2Manager?.setWorldInventory(this.m_worldInventory);
+        this.debugTrace("world-inventory:set", {
+            durableCount: this.m_worldInventory.filter(item => item.durabilityMax > 0).length,
+        });
+    }
+
+    setDurabilityDisplayMode(mode: DurabilityDisplayMode) {
+        this.m_durabilityDisplayMode = mode;
+        this.m_ui2Manager?.setDurabilityDisplayMode(mode);
+        this.debugTrace("durability-display:set", { mode });
     }
 
     tryJoinGame(
@@ -313,6 +331,8 @@ export class Game {
         );
         this.m_uiManager.setWorldExtractionZone(this.m_worldExtractionZone);
         this.m_ui2Manager = new UiManager2(this.m_localization, this.m_inputBinds);
+        this.m_ui2Manager.setWorldInventory(this.m_worldInventory);
+        this.m_ui2Manager.setDurabilityDisplayMode(this.m_durabilityDisplayMode);
         this.m_emoteBarn = new EmoteBarn(
             this.m_audioManager,
             this.m_uiManager,

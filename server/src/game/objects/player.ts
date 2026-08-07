@@ -26,12 +26,16 @@ import {
 } from "../../../../shared/gameConfig.ts";
 import * as net from "../../../../shared/net/net.ts";
 import { ObjectType } from "../../../../shared/net/objectSerializeFns.ts";
+import {
+    type WorldCarriedItemsSnapshot,
+    worldPositionToGameMap,
+    type WorldWeaponSlot,
+} from "../../../../shared/types/world.ts";
 import { type Circle, coldet } from "../../../../shared/utils/coldet.ts";
 import { collider } from "../../../../shared/utils/collider.ts";
 import { math } from "../../../../shared/utils/math.ts";
 import { assert, util } from "../../../../shared/utils/util.ts";
 import { v2, type Vec2 } from "../../../../shared/utils/v2.ts";
-import { worldPositionToGameMap } from "../../../../shared/types/world.ts";
 import { Config } from "../../config.ts";
 import { validateUserName } from "../../utils/badWords.ts";
 import { IDAllocator } from "../../utils/IDAllocator.ts";
@@ -81,6 +85,19 @@ const boostHeals: Array<{ maxBoost: number; heal: number }> = [];
             heal: GameConfig.player.boostHealAmounts[i],
         });
     }
+}
+
+const WorldWeaponSlotToGameSlot: Record<WorldWeaponSlot, number> = {
+    primary: GameConfig.WeaponSlot.Primary,
+    secondary: GameConfig.WeaponSlot.Secondary,
+    melee: GameConfig.WeaponSlot.Melee,
+    throwable: GameConfig.WeaponSlot.Throwable,
+};
+
+const WorldStackGameObjectTypes = new Set<GameObjectDef["type"]>(["ammo", "heal", "boost", "throwable"]);
+
+function positiveInt(value: number): number {
+    return Math.max(0, Math.trunc(value));
 }
 
 export class PlayerBarn {
@@ -212,6 +229,9 @@ export class PlayerBarn {
             joinData.loadout ? joinData.loadout : joinMsg.loadout,
             !joinData.loadout,
         );
+        if (this.game.world && joinData.worldItems) {
+            player.applyWorldItems(joinData.worldItems);
+        }
 
         return player;
     }
@@ -1434,6 +1454,58 @@ export class Player extends BaseGameObject {
         this.recalculateScale();
     }
 
+    applyWorldItems(snapshot: WorldCarriedItemsSnapshot) {
+        for (let slot = 0; slot < GameConfig.WeaponSlot.Count; slot++) {
+            const fallback = slot === GameConfig.WeaponSlot.Melee ? "fists" : "";
+            this.weaponManager.setWeapon(slot, fallback, 0);
+        }
+
+        for (const stack of snapshot.stacks) {
+            const def = GameObjectDefs.typeToDefSafe(stack.itemType);
+            if (!def || !WorldStackGameObjectTypes.has(def.type)) continue;
+            this.invManager.set(stack.itemType as InventoryItem, positiveInt(stack.quantity));
+        }
+
+        for (const weapon of snapshot.weapons) {
+            const slot = WorldWeaponSlotToGameSlot[weapon.slot];
+            const def = GameObjectDefs.typeToDefSafe(weapon.itemType);
+            const expectedType = GameConfig.WeaponType[slot];
+            if (!def || def.type !== expectedType) continue;
+
+            const loadedAmmo = def.type === "gun"
+                ? Math.min(positiveInt(weapon.loadedAmmo), this.weaponManager.getAmmoStats(def as GunDef).maxClip)
+                : 0;
+            this.weaponManager.setWeapon(slot, weapon.itemType, loadedAmmo);
+        }
+
+        const equipment = snapshot.equipment;
+        const outfit = GameObjectDefs.typeToDefSafe(equipment.outfit);
+        this.setOutfit(outfit?.type === "outfit" ? equipment.outfit : "outfitBase");
+
+        const backpack = GameObjectDefs.typeToDefSafe(equipment.backpack);
+        this.backpack = backpack?.type === "backpack" ? equipment.backpack : "backpack00";
+
+        const helmet = GameObjectDefs.typeToDefSafe(equipment.helmet);
+        this.helmet = helmet?.type === "helmet" ? equipment.helmet : "";
+
+        const chest = GameObjectDefs.typeToDefSafe(equipment.chest);
+        this.chest = chest?.type === "chest" ? equipment.chest : "";
+
+        for (const perk of this.perks.filter((perk) => !equipment.perks.includes(perk.type))) {
+            this.removePerk(perk.type);
+        }
+        for (const perk of equipment.perks) {
+            if (this.hasPerk(perk)) continue;
+            if (GameObjectDefs.typeToDefSafe(perk)?.type === "perk") this.addPerk(perk);
+        }
+
+        this.weaponManager.showNextThrowable();
+        this.inventoryDirty = true;
+        this.weapsDirty = true;
+        this.recalculateScale();
+        this.setDirty();
+    }
+
     update(dt: number): void {
         if (this.dead) {
             if (!this.sentDeathEmote) {
@@ -2517,6 +2589,9 @@ export class Player extends BaseGameObject {
         }
 
         this.damageTaken += finalDamage;
+        if (finalDamage > 0) {
+            this.game.onWorldPlayerDamaged(this.userId);
+        }
         if (playerSource && params.source !== this) {
             if (playerSource.groupId !== this.groupId) {
                 playerSource.damageDealt += finalDamage;

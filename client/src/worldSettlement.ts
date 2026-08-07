@@ -24,7 +24,7 @@ const ITEM_STATE_LABELS: Record<string, string> = {
 export const WORLD_RESULT_RETURN_HASH = "#user-center";
 
 export interface WorldResultItem {
-    kind: "equipment" | "stack";
+    kind: "durable" | "stack";
     type: string;
     label: string;
     quantity: number;
@@ -54,9 +54,22 @@ export function getWorldItemStateLabel(state: string | undefined): string {
     return state ? ITEM_STATE_LABELS[state] ?? state : "";
 }
 
-function equipmentRows(items: readonly ItemInstance[], stateOverride?: string): WorldResultItem[] {
+export function getWorldItemDurabilityRatio(
+    item: Pick<ItemInstance, "durability" | "durabilityMax">,
+): number {
+    if (item.durabilityMax <= 0) return 0;
+    return Math.max(0, Math.min(1, item.durability / item.durabilityMax));
+}
+
+export function formatWorldItemDurability(
+    item: Pick<ItemInstance, "durability" | "durabilityMax">,
+): string {
+    return `${item.durability}/${item.durabilityMax}`;
+}
+
+function durableItemRows(items: readonly ItemInstance[], stateOverride?: string): WorldResultItem[] {
     return items.map((item) => ({
-        kind: "equipment" as const,
+        kind: "durable" as const,
         type: item.type,
         label: getWorldItemLabel(item.type),
         quantity: item.quantity,
@@ -85,7 +98,7 @@ export function buildExtractedWorldResult(
     before: WorldSnapshot,
     after: WorldSnapshot,
 ): WorldResultViewModel {
-    const equipment = equipmentRows(settlement.securedInventory);
+    const equipment = durableItemRows(settlement.securedInventory);
     const stacks = stackRows(settlement.securedItems.snapshot);
     const items = [...equipment, ...stacks];
     const rewardPoints = settlement.rewards
@@ -111,7 +124,7 @@ export function buildExtractedWorldResult(
 export function buildDeadWorldResult(snapshot: WorldSnapshot): WorldResultViewModel {
     const dropped = snapshot.inventory.filter((item) => item.state === "world" || item.state === "destroyed");
     const items = [
-        ...equipmentRows(dropped),
+        ...durableItemRows(dropped),
         ...stackRows(snapshot.life.carriedItems.snapshot),
     ];
     return {

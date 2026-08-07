@@ -258,6 +258,22 @@ export const PrivateRouter = new Hono<Context>()
         },
     )
     .post(
+        "/world/damage",
+        databaseEnabledMiddleware,
+        validateParams(
+            z.object({
+                userId: z.string().min(1),
+            }),
+        ),
+        async (c) => {
+            const { userId } = c.req.valid("json");
+            server.logger.debug("/private/world/damage request", { userId });
+            const applied = await worldService.wearDamageForPlayer(userId);
+            server.logger.debug("/private/world/damage response", { userId, applied });
+            return c.json({ success: true, applied }, 200);
+        },
+    )
+    .post(
         "/world/position",
         databaseEnabledMiddleware,
         validateParams(

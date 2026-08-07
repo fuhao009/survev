@@ -218,15 +218,18 @@ export class UiManager {
     worldExtractionZone: WorldExtractionZone | null = null;
     worldExtractionOverlay = new PIXI.Container();
     worldExtractionRing = new PIXI.Graphics();
-    worldExtractionLabel = new PIXI.Text("撤离点", new PIXI.TextStyle({
-        fontFamily: "Roboto Condensed, Arial, sans-serif",
-        fontSize: 13,
-        fontWeight: "700",
-        fill: "#ffe0a0",
-        stroke: "#1d1608",
-        strokeThickness: 3,
-        align: "center",
-    }));
+    worldExtractionLabel = new PIXI.Text(
+        "撤离点",
+        new PIXI.TextStyle({
+            fontFamily: "Roboto Condensed, Arial, sans-serif",
+            fontSize: 13,
+            fontWeight: "700",
+            fill: "#ffe0a0",
+            stroke: "#1d1608",
+            strokeThickness: 3,
+            align: "center",
+        }),
+    );
     container = new PIXI.Container() as ContainerWithMask;
 
     resetWeapSlotStyling!: () => void;
@@ -1217,10 +1220,12 @@ export class UiManager {
     }
 
     setWorldExtractionZone(zone: WorldExtractionZone | null) {
-        this.worldExtractionZone = zone ? {
-            ...zone,
-            center: { ...zone.center },
-        } : null;
+        this.worldExtractionZone = zone
+            ? {
+                ...zone,
+                center: { ...zone.center },
+            }
+            : null;
     }
 
     private renderWorldExtractionZone(map: Map) {

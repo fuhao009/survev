@@ -1,14 +1,14 @@
 import { describe, expect, test } from "vitest";
-import { GasMode, TeamMode } from "../../shared/gameConfig.ts";
+import { Game } from "../../server/src/game/game.ts";
+import { GameConfig, GasMode, TeamMode } from "../../shared/gameConfig.ts";
 import {
-    WORLD_EXTRACTION_CYCLE_DURATION_MS,
-    WORLD_MAP_SIZE,
     gameMapPositionToWorld,
     getWorldExtractionQuote,
     getWorldExtractionZone,
+    WORLD_EXTRACTION_CYCLE_DURATION_MS,
+    WORLD_MAP_SIZE,
     worldPositionToGameMap,
 } from "../../shared/types/world.ts";
-import { Game } from "../../server/src/game/game.ts";
 
 describe("open-world survival loop", () => {
     test("keeps big-world players out of battle-royale gas damage", () => {
@@ -40,6 +40,42 @@ describe("open-world survival loop", () => {
             x: 2048,
             y: 2048,
         });
+    });
+
+    test("hydrates realtime weapons and equipment from the authoritative world snapshot", () => {
+        const game = new Game("world-items-test", {
+            mapName: "main",
+            teamMode: TeamMode.Solo,
+            world: true,
+        });
+        const player = game.playerBarn.addTestPlayer({ userId: "world-player" });
+
+        player.applyWorldItems({
+            kind: "carried_items_snapshot",
+            ownerId: "world-player",
+            revision: 1,
+            stacks: [{ itemType: "9mm", quantity: 30 }],
+            weapons: [
+                { itemType: "ak47", slot: "primary", loadedAmmo: 29 },
+                { itemType: "m9", slot: "secondary", loadedAmmo: 15 },
+                { itemType: "fists", slot: "melee", loadedAmmo: 0 },
+            ],
+            equipment: {
+                outfit: "outfitBase",
+                backpack: "backpack01",
+                helmet: "helmet01",
+                chest: "chest01",
+                perks: [],
+            },
+        });
+
+        expect(player.weapons[GameConfig.WeaponSlot.Primary]).toMatchObject({ type: "ak47", ammo: 29 });
+        expect(player.weapons[GameConfig.WeaponSlot.Secondary]).toMatchObject({ type: "m9", ammo: 15 });
+        expect(player.weapons[GameConfig.WeaponSlot.Melee]).toMatchObject({ type: "fists" });
+        expect(player.backpack).toBe("backpack01");
+        expect(player.helmet).toBe("helmet01");
+        expect(player.chest).toBe("chest01");
+        expect(player.inventory["9mm"]).toBe(30);
     });
 
     test("derives a dynamic extraction point that refreshes by world cycle", () => {

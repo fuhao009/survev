@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { MapDefKey } from "../../../shared/defs/mapDefs.ts";
 import { TeamMode } from "../../../shared/gameConfig.ts";
 import { type FindGamePrivateError, loadoutSchema } from "../../../shared/types/api.ts";
-import type { WorldPosition } from "../../../shared/types/world.ts";
+import type { WorldCarriedItemsSnapshot, WorldPosition } from "../../../shared/types/world.ts";
 import type { MatchDataTable } from "../api/db/schema.ts";
 
 const zWorldPosition = z.object({
@@ -12,6 +12,28 @@ const zWorldPosition = z.object({
     }),
     layer: z.number().int(),
 }) satisfies z.ZodType<WorldPosition>;
+
+const zWorldCarriedItemsSnapshot = z.object({
+    kind: z.literal("carried_items_snapshot"),
+    ownerId: z.string().min(1),
+    revision: z.number().int().nonnegative(),
+    stacks: z.array(z.object({
+        itemType: z.string().min(1),
+        quantity: z.number().int().nonnegative(),
+    })),
+    weapons: z.array(z.object({
+        itemType: z.string().min(1),
+        slot: z.enum(["primary", "secondary", "melee", "throwable"]),
+        loadedAmmo: z.number().int().nonnegative(),
+    })),
+    equipment: z.object({
+        outfit: z.string(),
+        backpack: z.string(),
+        helmet: z.string(),
+        chest: z.string(),
+        perks: z.array(z.string()),
+    }),
+}) satisfies z.ZodType<WorldCarriedItemsSnapshot>;
 
 export const zUpdateRegionBody = z.object({
     regionId: z.string(),
@@ -59,6 +81,7 @@ export const zFindGamePrivateBody = z.object({
             worldPosition: zWorldPosition.optional(),
             worldHealth: z.number().finite().min(0).max(100).optional(),
             worldBoost: z.number().finite().min(0).max(100).optional(),
+            worldItems: zWorldCarriedItemsSnapshot.optional(),
         }),
     ),
 });

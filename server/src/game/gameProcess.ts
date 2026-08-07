@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { platform } from "node:os";
 import path from "node:path";
 import { DamageType } from "../../../shared/gameConfig.ts";
+import { gameMapPositionToWorld } from "../../../shared/types/world.ts";
 import type { WorldPositionSyncResponse, WorldPositionTerrainMovement } from "../../../shared/types/worldApi.ts";
 import {
     getWorldLightning,
@@ -16,7 +17,6 @@ import {
 import type { WorldWeather } from "../../../shared/types/worldWeather.ts";
 import { Logger } from "../../../shared/utils/logger.ts";
 import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
-import { gameMapPositionToWorld } from "../../../shared/types/world.ts";
 import { Config } from "../config.ts";
 import { apiPrivateRouter } from "../utils/apiRouter.ts";
 import { logErrorToWebhook } from "../utils/logger.ts";
@@ -219,6 +219,17 @@ async function markWorldFire(userId: string, weaponType: string) {
     }
 }
 
+async function markWorldDamage(userId: string) {
+    try {
+        const req = await apiPrivateRouter.world.damage.$post({
+            json: { userId },
+        });
+        if (!req.ok) procLogger.warn("Failed to persist world equipment wear", await req.text());
+    } catch (err) {
+        procLogger.error("Failed to persist world equipment wear", err);
+    }
+}
+
 /**
  * Implements methods only used when the game is actually running on a server
  */
@@ -247,7 +258,8 @@ class ServerGame extends Game {
         if (activeEvents.length === 0) return;
 
         for (const event of activeEvents) {
-            for (const player of [...this.playerBarn.livingPlayers]) {
+            // Damage can remove a player from livingPlayers, so iterate over a stable snapshot.
+            for (const player of this.playerBarn.livingPlayers.slice()) {
                 if (
                     player.dead
                     || !shouldApplyWorldLightningEvent(
@@ -279,6 +291,11 @@ class ServerGame extends Game {
     override onWeaponFired(userId: string | null, weaponType: string) {
         if (!this.world || !userId) return;
         void markWorldFire(userId, weaponType);
+    }
+
+    override onWorldPlayerDamaged(userId: string | null) {
+        if (!this.world || !userId) return;
+        void markWorldDamage(userId);
     }
 
     override onWorldPlayerUpdate(userId: string | null, x: number, y: number, layer: number, health: number) {

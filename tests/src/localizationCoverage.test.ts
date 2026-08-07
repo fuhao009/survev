@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { MapDefs } from "../../shared/defs/mapDefs.ts";
 import { describe, expect, test } from "vitest";
+import { MapDefs } from "../../shared/defs/mapDefs.ts";
 
 const indexHtml = readFileSync(
     fileURLToPath(new URL("../../client/index.html", import.meta.url)),
@@ -20,9 +20,13 @@ const clientMapTs = readFileSync(
     fileURLToPath(new URL("../../client/src/map.ts", import.meta.url)),
     "utf8",
 );
-const mapPlaceNames = [...new Set(Object.values(MapDefs).flatMap((map: any) =>
-    map?.mapGen?.places?.map((place: { name: string }) => place.name) ?? []
-))].sort();
+const mapPlaceNames = [
+    ...new Set(
+        Object.values(MapDefs).flatMap((map: any) =>
+            map?.mapGen?.places?.map((place: { name: string }) => place.name) ?? []
+        ),
+    ),
+].sort();
 
 const startMenuHtml = indexHtml.slice(indexHtml.indexOf("<div id=\"start-menu-wrapper\">"));
 const startMenuKeys = [...startMenuHtml.matchAll(/data-l10n=['"]([^'"]+)['"]/g)]
@@ -53,6 +57,10 @@ const dynamicPageKeys = [
     "account-refresh-failed",
     "account-refresh",
     "account-no-world-items",
+    "index-durability-display",
+    "index-durability-display-value",
+    "index-durability-display-bar",
+    "index-durability-display-hidden",
     "world-hud-title",
     "world-hud-collapse",
     "world-hud-expand",

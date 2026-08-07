@@ -2,6 +2,9 @@ import { describe, expect, test } from "vitest";
 import {
     buildDeadWorldResult,
     buildExtractedWorldResult,
+    formatWorldItemDurability,
+    getWorldItemDurabilityRatio,
+    getWorldItemLabel,
     getWorldItemStateLabel,
     WORLD_RESULT_RETURN_HASH,
 } from "../../client/src/worldSettlement.ts";
@@ -140,5 +143,13 @@ describe("world settlement presentation", () => {
         expect(getWorldItemStateLabel("world")).toBe("已掉落");
         expect(getWorldItemStateLabel("destroyed")).toBe("已损坏");
         expect(WORLD_RESULT_RETURN_HASH).toBe("#user-center");
+    });
+
+    test("formats durable world items for HUD displays", () => {
+        const ak = item("ak47", "carried", 742);
+
+        expect(getWorldItemLabel("ak47")).toBe("AK-47");
+        expect(formatWorldItemDurability(ak)).toBe("742/1000");
+        expect(getWorldItemDurabilityRatio(ak)).toBeCloseTo(0.742);
     });
 });

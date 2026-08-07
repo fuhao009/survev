@@ -438,7 +438,10 @@ export function getWorldExtractionQuote(input: WorldExtractionQuoteInput): World
     );
     const totalPoints = Math.max(
         1,
-        Math.round((baseItemPoints * durabilityMultiplier + survivalPoints) * competitionMultiplier * scarcityMultiplier * riskMultiplier),
+        Math.round(
+            (baseItemPoints * durabilityMultiplier + survivalPoints) * competitionMultiplier * scarcityMultiplier
+                * riskMultiplier,
+        ),
     );
 
     return {

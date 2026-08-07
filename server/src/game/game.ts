@@ -1,9 +1,9 @@
 import { TeamMode } from "../../../shared/gameConfig.ts";
+import type { WorldCarriedItemsSnapshot, WorldPosition } from "../../../shared/types/world.ts";
 import {
     getDefaultWorldTerrainBulletModifier,
     type WorldTerrainBulletModifier,
 } from "../../../shared/types/worldTerrain.ts";
-import type { WorldPosition } from "../../../shared/types/world.ts";
 import type { Loadout } from "../../../shared/utils/loadout.ts";
 import { math } from "../../../shared/utils/math.ts";
 import type { Vec2 } from "../../../shared/utils/v2.ts";
@@ -38,6 +38,7 @@ export interface JoinTokenData {
     worldPosition?: WorldPosition;
     worldHealth?: number;
     worldBoost?: number;
+    worldItems?: WorldCarriedItemsSnapshot;
     groupData: {
         autoFill: boolean;
         playerCount: number;
@@ -389,6 +390,7 @@ export class Game {
                 worldPosition: token.worldPosition,
                 worldHealth: token.worldHealth,
                 worldBoost: token.worldBoost,
+                worldItems: token.worldItems,
             });
         }
     }
@@ -415,6 +417,8 @@ export class Game {
     onPlayerDeath(_userId: string | null, _cause: "player" | "safe_zone" | "fire" | "hazard") {}
 
     onWeaponFired(_userId: string | null, _weaponType: string) {}
+
+    onWorldPlayerDamaged(_userId: string | null) {}
 
     onWorldPlayerUpdate(
         _userId: string | null,

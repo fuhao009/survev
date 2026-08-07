@@ -13,12 +13,7 @@ import { GIT_VERSION } from "../utils/gitRevision.ts";
 import { logErrorToWebhook } from "../utils/logger.ts";
 import { isBehindProxy } from "../utils/proxyCheck.ts";
 import { HTTPRateLimit } from "../utils/rateLimit.ts";
-import {
-    getDebugRequestContext,
-    getFindGamePlayerData,
-    getHonoIp,
-    verifyTurnsStile,
-} from "./apiHelpers.ts";
+import { getDebugRequestContext, getFindGamePlayerData, getHonoIp, verifyTurnsStile } from "./apiHelpers.ts";
 import { server } from "./apiServer.ts";
 import { deleteExpiredSessions, validateSessionToken } from "./auth/index.ts";
 import { rateLimitMiddleware, validateParams } from "./auth/middleware.ts";
@@ -195,16 +190,19 @@ app.post("/api/find_game_v2", validateParams(zFindGameBody), async (c) => {
         }
     }
 
-    const playerData = await getFindGamePlayerData([
-        {
-            token,
-            userId: user?.id || null,
-            ip,
-            worldPosition: body.worldPosition,
-            worldHealth: body.worldHealth,
-            worldBoost: body.worldBoost,
-        },
-    ]);
+    const playerData = await getFindGamePlayerData(
+        [
+            {
+                token,
+                userId: user?.id || null,
+                ip,
+                worldPosition: body.worldPosition,
+                worldHealth: body.worldHealth,
+                worldBoost: body.worldBoost,
+            },
+        ],
+        { world: body.world === true },
+    );
 
     const data = await server.findGame({
         region: body.region,

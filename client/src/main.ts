@@ -40,6 +40,9 @@ import { isUserCenterHash } from "./ui/userCenterNavigation.ts";
 import {
     buildDeadWorldResult,
     buildExtractedWorldResult,
+    formatWorldItemDurability,
+    getWorldItemDurabilityRatio,
+    getWorldItemLabel,
     getWorldItemStateLabel,
     WORLD_RESULT_RETURN_HASH,
     type WorldResultViewModel,
@@ -69,6 +72,7 @@ export class Application {
     masterSliders = $<HTMLInputElement>(".sl-master-volume");
     soundSliders = $<HTMLInputElement>(".sl-sound-volume");
     musicSliders = $<HTMLInputElement>(".sl-music-volume");
+    durabilityDisplaySelects = $<HTMLSelectElement>(".js-durability-display");
     serverWarning = $("#server-warning");
     languageSelect = $<HTMLSelectElement>(".language-select");
     startMenuWrapper = $("#start-menu-wrapper");
@@ -168,6 +172,7 @@ export class Application {
     private setWorldSnapshot(snapshot: WorldSnapshot | null) {
         this.worldSnapshot = snapshot;
         this.game?.setWorldExtractionZone(snapshot?.extractionZone ?? null);
+        this.game?.setWorldInventory(snapshot?.inventory ?? null);
     }
 
     private setWorldHudCollapsed(collapsed: boolean, persist = true) {
@@ -355,6 +360,10 @@ export class Application {
                 this.audioManager.setMusicVolume(r);
                 this.config.set("musicVolume", r);
             });
+            this.durabilityDisplaySelects.on("change", (t) => {
+                const mode = t.target.value as ConfigType["durabilityDisplay"];
+                this.config.set("durabilityDisplay", mode);
+            });
             $(".modal-settings-item")
                 .children("input")
                 .each((_t, r) => {
@@ -467,6 +476,8 @@ export class Application {
                 onQuit,
                 () => this.onWorldPlayerDeath(),
             );
+            this.game.setDurabilityDisplayMode(this.config.get("durabilityDisplay")!);
+            this.game.setWorldInventory(this.worldSnapshot?.inventory ?? null);
             this.loadoutDisplay = new LoadoutDisplay(
                 this.pixi,
                 this.audioManager,
@@ -608,6 +619,7 @@ export class Application {
                 : ele.value === configRegion;
         });
         this.languageSelect.val(this.localization.getLocale());
+        this.durabilityDisplaySelects.val(this.config.get("durabilityDisplay")!);
     }
 
     onConfigModified(key?: string) {
@@ -648,6 +660,10 @@ export class Application {
         if (key === "debugHUD") {
             this.game?.debugHUD?.onConfigModified();
         }
+
+        const durabilityDisplay = this.config.get("durabilityDisplay")!;
+        this.durabilityDisplaySelects.val(durabilityDisplay);
+        this.game?.setDurabilityDisplayMode(durabilityDisplay);
     }
 
     refreshUi() {
@@ -845,7 +861,7 @@ export class Application {
             return;
         }
         for (const item of result.items) {
-            const detail = item.kind === "equipment" && item.durabilityMax !== undefined
+            const detail = item.kind === "durable" && item.durabilityMax !== undefined
                 ? `${item.durability}/${item.durabilityMax} · ${getWorldItemStateLabel(item.state)}`
                 : this.localization.translate("world-settlement-consumable-detail", { quantity: item.quantity });
             $("<li>")
@@ -880,10 +896,12 @@ export class Application {
             : extractionZone.center;
         const extractionDistance = Math.max(
             0,
-            Math.round(Math.hypot(
-                extractionPosition.x - extractionZone.center.x,
-                extractionPosition.y - extractionZone.center.y,
-            ) - extractionZone.radius),
+            Math.round(
+                Math.hypot(
+                    extractionPosition.x - extractionZone.center.x,
+                    extractionPosition.y - extractionZone.center.y,
+                ) - extractionZone.radius,
+            ),
         );
         $("#world-hud-extraction-zone").text(
             this.localization.translate("world-extraction-zone", {
@@ -932,7 +950,9 @@ export class Application {
         $("#world-hud-terrain").text(
             terrain?.matchedPatches.length
                 ? this.localization.translate("world-terrain-current", {
-                    terrain: terrain.matchedPatches.map((patch) => WORLD_TERRAIN_LABELS[patch.type] || patch.type).join("、"),
+                    terrain: terrain.matchedPatches.map((patch) => WORLD_TERRAIN_LABELS[patch.type] || patch.type).join(
+                        "、",
+                    ),
                     speed: Math.round(terrain.speedMultiplier * 100),
                 })
                 : this.localization.translate("world-terrain-normal"),
@@ -940,7 +960,10 @@ export class Application {
         const gear = snapshot.inventory
             .filter((item) => item.state === "carried" || item.state === "equipped")
             .filter((item) => item.durabilityMax > 0)
-            .map((item) => `${item.type} ${item.durability}/${item.durabilityMax}`)
+            .map((item) => {
+                const percent = Math.round(getWorldItemDurabilityRatio(item) * 100);
+                return `${getWorldItemLabel(item.type)} ${formatWorldItemDurability(item)} (${percent}%)`;
+            })
             .join(" · ");
         $("#world-hud-gear").text(gear || this.localization.translate("world-gear-empty"));
         const canExtract = !dead && life.status === "alive" && snapshot.canExtract;

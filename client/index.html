@@ -76,6 +76,14 @@
                 </div>
               </div>
               <a id="btn-game-aim-line" class="btn-game-menu btn-darken locked-on-icon" data-l10n="game-aim-line">Aim Line</a>
+              <div class="slider-container ui-slider-container">
+                <p class="slider-text" data-l10n="index-durability-display">Durability Display</p>
+                <select class="js-durability-display durability-display-select menu-option">
+                  <option value="value" data-l10n="index-durability-display-value">Value</option>
+                  <option value="bar" data-l10n="index-durability-display-bar">Bar</option>
+                  <option value="hidden" data-l10n="index-durability-display-hidden">Hidden</option>
+                </select>
+              </div>
               <a id="btn-game-sound" class="btn-sound-toggle btn-game-menu btn-darken audio-on-icon" data-l10n="game-sound">Sound</a>
               <div class="slider-container ui-slider-container">
                 <p class="slider-text" data-l10n="index-master-volume">Master Volume</p>
@@ -551,6 +559,10 @@
               <div class="ui-weapon-switch ui-outline-hover" id="ui-weapon-id-1" data-slot="1">
                 <div class="ui-weapon-name"></div>
                 <div class="ui-weapon-number">1</div>
+                <div class="ui-weapon-durability">
+                  <span class="ui-weapon-durability-value"></span>
+                  <span class="ui-weapon-durability-bar"><span class="ui-weapon-durability-bar-fill"></span></span>
+                </div>
                 <img class="ui-weapon-image" src="">
               </div>
             </div>
@@ -558,6 +570,10 @@
               <div class="ui-weapon-switch ui-outline-hover" id="ui-weapon-id-2" data-slot="2">
                 <div class="ui-weapon-name"></div>
                 <div class="ui-weapon-number">2</div>
+                <div class="ui-weapon-durability">
+                  <span class="ui-weapon-durability-value"></span>
+                  <span class="ui-weapon-durability-bar"><span class="ui-weapon-durability-bar-fill"></span></span>
+                </div>
                 <img class="ui-weapon-image" src="">
               </div>
             </div>
@@ -565,6 +581,10 @@
               <div class="ui-weapon-switch ui-outline-hover" id="ui-weapon-id-3">
                 <div class="ui-weapon-name"></div>
                 <div class="ui-weapon-number">3</div>
+                <div class="ui-weapon-durability">
+                  <span class="ui-weapon-durability-value"></span>
+                  <span class="ui-weapon-durability-bar"><span class="ui-weapon-durability-bar-fill"></span></span>
+                </div>
                 <img class="ui-weapon-image" src="">
               </div>
             </div>
@@ -573,6 +593,10 @@
                 <div class="ui-weapon-name"></div>
                 <div class="ui-weapon-number">4</div>
                 <div class="ui-weapon-exp ui-weapon-ammo-counter">0</div>
+                <div class="ui-weapon-durability">
+                  <span class="ui-weapon-durability-value"></span>
+                  <span class="ui-weapon-durability-bar"><span class="ui-weapon-durability-bar-fill"></span></span>
+                </div>
                 <img class="ui-weapon-image" src="">
               </div>
             </div>
@@ -1179,6 +1203,14 @@
             </div>
             <div class="modal-settings-item">
               <input id="anonPlayerNames" type="checkbox"><p class="modal-settings-checkbox-text" data-l10n="index-anon-player-names">隐去玩家名称</p>
+            </div>
+            <div class="modal-settings-item">
+              <p class="modal-settings-checkbox-text" data-l10n="index-durability-display">耐久显示</p>
+              <select class="js-durability-display durability-display-select menu-option">
+                <option value="value" data-l10n="index-durability-display-value">数值</option>
+                <option value="bar" data-l10n="index-durability-display-bar">进度条</option>
+                <option value="hidden" data-l10n="index-durability-display-hidden">隐藏</option>
+              </select>
             </div>
             <div class="modal-settings-item slider-container main-volume-slider">
               <p class="modal-slider-text" data-l10n="index-master-volume">主音量</p>

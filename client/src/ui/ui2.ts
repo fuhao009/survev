@@ -15,10 +15,12 @@ import type { ObstacleDef } from "../../../shared/defs/mapObjectsTyping.ts";
 import { GameObjectDefs, MapObjectDefs } from "../../../shared/defs/register.ts";
 import { Action, DamageType, GameConfig, Input, type InventoryItem } from "../../../shared/gameConfig.ts";
 import { PickupMsgType } from "../../../shared/net/net.ts";
+import type { ItemInstance } from "../../../shared/types/itemInstance.ts";
 import { collider } from "../../../shared/utils/collider.ts";
 import { math } from "../../../shared/utils/math.ts";
 import { util } from "../../../shared/utils/util.ts";
 import { v2 } from "../../../shared/utils/v2.ts";
+import type { DurabilityDisplayMode } from "../config.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
 import type { InputBinds } from "../inputBinds.ts";
@@ -26,6 +28,7 @@ import type { Map } from "../map.ts";
 import type { Loot, LootBarn } from "../objects/loot.ts";
 import type { Obstacle } from "../objects/obstacle.ts";
 import type { Player, PlayerBarn } from "../objects/player.ts";
+import { formatWorldItemDurability, getWorldItemDurabilityRatio } from "../worldSettlement.ts";
 import type { Localization } from "./localization.ts";
 
 const maxKillFeedLines = 6;
@@ -50,6 +53,11 @@ const WeaponSlotToBind = {
 function domElemById(id: string) {
     return document.getElementById(id)!;
 }
+
+function isVisibleDurabilityItem(item: ItemInstance | undefined): item is ItemInstance {
+    return !!item && item.durabilityMax > 0 && (item.state === "carried" || item.state === "equipped");
+}
+
 function isLmb(e: MouseEvent) {
     return e.button == 0;
 }
@@ -164,6 +172,9 @@ class UiState {
         slot: i,
         type: "",
         ammo: 0,
+        durabilityText: "",
+        durabilityRatio: 0,
+        durabilityDisplay: "hidden" as DurabilityDisplayMode,
         equipped: false,
         selectable: false,
         opacity: 0,
@@ -223,6 +234,8 @@ export class UiManager2 {
     oldState = new UiState();
     newState = new UiState();
     frameCount = 0;
+    worldInventory: ItemInstance[] = [];
+    durabilityDisplayMode: DurabilityDisplayMode = "value";
 
     // DOM
     dom = {
@@ -255,6 +268,10 @@ export class UiManager2 {
             number: HTMLElement;
             image: HTMLImageElement;
             ammo: HTMLElement;
+            durability: HTMLElement;
+            durabilityValue: HTMLElement;
+            durabilityBar: HTMLElement;
+            durabilityBarFill: HTMLElement;
         }>,
         ammo: {
             current: domElemById("ui-current-clip"),
@@ -363,6 +380,18 @@ export class UiManager2 {
                 )[0] as HTMLImageElement,
                 ammo: weapon.getElementsByClassName(
                     "ui-weapon-ammo-counter",
+                )[0] as HTMLElement,
+                durability: weapon.getElementsByClassName(
+                    "ui-weapon-durability",
+                )[0] as HTMLElement,
+                durabilityValue: weapon.getElementsByClassName(
+                    "ui-weapon-durability-value",
+                )[0] as HTMLElement,
+                durabilityBar: weapon.getElementsByClassName(
+                    "ui-weapon-durability-bar",
+                )[0] as HTMLElement,
+                durabilityBarFill: weapon.getElementsByClassName(
+                    "ui-weapon-durability-bar-fill",
                 )[0] as HTMLElement,
             };
             this.dom.weapons.push(weaponData);
@@ -560,6 +589,19 @@ export class UiManager2 {
             }
         };
         window.addEventListener("keyup", this.onKeyUp);
+    }
+
+    setWorldInventory(inventory: readonly ItemInstance[]) {
+        this.worldInventory = inventory.map((item) => ({ ...item }));
+    }
+
+    setDurabilityDisplayMode(mode: DurabilityDisplayMode) {
+        this.durabilityDisplayMode = mode;
+    }
+
+    private getWeaponDurability(type: string): ItemInstance | undefined {
+        const item = this.worldInventory.find((entry) => entry.type === type && isVisibleDurabilityItem(entry));
+        return isVisibleDurabilityItem(item) ? item : undefined;
     }
 
     m_free() {
@@ -839,6 +881,11 @@ export class UiManager2 {
             if (oe == GameConfig.WeaponSlot.Throwable) {
                 ne.ammo = activePlayer.m_localData.m_inventory[se.type] || 0;
             }
+            const durability = this.getWeaponDurability(se.type);
+            const showDurability = !!durability && this.durabilityDisplayMode !== "hidden";
+            ne.durabilityText = showDurability ? formatWorldItemDurability(durability) : "";
+            ne.durabilityRatio = showDurability ? getWorldItemDurabilityRatio(durability) : 0;
+            ne.durabilityDisplay = showDurability ? this.durabilityDisplayMode : "hidden";
             const le = ne.equipped;
             ne.equipped = oe == activePlayer.m_localData.m_curWeapIdx;
             ne.selectable = (se.type != "" || oe == 0 || oe == 1) && !spectating;
@@ -1190,6 +1237,15 @@ export class UiManager2 {
             if (B.ammo && R.ammo) {
                 R.ammo.innerHTML = String(L.ammo);
                 R.ammo.style.display = L.ammo > 0 ? "block" : "none";
+            }
+            if (B.durabilityDisplay || B.durabilityText || B.durabilityRatio) {
+                R.durability.style.display = L.durabilityDisplay === "hidden" ? "none" : "block";
+                R.durability.classList.toggle("ui-weapon-durability-bar-mode", L.durabilityDisplay === "bar");
+                R.durability.classList.toggle("ui-weapon-durability-value-mode", L.durabilityDisplay === "value");
+                R.durabilityValue.innerHTML = L.durabilityText;
+                R.durabilityValue.style.display = L.durabilityDisplay === "value" ? "block" : "none";
+                R.durabilityBar.style.display = L.durabilityDisplay === "bar" ? "block" : "none";
+                R.durabilityBarFill.style.width = `${Math.round(L.durabilityRatio * 100)}%`;
             }
             if (B.bindStr) {
                 R.number.innerHTML = L.bindStr[0] || "";

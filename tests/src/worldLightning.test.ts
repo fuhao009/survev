@@ -6,7 +6,11 @@ import {
     WORLD_LIGHTNING_DURATION_MS,
     type WorldLightning,
 } from "../../shared/types/worldLightning.ts";
-import { getWorldTerrainLightningModifier, type WorldTerrainPatch, type WorldTerrainPatchType } from "../../shared/types/worldTerrain.ts";
+import {
+    getWorldTerrainLightningModifier,
+    type WorldTerrainPatch,
+    type WorldTerrainPatchType,
+} from "../../shared/types/worldTerrain.ts";
 
 function terrainPatch(
     id: string,

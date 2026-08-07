@@ -13,22 +13,6 @@ export const ONE_TIME_GAME_OBJECT_TYPES = [
     "throwable",
 ] as const;
 
-/** Game-object types represented as persistent, repairable item instances. */
-export const DURABILITY_GAME_OBJECT_TYPES = [
-    "gun",
-    "melee",
-    "outfit",
-    "backpack",
-    "helmet",
-    "chest",
-    "scope",
-    "crosshair",
-    "emote",
-    "perk",
-    "heal_effect",
-    "boost_effect",
-] as const;
-
 /** Equipment that loses wear when the player receives damage in the world. */
 export const DAMAGE_WEAR_GAME_OBJECT_TYPES = [
     "outfit",
@@ -53,7 +37,6 @@ export interface ItemDurabilityTransition {
 }
 
 const oneTimeTypes = new Set<string>(ONE_TIME_GAME_OBJECT_TYPES);
-const durabilityTypes = new Set<string>(DURABILITY_GAME_OBJECT_TYPES);
 const damageWearTypes = new Set<string>(DAMAGE_WEAR_GAME_OBJECT_TYPES);
 
 function getGameObjectType(itemType: string): string | undefined {
@@ -69,8 +52,7 @@ export function getItemDurabilityKind(itemType: string): ItemDurabilityKind {
     const gameObjectType = getGameObjectType(itemType);
     if (!gameObjectType) return "untracked";
     if (oneTimeTypes.has(gameObjectType)) return "one_time";
-    if (durabilityTypes.has(gameObjectType)) return "durable";
-    return "untracked";
+    return "durable";
 }
 
 export function isOneTimeItemType(itemType: string): boolean {

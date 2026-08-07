@@ -87,6 +87,8 @@ export const BuildingEditorConfig = {
     grid: true,
 };
 
+export type DurabilityDisplayMode = "value" | "bar" | "hidden";
+
 const defaultConfig = {
     muteAudio: true,
     masterVolume: 1,
@@ -100,6 +102,7 @@ const defaultConfig = {
     touchMoveStyle: "anywhere" as "locked" | "anywhere",
     touchAimStyle: "anywhere" as "locked" | "anywhere",
     touchAimLine: true,
+    durabilityDisplay: "value" as DurabilityDisplayMode,
     profile: null as { slug: string } | null,
     playerName: "",
     region: "na",

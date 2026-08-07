@@ -980,6 +980,18 @@ img {
   background-position: 8px 6px;
 }
 
+.durability-display-select {
+  height: 32px;
+  width: 100%;
+  border: 0;
+  border-radius: 5px;
+  padding: 0 10px;
+  color: #fff;
+  background-color: #3e7774;
+  font-size: 14px;
+  cursor: pointer;
+}
+
 #btn-game-quit {
   margin-top: 40px;
   background-size: 44px;
@@ -2805,6 +2817,42 @@ img {
   right: 78px;
   margin-top: 26px;
   text-align: center;
+}
+
+.ui-weapon-durability {
+  display: none;
+  position: absolute;
+  right: 8px;
+  top: 24px;
+  width: 70px;
+  color: #ffd27c;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 12px;
+  text-align: right;
+  text-shadow: 0 1px 2px #000;
+}
+
+.ui-weapon-durability-value {
+  display: block;
+}
+
+.ui-weapon-durability-bar {
+  display: none;
+  height: 6px;
+  width: 64px;
+  margin-left: auto;
+  border: 1px solid rgba(255, 210, 124, 0.8);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.ui-weapon-durability-bar-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #ffd27c;
 }
 
 .ui-weapon-image {
@@ -4746,6 +4794,19 @@ span.ui-stats-header-value {
     right: 34px;
     margin-top: 10px;
     text-align: center;
+  }
+
+  .ui-weapon-durability {
+    right: 4px;
+    top: 20px;
+    width: 48px;
+    font-size: 7px;
+    line-height: 8px;
+  }
+
+  .ui-weapon-durability-bar {
+    height: 3px;
+    width: 44px;
   }
 
   .ui-weapon-image {

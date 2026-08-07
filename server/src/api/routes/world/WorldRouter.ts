@@ -2,8 +2,13 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { type WorldActionResponse, type WorldEnterResponse } from "../../../../../shared/types/worldApi.ts";
 import { getDebugRequestContext } from "../../apiHelpers.ts";
-import { authMiddleware, databaseEnabledMiddleware, rateLimitMiddleware, validateParams } from "../../auth/middleware.ts";
 import { server } from "../../apiServer.ts";
+import {
+    authMiddleware,
+    databaseEnabledMiddleware,
+    rateLimitMiddleware,
+    validateParams,
+} from "../../auth/middleware.ts";
 import type { Context } from "../../index.ts";
 import { WorldActionError, worldService } from "../../world/worldService.ts";
 
@@ -11,11 +16,29 @@ const zEnter = z.object({
     newLife: z.boolean().optional(),
 });
 const zAction = z.discriminatedUnion("type", [
-    z.object({ type: z.literal("move"), x: z.number().finite(), y: z.number().finite(), expectedRevision: z.number().int().positive().optional() }),
-    z.object({ type: z.literal("fire"), instanceId: z.string().min(1), expectedRevision: z.number().int().positive().optional() }),
-    z.object({ type: z.literal("damage"), amount: z.number().int().positive().max(100), cause: z.enum(["player", "safe_zone", "fire", "hazard"]).optional(), expectedRevision: z.number().int().positive().optional() }),
+    z.object({
+        type: z.literal("move"),
+        x: z.number().finite(),
+        y: z.number().finite(),
+        expectedRevision: z.number().int().positive().optional(),
+    }),
+    z.object({
+        type: z.literal("fire"),
+        instanceId: z.string().min(1),
+        expectedRevision: z.number().int().positive().optional(),
+    }),
+    z.object({
+        type: z.literal("damage"),
+        amount: z.number().int().positive().max(100),
+        cause: z.enum(["player", "safe_zone", "fire", "hazard"]).optional(),
+        expectedRevision: z.number().int().positive().optional(),
+    }),
     z.object({ type: z.literal("extract"), expectedRevision: z.number().int().positive().optional() }),
-    z.object({ type: z.literal("repair"), instanceId: z.string().min(1), expectedRevision: z.number().int().positive().optional() }),
+    z.object({
+        type: z.literal("repair"),
+        instanceId: z.string().min(1),
+        expectedRevision: z.number().int().positive().optional(),
+    }),
 ]);
 
 export const WorldRouter = new Hono<Context>()

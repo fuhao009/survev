@@ -1,8 +1,8 @@
-import { inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import type { Context } from "hono";
 import { isIP } from "node:net";
 import { db } from "../api/db/index.ts";
-import { userQuestTable, usersTable } from "../api/db/schema.ts";
+import { userQuestTable, usersTable, worldLivesTable } from "../api/db/schema.ts";
 import { Config } from "../config.ts";
 import type { FindGamePrivateBody } from "../utils/types.ts";
 
@@ -49,6 +49,7 @@ export async function verifyTurnsStile(token: string, ip: string): Promise<boole
 
 export async function getFindGamePlayerData(
     players: FindGamePrivateBody["playerData"],
+    options: { world?: boolean } = {},
 ): Promise<FindGamePrivateBody["playerData"]> {
     const userIds = [
         ...new Set(players.map((p) => p.userId).filter((id) => id !== null)),
@@ -59,11 +60,12 @@ export async function getFindGamePlayerData(
         {
             loadout: FindGamePrivateBody["playerData"][0]["loadout"];
             quests: FindGamePrivateBody["playerData"][0]["quests"];
+            worldItems?: FindGamePrivateBody["playerData"][0]["worldItems"];
         }
     > = {};
 
     if (userIds.length) {
-        const [users, quests] = await Promise.all([
+        const [users, quests, worldLives] = await Promise.all([
             db.select({
                 userId: usersTable.id,
                 loadout: usersTable.loadout,
@@ -77,6 +79,20 @@ export async function getFindGamePlayerData(
                 .from(userQuestTable)
                 .where(inArray(userQuestTable.userId, userIds))
                 .orderBy(userQuestTable.userId, userQuestTable.idx),
+            options.world
+                ? db.select({
+                    userId: worldLivesTable.playerId,
+                    carriedItems: worldLivesTable.carriedItems,
+                })
+                    .from(worldLivesTable)
+                    .where(
+                        and(
+                            inArray(worldLivesTable.playerId, userIds),
+                            eq(worldLivesTable.status, "alive"),
+                        ),
+                    )
+                    .orderBy(desc(worldLivesTable.updatedAt))
+                : Promise.resolve([]),
         ]);
 
         const questData = new Map<string, string[]>();
@@ -89,12 +105,32 @@ export async function getFindGamePlayerData(
             }
         }
 
+        const worldItemData = new Map<string, FindGamePrivateBody["playerData"][0]["worldItems"]>();
+        for (const life of worldLives) {
+            if (worldItemData.has(life.userId)) continue;
+            if (life.carriedItems.state === "carried") {
+                const snapshot = life.carriedItems.snapshot;
+                worldItemData.set(life.userId, {
+                    kind: snapshot.kind,
+                    ownerId: snapshot.ownerId,
+                    revision: snapshot.revision,
+                    stacks: snapshot.stacks.map((stack) => ({ ...stack })),
+                    weapons: snapshot.weapons.map((weapon) => ({ ...weapon })),
+                    equipment: {
+                        ...snapshot.equipment,
+                        perks: [...snapshot.equipment.perks],
+                    },
+                });
+            }
+        }
+
         accountData = Object.fromEntries(
             users.map((user) => [
                 user.userId,
                 {
                     loadout: user.loadout,
                     quests: questData.get(user.userId) ?? [],
+                    worldItems: worldItemData.get(user.userId),
                 },
             ]),
         );
@@ -109,5 +145,6 @@ export async function getFindGamePlayerData(
         worldBoost,
         loadout: userId ? accountData[userId]?.loadout : undefined,
         quests: userId ? (accountData[userId]?.quests ?? []) : [],
+        worldItems: userId ? accountData[userId]?.worldItems : undefined,
     }));
 }

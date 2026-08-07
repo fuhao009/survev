@@ -6,11 +6,7 @@ import { Config } from "../../config.ts";
 import { HTTPRateLimit } from "../../utils/rateLimit.ts";
 import { getHonoIp } from "../apiHelpers.ts";
 import { server } from "../apiServer.ts";
-import {
-    clearAppDataCookie,
-    cookieDomain,
-    deleteSessionTokenCookie,
-} from "../routes/user/auth/authUtils.ts";
+import { clearAppDataCookie, cookieDomain, deleteSessionTokenCookie } from "../routes/user/auth/authUtils.ts";
 import { validateSessionToken } from "./index.ts";
 
 export const authMiddleware = async (c: Context, next: Next) => {

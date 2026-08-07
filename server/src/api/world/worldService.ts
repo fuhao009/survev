@@ -82,7 +82,9 @@ const safeZone: WorldSafeZone = {
 
 const BASE_POSITION = { position: { ...safeZone.current.center }, layer: 0 } as const;
 
-function worldItemBasePoints(item: Pick<typeof worldItemInstancesTable.$inferSelect, "type" | "durability" | "durabilityMax">) {
+function worldItemBasePoints(
+    item: Pick<typeof worldItemInstancesTable.$inferSelect, "type" | "durability" | "durabilityMax">,
+) {
     const direct = WORLD_ITEM_BASE_POINTS[item.type];
     if (direct !== undefined) return direct;
 
@@ -896,10 +898,12 @@ export class WorldService {
                 inArray(worldItemInstancesTable.state, ["carried", "equipped"]),
             ),
         );
+        let changed = 0;
         for (const item of items) {
             if (!isDamageWearItemType(item.type)) continue;
             const transition = wearItem(item);
             if (!transition.changed) continue;
+            changed++;
             await db.update(worldItemInstancesTable).set({
                 durability: transition.durability,
                 state: transition.state,
@@ -914,6 +918,33 @@ export class WorldService {
                 state: transition.state,
             });
         }
+        return changed;
+    }
+
+    async wearDamageForPlayer(userId: string) {
+        return this.withLock(userId, async () => {
+            const life = await db.query.worldLivesTable.findFirst({
+                where: and(
+                    eq(worldLivesTable.playerId, userId),
+                    eq(worldLivesTable.shardId, SHARD_ID),
+                    eq(worldLivesTable.status, "alive"),
+                ),
+            });
+            if (!life) return false;
+            const changed = await this.wearDamageEquipment(userId, life.lifeId);
+            if (changed > 0) {
+                await db.update(worldLivesTable).set({
+                    revision: life.revision + 1,
+                    updatedAt: new Date(),
+                }).where(eq(worldLivesTable.lifeId, life.lifeId));
+            }
+            this.trace("wear:damage-event", {
+                userId,
+                lifeId: life.lifeId,
+                changed,
+            });
+            return changed > 0;
+        });
     }
 
     async markDeadForPlayer(userId: string, cause: "player" | "safe_zone" | "fire" | "hazard") {

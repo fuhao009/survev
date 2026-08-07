@@ -5,13 +5,7 @@ import z from "zod";
 import { rateLimitMiddleware, validateParams } from "../../../auth/middleware.ts";
 import { db } from "../../../db/index.ts";
 import { usersTable } from "../../../db/schema.ts";
-import {
-    createNewUser,
-    generateId,
-    sanitizeSlug,
-    setAppDataCookie,
-    setSessionTokenCookie,
-} from "./authUtils.ts";
+import { createNewUser, generateId, sanitizeSlug, setAppDataCookie, setSessionTokenCookie } from "./authUtils.ts";
 
 const credentialsSchema = z.object({
     mode: z.enum(["login", "register"]),

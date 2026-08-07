@@ -148,13 +148,17 @@ export class DebugHUD {
                     `Pos:     X: ${activePlayer.m_pos.x.toFixed(2)}   Y: ${activePlayer.m_pos.y.toFixed(2)}`,
                 );
                 this.addLine(
-                    `Vitals:  HP ${activePlayer.m_localData.m_health.toFixed(0)}   Boost ${activePlayer.m_localData.m_boost.toFixed(0)}   Layer ${activePlayer.layer}`,
+                    `Vitals:  HP ${activePlayer.m_localData.m_health.toFixed(0)}   Boost ${
+                        activePlayer.m_localData.m_boost.toFixed(0)
+                    }   Layer ${activePlayer.layer}`,
                 );
             } else {
                 this.addLine("Player:  (waiting for spawn)");
             }
             this.addLine(
-                `Gas:     ${GasMode[game.m_gas.mode]}   t ${game.m_gas.circleT.toFixed(2)}   Rad ${game.m_gas.circleNew.rad.toFixed(1)}`,
+                `Gas:     ${GasMode[game.m_gas.mode]}   t ${game.m_gas.circleT.toFixed(2)}   Rad ${
+                    game.m_gas.circleNew.rad.toFixed(1)
+                }`,
             );
         }
 
