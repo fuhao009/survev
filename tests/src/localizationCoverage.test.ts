@@ -29,6 +29,7 @@ const mapPlaceNames = [
 ].sort();
 
 const startMenuHtml = indexHtml.slice(indexHtml.indexOf("<div id=\"start-menu-wrapper\">"));
+const worldHudHtml = indexHtml.slice(indexHtml.indexOf("<section id=\"world-hud\""));
 const startMenuKeys = [...startMenuHtml.matchAll(/data-l10n=['"]([^'"]+)['"]/g)]
     .map(match => match[1])
     .filter((key, index, keys) => keys.indexOf(key) === index);
@@ -65,8 +66,6 @@ const dynamicPageKeys = [
     "world-hud-collapse",
     "world-hud-expand",
     "world-hud-collapsed-summary",
-    "world-hud-collapsed-durability",
-    "world-hud-collapsed-durability-empty",
     "world-life",
     "world-life-ended",
     "world-extraction-zone",
@@ -83,12 +82,6 @@ const dynamicPageKeys = [
     "world-terrain-current",
     "world-terrain-normal",
     "world-gear-empty",
-    "world-hud-gear-title",
-    "world-hud-gear-summary",
-    "world-hud-gear-empty",
-    "world-hud-gear-group-weapon",
-    "world-hud-gear-group-armor",
-    "world-hud-gear-group-other",
     "world-extract",
     "world-return-user-center",
     "world-message-dead",
@@ -170,6 +163,15 @@ describe("Simplified Chinese page coverage", () => {
         expect(closeControls.every(control => control.includes("aria-label=\"关闭\""))).toBe(true);
         expect(startMenuHtml).toContain("id=\"user-center-refresh\" type=\"button\" data-l10n=\"account-refresh\"");
         expect(startMenuHtml).toContain("aria-label=\"账号概览\"");
+    });
+
+    test("world hud actions stay outside the collapsible body", () => {
+        const actionsIndex = worldHudHtml.indexOf("class=\"world-hud-actions\"");
+        const bodyIndex = worldHudHtml.indexOf("class=\"world-hud-body\"");
+        expect(actionsIndex).toBeGreaterThan(-1);
+        expect(bodyIndex).toBeGreaterThan(-1);
+        expect(actionsIndex).toBeLessThan(bodyIndex);
+        expect(worldHudHtml).not.toContain("id=\"world-hud-gear\"");
     });
 
     test("map place names render through the Chinese map label adapter", () => {

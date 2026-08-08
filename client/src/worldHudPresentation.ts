@@ -1,7 +1,4 @@
-import { GameObjectDefs } from "../../shared/defs/register.ts";
-import type { ItemInstance } from "../../shared/types/itemInstance.ts";
 import type { WorldWeather, WorldWeatherType } from "../../shared/types/worldWeather.ts";
-import { formatWorldItemDurability, getWorldItemDurabilityRatio, getWorldItemLabel } from "./worldSettlement.ts";
 
 export const WORLD_WEATHER_LABELS: Record<WorldWeatherType, string> = {
     clear: "晴朗",
@@ -24,22 +21,6 @@ export const WORLD_WEATHER_TYPES = [
     "thunderstorm",
 ] as const satisfies readonly WorldWeatherType[];
 
-export type WorldHudDurabilityGroupKey = "weapon" | "armor" | "other";
-
-export interface WorldHudDurabilityItem {
-    type: string;
-    label: string;
-    durabilityText: string;
-    durabilityRatio: number;
-    durabilityPercent: number;
-    groupKey: WorldHudDurabilityGroupKey;
-}
-
-export interface WorldHudDurabilityGroup {
-    key: WorldHudDurabilityGroupKey;
-    items: readonly WorldHudDurabilityItem[];
-}
-
 export interface WorldWeatherVisualState {
     weatherClass: string;
     hudWeatherClass: string;
@@ -50,8 +31,6 @@ export interface WorldWeatherVisualState {
     showOverlay: boolean;
 }
 
-const WORLD_DURABILITY_GROUP_ORDER: readonly WorldHudDurabilityGroupKey[] = ["weapon", "armor", "other"];
-
 const WORLD_WEATHER_OVERLAY_OPACITY: Record<WorldWeatherType, number> = {
     clear: 0,
     rain: 0.18,
@@ -60,63 +39,6 @@ const WORLD_WEATHER_OVERLAY_OPACITY: Record<WorldWeatherType, number> = {
     fog: 0,
     thunderstorm: 0.3,
 };
-
-function isWorldHudDurabilityItem(item: ItemInstance): boolean {
-    return item.durabilityMax > 0 && (item.state === "carried" || item.state === "equipped");
-}
-
-function worldHudDurabilityGroupKey(type: string): WorldHudDurabilityGroupKey {
-    const def = GameObjectDefs.typeToDefSafe(type);
-    switch (def?.type) {
-        case "gun":
-        case "melee":
-            return "weapon";
-        case "backpack":
-        case "chest":
-        case "helmet":
-        case "outfit":
-            return "armor";
-        default:
-            return "other";
-    }
-}
-
-export function buildWorldHudDurabilityGroups(items: readonly ItemInstance[]): WorldHudDurabilityGroup[] {
-    const grouped = new Map<WorldHudDurabilityGroupKey, WorldHudDurabilityItem[]>();
-    for (const key of WORLD_DURABILITY_GROUP_ORDER) {
-        grouped.set(key, []);
-    }
-
-    for (const item of items) {
-        if (!isWorldHudDurabilityItem(item)) continue;
-        const durabilityRatio = getWorldItemDurabilityRatio(item);
-        const groupKey = worldHudDurabilityGroupKey(item.type);
-        grouped.get(groupKey)!.push({
-            type: item.type,
-            label: getWorldItemLabel(item.type),
-            durabilityText: formatWorldItemDurability(item),
-            durabilityRatio,
-            durabilityPercent: Math.round(durabilityRatio * 100),
-            groupKey,
-        });
-    }
-
-    return WORLD_DURABILITY_GROUP_ORDER
-        .map((key) => ({
-            key,
-            items: grouped.get(key) ?? [],
-        }))
-        .filter((group) => group.items.length > 0);
-}
-
-export function getWorldHudDurabilityCount(groups: readonly WorldHudDurabilityGroup[]): number {
-    return groups.reduce((total, group) => total + group.items.length, 0);
-}
-
-export function getWorldHudLowestDurabilityPercent(groups: readonly WorldHudDurabilityGroup[]): number | null {
-    const percentages = groups.flatMap((group) => group.items.map((item) => item.durabilityPercent));
-    return percentages.length ? Math.min(...percentages) : null;
-}
 
 export function getWorldWeatherVisualState(
     weather: Pick<WorldWeather, "type" | "phase" | "intensity">,

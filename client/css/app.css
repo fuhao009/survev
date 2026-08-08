@@ -8939,6 +8939,13 @@ input [type="image"]:focus {
   white-space: normal;
 }
 
+.world-hud-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .world-hud-body {
   margin-top: 8px;
 }
@@ -9023,97 +9030,6 @@ input [type="image"]:focus {
   background: rgba(227, 185, 111, 0.1);
 }
 
-#world-hud-gear {
-  margin: 6px 0 10px;
-  color: #c8d0d5;
-  overflow-wrap: anywhere;
-  white-space: normal;
-}
-
-#world-hud-gear-title {
-  color: #ffd27c;
-  font-weight: 700;
-}
-
-#world-hud-gear-summary {
-  margin: 2px 0 6px;
-  color: var(--home-muted);
-  font-size: 12px;
-}
-
-#world-hud-gear-list {
-  display: grid;
-  gap: 6px;
-}
-
-.world-hud-gear-group {
-  display: grid;
-  gap: 4px;
-}
-
-.world-hud-gear-group-title {
-  color: #f3f5f6;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.world-hud-gear-items {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.world-hud-gear-item {
-  display: grid;
-  gap: 3px;
-  padding: 4px 6px;
-  border: 1px solid rgba(174, 184, 189, 0.18);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.world-hud-gear-item-low {
-  border-color: rgba(255, 167, 76, 0.38);
-}
-
-.world-hud-gear-item-critical {
-  border-color: rgba(255, 97, 97, 0.4);
-}
-
-.world-hud-gear-item-label {
-  color: #f3f5f6;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.world-hud-gear-item-detail {
-  display: grid;
-  gap: 4px;
-  color: var(--home-muted);
-  font-size: 12px;
-}
-
-.world-hud-gear-meter {
-  display: block;
-  height: 6px;
-  border: 1px solid rgba(255, 210, 124, 0.55);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.25);
-  overflow: hidden;
-}
-
-.world-hud-gear-meter > span {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, #ffd27c, #f39b3d);
-}
-
-#world-hud-gear.world-hud-gear-empty {
-  color: var(--home-muted);
-}
-
 #world-extract {
   border: 1px solid #e6b866;
   padding: 7px 10px;
@@ -9146,7 +9062,7 @@ input [type="image"]:focus {
 
 #world-hud-message {
   min-height: 18px;
-  margin-top: 7px;
+  margin-top: 8px;
   color: #f2c36c;
 }
 

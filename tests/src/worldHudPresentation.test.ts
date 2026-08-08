@@ -1,46 +1,7 @@
 import { describe, expect, test } from "vitest";
-import {
-    buildWorldHudDurabilityGroups,
-    getWorldHudDurabilityCount,
-    getWorldHudLowestDurabilityPercent,
-    getWorldWeatherVisualState,
-} from "../../client/src/worldHudPresentation.ts";
-import type { ItemInstance } from "../../shared/types/itemInstance.ts";
-
-function item(
-    type: string,
-    state: ItemInstance["state"],
-    durability: number,
-    durabilityMax = 1000,
-): ItemInstance {
-    return {
-        instanceId: `${type}-${state}`,
-        type,
-        quantity: 1,
-        durability,
-        durabilityMax,
-        state,
-        ownerId: "player-1",
-    };
-}
+import { getWorldWeatherVisualState } from "../../client/src/worldHudPresentation.ts";
 
 describe("world HUD presentation", () => {
-    test("groups only carried and equipped durable items", () => {
-        const groups = buildWorldHudDurabilityGroups([
-            item("ak47", "carried", 1000),
-            item("m9", "equipped", 910),
-            item("outfitBase", "carried", 992),
-            item("helmet01", "stash", 992),
-            item("bandage", "carried", 0, 0),
-        ]);
-
-        expect(getWorldHudDurabilityCount(groups)).toBe(3);
-        expect(getWorldHudLowestDurabilityPercent(groups)).toBe(91);
-        expect(groups.map((group) => group.key)).toEqual(["weapon", "armor"]);
-        expect(groups[0].items.map((item) => item.label)).toEqual(["AK-47", "M9 手枪"]);
-        expect(groups[1].items.map((item) => item.label)).toEqual(["基础服装"]);
-    });
-
     test("derives a visible visual state for each weather type", () => {
         expect(getWorldWeatherVisualState({
             type: "clear",

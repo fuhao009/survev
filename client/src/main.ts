@@ -37,15 +37,10 @@ import { TeamMenu } from "./ui/teamMenu.ts";
 import { loadStaticDomImages } from "./ui/ui2.ts";
 import { isUserCenterHash } from "./ui/userCenterNavigation.ts";
 import {
-    buildWorldHudDurabilityGroups,
-    getWorldHudDurabilityCount,
-    getWorldHudLowestDurabilityPercent,
     getWorldWeatherVisualState,
     WORLD_TERRAIN_LABELS,
     WORLD_WEATHER_LABELS,
     WORLD_WEATHER_TYPES,
-    type WorldHudDurabilityGroup,
-    type WorldHudDurabilityGroupKey,
 } from "./worldHudPresentation.ts";
 import {
     buildDeadWorldResult,
@@ -65,11 +60,6 @@ const WORLD_HUD_WEATHER_CLASSES = [
     ...WORLD_WEATHER_TYPES.map((type) => `world-hud-weather-${type}`),
     "world-hud-weather-warning",
 ].join(" ");
-const WORLD_HUD_GEAR_GROUP_TITLE_KEYS: Record<WorldHudDurabilityGroupKey, string> = {
-    weapon: "world-hud-gear-group-weapon",
-    armor: "world-hud-gear-group-armor",
-    other: "world-hud-gear-group-other",
-};
 
 export class Application {
     nameInput = $("#player-name-input-solo");
@@ -905,48 +895,6 @@ export class Application {
             .css("--world-weather-opacity", visual.showOverlay ? visual.overlayOpacity.toFixed(2) : "0");
     }
 
-    private renderWorldHudGear(groups: readonly WorldHudDurabilityGroup[]) {
-        const count = getWorldHudDurabilityCount(groups);
-        const lowest = getWorldHudLowestDurabilityPercent(groups);
-        const container = $("#world-hud-gear").toggleClass("world-hud-gear-empty", count === 0);
-        $("#world-hud-gear-title").text(this.localization.translate("world-hud-gear-title"));
-        $("#world-hud-gear-summary").text(
-            count > 0 && lowest !== null
-                ? this.localization.translate("world-hud-gear-summary", { count, lowest })
-                : this.localization.translate("world-hud-gear-empty"),
-        );
-
-        const list = $("#world-hud-gear-list").empty().toggle(count > 0);
-        container.show();
-        if (!count) return;
-
-        for (const group of groups) {
-            const groupEl = $("<div>").addClass(`world-hud-gear-group world-hud-gear-group-${group.key}`);
-            $("<div>")
-                .addClass("world-hud-gear-group-title")
-                .text(this.localization.translate(WORLD_HUD_GEAR_GROUP_TITLE_KEYS[group.key]))
-                .appendTo(groupEl);
-            const itemsEl = $("<ul>").addClass("world-hud-gear-items").appendTo(groupEl);
-            for (const item of group.items) {
-                const itemEl = $("<li>").addClass("world-hud-gear-item")
-                    .toggleClass("world-hud-gear-item-low", item.durabilityPercent <= 35)
-                    .toggleClass("world-hud-gear-item-critical", item.durabilityPercent <= 15);
-                $("<span>").addClass("world-hud-gear-item-label").text(item.label).appendTo(itemEl);
-                const detail = $("<span>").addClass("world-hud-gear-item-detail").appendTo(itemEl);
-                $("<span>")
-                    .addClass("world-hud-gear-meter")
-                    .append($("<span>").css("width", `${item.durabilityPercent}%`))
-                    .appendTo(detail);
-                $("<span>")
-                    .addClass("world-hud-gear-item-value")
-                    .text(`${item.durabilityText} · ${item.durabilityPercent}%`)
-                    .appendTo(detail);
-                itemEl.appendTo(itemsEl);
-            }
-            groupEl.appendTo(list);
-        }
-    }
-
     refreshWorldHud() {
         const snapshot = this.worldSnapshot;
         if (this.worldResultView) {
@@ -1046,12 +994,6 @@ export class Application {
                 })
                 : this.localization.translate("world-terrain-normal"),
         );
-        const gearGroups = buildWorldHudDurabilityGroups(snapshot.inventory);
-        this.renderWorldHudGear(gearGroups);
-        const lowestDurability = getWorldHudLowestDurabilityPercent(gearGroups);
-        const collapsedDurability = lowestDurability === null
-            ? this.localization.translate("world-hud-collapsed-durability-empty")
-            : this.localization.translate("world-hud-collapsed-durability", { percent: lowestDurability });
         const canExtract = !dead && life.status === "alive" && snapshot.canExtract;
         $("#world-hud-collapsed-summary").text(
             dead
@@ -1059,7 +1001,6 @@ export class Application {
                 : this.localization.translate("world-hud-collapsed-summary", {
                     health: life.status === "alive" ? life.health : 0,
                     weather: weatherLabel,
-                    durability: collapsedDurability,
                     distance: extractionDistance,
                     points: snapshot.extractionQuote?.totalPoints ?? 0,
                 }),
