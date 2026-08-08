@@ -1,0 +1,34 @@
+{
+  "image_url": "https://oss1.cxkedu.shop/images/2026/08/03/1785748848_9cace1687fc9ca605f44219e7299ad52.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "attempt_count": 2,
+  "raw": {
+    "background": "opaque",
+    "created": 1785748848,
+    "data": [
+      {
+        "revised_prompt": "A polished 2D battle royale game user-center background, an expedition workbench inside a coastal bunker, organized gear, helmet, backpack, folded map, radio, weapon cases and a glowing status monitor with abstract shapes only, teal metal, moss green canvas, amber brass and charcoal accents, a calm open area on the right for native profile controls, cinematic illustrated game art, no logo, no watermark, no readable text, 16:9 horizontal composition",
+        "url": "https://oss1.cxkedu.shop/images/2026/08/03/1785748848_9cace1687fc9ca605f44219e7299ad52.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 452,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 452
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 7015
+    }
+  },
+  "retry_reason": "attempt 1 exceeded 60s"
+}

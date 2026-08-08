@@ -1,0 +1,33 @@
+{
+  "image_url": "https://oss6.cxkedu.shop/images/2026/08/03/1785760150_a0c5761eea66a97c209acee2b7bc6659.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "attempt_count": 1,
+  "raw": {
+    "background": "opaque",
+    "created": 1785760150,
+    "data": [
+      {
+        "revised_prompt": "Premium commercial 2D battle royale game login home screen, rain-soaked neon coastal city after a blackout, agile masked survivor in a crimson rain jacket and tactical helmet standing on the right beneath a broken elevated train, wet pavement reflections, cyan and red practical lights, moody cyber-survival atmosphere, polished AAA game key art, sharp character silhouette, controlled contrast, empty shadowed space on the left for a login panel. Exactly one minimalist translucent login window on the left with two blank input rows and one bold primary action button, the only interface in the image. No navigation, no leaderboard, no news, no inventory, no status bar, no extra panels, no readable words, no logo, no watermark, no icons, no decorative widgets, horizontal 16:9 composition.",
+        "url": "https://oss6.cxkedu.shop/images/2026/08/03/1785760150_a0c5761eea66a97c209acee2b7bc6659.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 792,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 792
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 7355
+    }
+  }
+}

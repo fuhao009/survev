@@ -46,7 +46,6 @@ const INITIAL_GEAR = ["ak47", "m9"] as const;
 const INITIAL_EQUIPMENT = ["backpack01", "helmet01", "chest01"] as const;
 const LOCKS = new Map<string, Promise<void>>();
 const RECENT_EXTRACTION_WINDOW_MS = 15 * 60 * 1000;
-
 const WORLD_DURABLE_GAME_OBJECT_TYPES = new Set([
     "gun",
     "melee",
@@ -390,7 +389,11 @@ export class WorldService {
         const durabilityAverage = quotedItems.length
             ? quotedItems.reduce((total, item) => total + durabilityRatio(item), 0) / quotedItems.length
             : 1;
-        const terrainMovement = getWorldTerrainMovementModifier(extractionZone.center, worldShard.terrain);
+        const terrainMovement = getWorldTerrainMovementModifier(
+            extractionZone.center,
+            worldShard.terrain,
+            worldShard.weather,
+        );
         return getWorldExtractionQuote({
             extractionZoneId: extractionZone.zoneId,
             extractionRevision: extractionZone.revision,
@@ -450,7 +453,7 @@ export class WorldService {
             canExtract: lifeRow.status === "alive" && isWithinExtractionZone(lifeRow.position.position, extractionZone),
             terrain: worldShard.terrain,
             terrainMovement: "position" in life
-                ? getWorldTerrainMovementModifier(life.position.position, worldShard.terrain)
+                ? getWorldTerrainMovementModifier(life.position.position, worldShard.terrain, worldShard.weather)
                 : null,
             weather: worldShard.weather,
             lightning: worldShard.lightning,
@@ -674,6 +677,7 @@ export class WorldService {
             });
             if (!life) return false;
             const shard = await this.ensureShard();
+            const worldShard = toWorldShard(shard);
 
             const position = {
                 position: {
@@ -688,7 +692,8 @@ export class WorldService {
             const nextHealth = Math.max(1, Math.min(100, Math.round(health)));
             const terrainMovement = getWorldTerrainMovementModifier(
                 position.position,
-                toWorldShard(shard).terrain,
+                worldShard.terrain,
+                worldShard.weather,
             );
             const unchanged = life.position.position.x === position.position.x
                 && life.position.position.y === position.position.y

@@ -1,0 +1,37 @@
+{
+  "image_url": "https://oss5.cxkedu.shop/images/2026/08/08/1786158001_228521b471da06ccab994bdfa0d8647d.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "reference_images": [
+    "/Volumes/RAID/survev/outputs/fog-two-player-perspectives-neutral_20260808_105802/references/clear_single_view.png",
+    "/Volumes/RAID/survev/outputs/fog-two-player-perspectives-neutral_20260808_105802/references/fog_single_view.png"
+  ],
+  "attempt_count": 1,
+  "raw": {
+    "background": "opaque",
+    "created": 1786158001,
+    "data": [
+      {
+        "revised_prompt": "严格以两张参考图的真实 Survev 游戏截图为基础，保持同样的 2D 俯视大逃杀游戏画风、HUD 位置、角色比例、地面网格、绿色地块、水面、桥、树木、建筑、障碍物和 UI 密度。生成单个完整游戏视口，不要四象限重复，不要左右分屏，不要海报化，不要写实电影风。\n\n玩家 A 视角：玩家 A 是自己，位于画面中下方偏中心，附近 20-25 米范围内清晰可见。A 自己可以保留一颗蓝色圆形装备/头盔提示和清楚的身体装备细节，因为这是自我可见信息。玩家 B 位于 A 前方约 22-30 米的雾里，必须只是中性低对比游戏人物轮廓：不要蓝色圆圈，不要橙色轮廓，不要发光描边，不要阵营色，不要名字，不要字母，不要血条，不要识别标签，不显示装备颜色。B 仍然能被看见，但只能看见淡淡的人形和方向感，看不清身份和装备。\n\n雾效必须是距离相关视距衰减，不是全屏白雾覆盖。近处清晰；中距离逐渐变灰、降低对比度、边缘轻微模糊；远处桥、树、建筑、地形、障碍仍保留淡轮廓，不要消失，不要把地图纯白覆盖。画面应能清楚表达：清晰区 -> 半透明雾化区 -> 低对比轮廓区。\n\n严格限制画面中只有两个玩家角色：玩家 A 和玩家 B。不要新增第三个角色、怪物、灰色球体、烟雾团、机器人、宠物、浮空物或额外标记。不要水印，不要 logo，不要可读文字。16:9 横向游戏截图构图。",
+        "url": "https://oss5.cxkedu.shop/images/2026/08/08/1786158001_228521b471da06ccab994bdfa0d8647d.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 13699,
+      "input_tokens_details": {
+        "image_tokens": 13126,
+        "text_tokens": 573
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 20262
+    }
+  }
+}

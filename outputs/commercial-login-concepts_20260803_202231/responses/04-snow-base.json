@@ -1,0 +1,33 @@
+{
+  "image_url": "https://oss6.cxkedu.shop/images/2026/08/03/1785759970_955ba051f1f891ee7ecdcd5b62942cfd.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "attempt_count": 1,
+  "raw": {
+    "background": "opaque",
+    "created": 1785759970,
+    "data": [
+      {
+        "revised_prompt": "Premium commercial 2D battle royale game login home screen, frozen mountain military research base at dawn, disciplined survivor in a white winter parka and black tactical harness standing on the right beside a snow-covered armored vehicle, huge mountain ridge and communications mast behind, blowing snow, cold blue light with a precise warm beacon, high-end competitive shooter key art, realistic materials, clean premium composition, dark calm space on the left for a login panel. Include exactly one compact steel-and-glass login window on the left with two blank input rows and one primary action button, no other interface elements. No navigation, no leaderboard, no news, no inventory, no status bar, no extra panels, no readable words, no logo, no watermark, no icons, horizontal 16:9 composition.",
+        "url": "https://oss6.cxkedu.shop/images/2026/08/03/1785759970_955ba051f1f891ee7ecdcd5b62942cfd.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 805,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 805
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 7368
+    }
+  }
+}

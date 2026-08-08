@@ -1,0 +1,3 @@
+/Volumes/RAID/survev/outputs/fog-visibility-falloff_effect_20260808_102553/images/fog-visibility-falloff-effect.png
+  pixelWidth: 1672
+  pixelHeight: 941

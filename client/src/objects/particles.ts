@@ -317,7 +317,17 @@ export class ParticleBarn {
                 e.ticker += dt;
                 e.nextSpawn -= dt;
                 const def = EmitterDefs[e.type];
-                while (e.nextSpawn <= 0 && e.spawnCount < def.maxCount) {
+                let activeCount = def.maxActive === undefined
+                    ? 0
+                    : this.particles.reduce(
+                        (count, particle) => count + (particle.active && particle.emitterIdx === i ? 1 : 0),
+                        0,
+                    );
+                while (
+                    e.nextSpawn <= 0
+                    && e.spawnCount < def.maxCount
+                    && (def.maxActive === undefined || activeCount < def.maxActive)
+                ) {
                     const rad = e.scale * e.radius;
                     const pos = v2.add(e.pos, util.randomPointInCircle(rad));
                     const dir = v2.rotate(e.dir, (Math.random() - 0.5) * def.angle);
@@ -337,6 +347,7 @@ export class ParticleBarn {
                         particle.setColor(e.color);
                     }
                     particle.emitterIdx = i;
+                    activeCount++;
                     let rate = getRangeValue(def.rate);
                     if (def.maxRate) {
                         const w = math.easeInExpo(
@@ -2779,6 +2790,42 @@ const ParticleDefs: Record<string, ParticleDef> = {
             return util.rgbToInt(util.hsvToRgb(0, 0, util.random(0.9, 0.95)));
         },
     },
+    worldRain: {
+        image: ["part-rain-01.img"],
+        life: new Range(0.9, 1.2),
+        drag: 0,
+        rotVel: 0,
+        scale: {
+            start: new Range(0.34, 0.5),
+            end: new Range(0.24, 0.38),
+            lerp: new Range(0, 1),
+        },
+        alpha: {
+            start: 0.72,
+            end: 0.12,
+            lerp: new Range(0.7, 1),
+        },
+        color: 0xc8eaff,
+        ignoreValueAdjust: true,
+    },
+    worldFog: {
+        image: ["part-fog-01.img"],
+        life: new Range(7, 10),
+        drag: new Range(0.02, 0.08),
+        rotVel: new Range(0.02, 0.08),
+        scale: {
+            start: new Range(1.7, 2.5),
+            end: new Range(2.3, 3.4),
+            lerp: new Range(0, 1),
+        },
+        alpha: {
+            start: 0.16,
+            end: 0,
+            lerp: new Range(0.8, 1),
+        },
+        color: 0xd9e8ed,
+        ignoreValueAdjust: true,
+    },
     snowball_impact: {
         image: ["part-snow-01.img"],
         life: new Range(0.5, 1),
@@ -3402,6 +3449,28 @@ const EmitterDefs: Record<string, EmitterDef> = {
         maxCount: Number.MAX_VALUE,
         zOrd: 999,
     },
+    world_rain: {
+        particle: "worldRain",
+        rate: new Range(0.007, 0.009),
+        radius: 140,
+        speed: new Range(27, 35),
+        angle: Math.PI * 0.08,
+        rot: 0,
+        maxCount: Number.MAX_VALUE,
+        maxActive: 160,
+        zOrd: 999,
+    },
+    world_fog: {
+        particle: "worldFog",
+        rate: new Range(0.28, 0.4),
+        radius: 120,
+        speed: new Range(0.25, 0.55),
+        angle: Math.PI * 0.35,
+        rot: new Range(-0.2, 0.2),
+        maxCount: Number.MAX_VALUE,
+        maxActive: 24,
+        zOrd: 999,
+    },
     heal_basic: {
         particle: "heal_basic",
         rate: new Range(0.3, 0.35),
@@ -3576,6 +3645,7 @@ export interface EmitterDef {
     angle: number;
     rot?: RangeNumber;
     maxCount: number;
+    maxActive?: number;
     maxRate?: Range;
     maxElapsed?: number;
     zOrd?: number;

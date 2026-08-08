@@ -149,6 +149,23 @@ describe("authoritative world lightning schedule", () => {
         expect(first.damageMultiplier).toBe(1.35);
     });
 
+    test("applies the thunderstorm terrain multiplier on top of flooded conductivity", () => {
+        const terrain = {
+            revision: 8,
+            patches: [
+                terrainPatch("flooded", "flooded", { min: { x: 0, y: 0 }, max: { x: 30, y: 30 } }, 8),
+            ],
+        };
+        const modifier = getWorldTerrainLightningModifier(
+            { x: 15, y: 15 },
+            terrain,
+            { revision: 4, type: "thunderstorm" },
+        );
+
+        expect(modifier.radiusMultiplier).toBeCloseTo(1.75 * 1.1);
+        expect(modifier.damageMultiplier).toBeCloseTo(1.35 * 1.1);
+    });
+
     test("has no impact outside the radius by default", () => {
         const event = {
             revision: 1,

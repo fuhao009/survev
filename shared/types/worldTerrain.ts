@@ -1,4 +1,5 @@
 import type { Vec2 } from "../utils/v2.ts";
+import type { WorldWeather, WorldWeatherType } from "./worldWeather.ts";
 
 /** Terrain states are shared by authoritative simulation and client snapshots. */
 export type WorldTerrainPatchType = "mud" | "flooded" | "rockslide" | "scorched";
@@ -52,6 +53,63 @@ export interface WorldTerrainMovementModifier {
     readonly position: Vec2;
     readonly speedMultiplier: number;
     readonly matchedPatches: readonly WorldTerrainMovementMatch[];
+}
+
+export interface WorldWeatherTerrainModifier {
+    readonly kind: "world_weather_terrain";
+    readonly weatherRevision: number;
+    readonly weatherType: WorldWeatherType;
+    readonly movementSpeedMultiplier: number;
+    readonly bulletSpeedMultiplier: number;
+    readonly obstacleDamageMultiplier: number;
+    readonly lightningRadiusMultiplier: number;
+    readonly lightningDamageMultiplier: number;
+}
+
+const WORLD_WEATHER_TERRAIN_MULTIPLIERS: Readonly<
+    Record<WorldWeatherType, Omit<WorldWeatherTerrainModifier, "kind" | "weatherRevision" | "weatherType">>
+> = {
+    clear: {
+        movementSpeedMultiplier: 1,
+        bulletSpeedMultiplier: 1,
+        obstacleDamageMultiplier: 1,
+        lightningRadiusMultiplier: 1,
+        lightningDamageMultiplier: 1,
+    },
+    rain: {
+        movementSpeedMultiplier: 0.94,
+        bulletSpeedMultiplier: 0.96,
+        obstacleDamageMultiplier: 0.9,
+        lightningRadiusMultiplier: 1,
+        lightningDamageMultiplier: 1,
+    },
+    fog: {
+        movementSpeedMultiplier: 0.97,
+        bulletSpeedMultiplier: 0.9,
+        obstacleDamageMultiplier: 1,
+        lightningRadiusMultiplier: 1,
+        lightningDamageMultiplier: 1,
+    },
+    thunderstorm: {
+        movementSpeedMultiplier: 0.88,
+        bulletSpeedMultiplier: 0.92,
+        obstacleDamageMultiplier: 0.85,
+        lightningRadiusMultiplier: 1.1,
+        lightningDamageMultiplier: 1.1,
+    },
+};
+
+export function getWorldWeatherTerrainModifier(
+    weather?: Pick<WorldWeather, "revision" | "type">,
+): WorldWeatherTerrainModifier {
+    const weatherType = weather?.type ?? "clear";
+    const multipliers = WORLD_WEATHER_TERRAIN_MULTIPLIERS[weatherType];
+    return {
+        kind: "world_weather_terrain",
+        weatherRevision: weather?.revision ?? 0,
+        weatherType,
+        ...multipliers,
+    };
 }
 
 /** Terrain effects consumed by the authoritative bullet simulation. */
@@ -154,7 +212,9 @@ function containsPoint(bounds: WorldTerrainPatchBounds, position: Vec2): boolean
 export function getWorldTerrainMovementModifier(
     position: Vec2,
     terrain: Pick<WorldTerrain, "revision" | "patches">,
+    weather?: Pick<WorldWeather, "revision" | "type">,
 ): WorldTerrainMovementModifier {
+    const weatherModifier = getWorldWeatherTerrainModifier(weather);
     const matchedPatches = terrain.patches
         .filter((patch) => containsPoint(patch.bounds, position))
         .sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
@@ -171,7 +231,7 @@ export function getWorldTerrainMovementModifier(
         speedMultiplier: matchedPatches.reduce(
             (slowest, patch) => Math.min(slowest, patch.speedMultiplier),
             1,
-        ),
+        ) * weatherModifier.movementSpeedMultiplier,
         matchedPatches,
     };
 }
@@ -184,8 +244,16 @@ export function getWorldTerrainMovementModifier(
 export function getWorldTerrainBulletModifier(
     position: Vec2,
     terrain: Pick<WorldTerrain, "revision" | "patches"> | undefined,
+    weather?: Pick<WorldWeather, "revision" | "type">,
 ): WorldTerrainBulletModifier {
-    if (!terrain) return getDefaultWorldTerrainBulletModifier(position);
+    const weatherModifier = getWorldWeatherTerrainModifier(weather);
+    if (!terrain) {
+        return {
+            ...getDefaultWorldTerrainBulletModifier(position),
+            speedMultiplier: weatherModifier.bulletSpeedMultiplier,
+            obstacleDamageMultiplier: weatherModifier.obstacleDamageMultiplier,
+        };
+    }
 
     const matchedPatches = terrain.patches
         .filter((patch) => containsPoint(patch.bounds, position))
@@ -204,11 +272,11 @@ export function getWorldTerrainBulletModifier(
         speedMultiplier: matchedPatches.reduce(
             (slowest, patch) => Math.min(slowest, patch.speedMultiplier),
             1,
-        ),
+        ) * weatherModifier.bulletSpeedMultiplier,
         obstacleDamageMultiplier: matchedPatches.reduce(
             (lowest, patch) => Math.min(lowest, patch.obstacleDamageMultiplier),
             1,
-        ),
+        ) * weatherModifier.obstacleDamageMultiplier,
         matchedPatches,
     };
 }
@@ -222,8 +290,16 @@ export function getWorldTerrainBulletModifier(
 export function getWorldTerrainLightningModifier(
     position: Vec2,
     terrain: Pick<WorldTerrain, "revision" | "patches"> | undefined,
+    weather?: Pick<WorldWeather, "revision" | "type">,
 ): WorldTerrainLightningModifier {
-    if (!terrain) return getDefaultWorldTerrainLightningModifier(position);
+    const weatherModifier = getWorldWeatherTerrainModifier(weather);
+    if (!terrain) {
+        return {
+            ...getDefaultWorldTerrainLightningModifier(position),
+            radiusMultiplier: weatherModifier.lightningRadiusMultiplier,
+            damageMultiplier: weatherModifier.lightningDamageMultiplier,
+        };
+    }
 
     const matchedPatches = terrain.patches
         .filter((patch) => containsPoint(patch.bounds, position))
@@ -242,11 +318,11 @@ export function getWorldTerrainLightningModifier(
         radiusMultiplier: matchedPatches.reduce(
             (largest, patch) => Math.max(largest, patch.radiusMultiplier),
             1,
-        ),
+        ) * weatherModifier.lightningRadiusMultiplier,
         damageMultiplier: matchedPatches.reduce(
             (largest, patch) => Math.max(largest, patch.damageMultiplier),
             1,
-        ),
+        ) * weatherModifier.lightningDamageMultiplier,
         matchedPatches,
     };
 }

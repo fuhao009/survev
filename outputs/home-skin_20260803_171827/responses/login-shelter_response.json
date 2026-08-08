@@ -1,0 +1,33 @@
+{
+  "image_url": "https://oss6.cxkedu.shop/images/2026/08/03/1785748788_97ac5c5c2d38d2f48d40b25d430ce455.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "attempt_count": 1,
+  "raw": {
+    "background": "opaque",
+    "created": 1785748788,
+    "data": [
+      {
+        "revised_prompt": "A polished 2D battle royale game login-screen background, a lone survivor in a weathered field jacket standing at the entrance of a fortified island shelter at blue hour, warm amber work lights, teal steel panels, moss green vegetation, orange warning lamps, a clear darker open area on the left for a native login form, cinematic illustrated game art, grounded tactical mood, no logo, no watermark, no readable text, 16:9 horizontal composition",
+        "url": "https://oss6.cxkedu.shop/images/2026/08/03/1785748788_97ac5c5c2d38d2f48d40b25d430ce455.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 445,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 445
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 7008
+    }
+  }
+}

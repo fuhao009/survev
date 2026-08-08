@@ -1,0 +1,3 @@
+/Volumes/RAID/survev/outputs/commercial-login-concepts_20260803_202231/images/01-island-command.png
+  pixelWidth: 1672
+  pixelHeight: 941

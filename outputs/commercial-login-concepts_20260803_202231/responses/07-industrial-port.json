@@ -1,0 +1,33 @@
+{
+  "image_url": "https://oss1.cxkedu.shop/images/2026/08/03/1785760225_2e9c6e7b86fc3a110f74522f3141c63a.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "attempt_count": 1,
+  "raw": {
+    "background": "opaque",
+    "created": 1785760225,
+    "data": [
+      {
+        "revised_prompt": "Premium commercial 2D battle royale game login home screen, abandoned industrial port at night, heavy cranes and stacked containers on the left, a focused survivor with a compact rifle standing on the left foreground, wet steel surfaces and a single red warning light cutting through sea fog, hard-edged cinematic survival shooter key art, premium realistic materials, black steel, muted cyan and red palette, clean open space on the right for a login panel. Exactly one narrow modern login window on the right with two blank input rows and one primary action button, the only interface element. No navigation, no leaderboard, no news, no inventory, no status bar, no extra panels, no readable words, no logo, no watermark, no icons, horizontal 16:9 composition.",
+        "url": "https://oss1.cxkedu.shop/images/2026/08/03/1785760225_2e9c6e7b86fc3a110f74522f3141c63a.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 762,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 762
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 7325
+    }
+  }
+}

@@ -22,6 +22,7 @@ img {
 }
 
 #game-area-wrapper {
+  --world-weather-opacity: 0;
   cursor: crosshair;
   left: 0;
   position: absolute !important;
@@ -32,6 +33,30 @@ img {
   padding: 0;
   overflow: hidden;
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+#world-weather-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--world-weather-opacity, 0);
+  transition: opacity 180ms linear, background-color 180ms linear;
+}
+
+#game-area-wrapper.world-weather-clear.world-weather-warning #world-weather-overlay {
+  background-color: rgb(128, 104, 68);
+}
+
+#game-area-wrapper.world-weather-rain #world-weather-overlay {
+  background-color: rgb(68, 107, 154);
+}
+
+#game-area-wrapper.world-weather-fog #world-weather-overlay {
+  background-color: rgb(202, 211, 217);
+}
+
+#game-area-wrapper.world-weather-thunderstorm #world-weather-overlay {
+  background-color: rgb(24, 31, 55);
 }
 
 #game-touch-area {
@@ -2677,6 +2702,7 @@ img {
 }
 
 .ui-armor-counter .ui-armor-count {
+  display: none;
   z-index: 2;
   text-shadow: 2px 2px #000000;
   position: relative;
@@ -2684,6 +2710,21 @@ img {
   font-weight: bold;
   margin-top: -28px;
   text-align: center;
+}
+
+.ui-armor-durability-value-mode .ui-armor-count {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  right: 0;
+  margin-top: 0;
+  color: #ffd27c;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.ui-armor-durability-bar-mode .ui-armor-counter-inner {
+  background: rgba(255, 210, 124, 0.7);
 }
 
 .ui-armor-counter .ui-armor-image {
@@ -4691,6 +4732,7 @@ span.ui-stats-header-value {
   }
 
   .ui-armor-counter .ui-armor-count {
+    display: none;
     z-index: 2;
     text-shadow: 1px 1px #000000;
     position: relative;
@@ -4698,6 +4740,17 @@ span.ui-stats-header-value {
     font-weight: bold;
     margin-top: -28px;
     text-align: center;
+  }
+
+  .ui-armor-durability-value-mode .ui-armor-count {
+    position: absolute;
+    top: 2px;
+    left: 0;
+    right: 0;
+    margin-top: 0;
+    color: #ffd27c;
+    font-size: 7px;
+    line-height: 1;
   }
 
   .ui-armor-counter .ui-armor-image {

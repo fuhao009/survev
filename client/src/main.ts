@@ -10,7 +10,6 @@ import type {
     GameWsDisconnectReason,
 } from "../../shared/types/api.ts";
 import type { WorldActionResponse, WorldEnterResponse, WorldSnapshot } from "../../shared/types/worldApi.ts";
-import type { WorldWeatherType } from "../../shared/types/worldWeather.ts";
 import { math } from "../../shared/utils/math.ts";
 import { Account } from "./account.ts";
 import { Ambiance } from "./ambiance.ts";
@@ -38,30 +37,39 @@ import { TeamMenu } from "./ui/teamMenu.ts";
 import { loadStaticDomImages } from "./ui/ui2.ts";
 import { isUserCenterHash } from "./ui/userCenterNavigation.ts";
 import {
+    buildWorldHudDurabilityGroups,
+    getWorldHudDurabilityCount,
+    getWorldHudLowestDurabilityPercent,
+    getWorldWeatherVisualState,
+    WORLD_TERRAIN_LABELS,
+    WORLD_WEATHER_LABELS,
+    WORLD_WEATHER_TYPES,
+    type WorldHudDurabilityGroup,
+    type WorldHudDurabilityGroupKey,
+} from "./worldHudPresentation.ts";
+import {
     buildDeadWorldResult,
     buildExtractedWorldResult,
-    formatWorldItemDurability,
-    getWorldItemDurabilityRatio,
-    getWorldItemLabel,
     getWorldItemStateLabel,
     WORLD_RESULT_RETURN_HASH,
     type WorldResultViewModel,
 } from "./worldSettlement.ts";
 
-const WORLD_WEATHER_LABELS: Record<WorldWeatherType, string> = {
-    clear: "晴朗",
-    rain: "降雨",
-    fog: "浓雾",
-    thunderstorm: "雷暴",
-};
-const WORLD_TERRAIN_LABELS: Record<string, string> = {
-    mud: "泥地",
-    flooded: "积水地",
-    rockslide: "落石区",
-    scorched: "焦土区",
-};
 const WORLD_HUD_COLLAPSED_KEY = "survev-world-hud-collapsed";
 const WORLD_GAME_MODE_IDX = 0;
+const WORLD_WEATHER_WRAPPER_CLASSES = [
+    ...WORLD_WEATHER_TYPES.map((type) => `world-weather-${type}`),
+    "world-weather-warning",
+].join(" ");
+const WORLD_HUD_WEATHER_CLASSES = [
+    ...WORLD_WEATHER_TYPES.map((type) => `world-hud-weather-${type}`),
+    "world-hud-weather-warning",
+].join(" ");
+const WORLD_HUD_GEAR_GROUP_TITLE_KEYS: Record<WorldHudDurabilityGroupKey, string> = {
+    weapon: "world-hud-gear-group-weapon",
+    armor: "world-hud-gear-group-armor",
+    other: "world-hud-gear-group-other",
+};
 
 export class Application {
     nameInput = $("#player-name-input-solo");
@@ -173,6 +181,11 @@ export class Application {
         this.worldSnapshot = snapshot;
         this.game?.setWorldExtractionZone(snapshot?.extractionZone ?? null);
         this.game?.setWorldInventory(snapshot?.inventory ?? null);
+        this.game?.setWorldWeatherState(
+            snapshot?.weather ?? null,
+            snapshot?.terrain ?? null,
+            snapshot?.shard.seed ?? null,
+        );
     }
 
     private setWorldHudCollapsed(collapsed: boolean, persist = true) {
@@ -478,6 +491,11 @@ export class Application {
             );
             this.game.setDurabilityDisplayMode(this.config.get("durabilityDisplay")!);
             this.game.setWorldInventory(this.worldSnapshot?.inventory ?? null);
+            this.game.setWorldWeatherState(
+                this.worldSnapshot?.weather ?? null,
+                this.worldSnapshot?.terrain ?? null,
+                this.worldSnapshot?.shard.seed ?? null,
+            );
             this.loadoutDisplay = new LoadoutDisplay(
                 this.pixi,
                 this.audioManager,
@@ -788,6 +806,7 @@ export class Application {
         this.setWorldSnapshot(null);
         this.worldDeathPending = false;
         this.stopWorldPolling();
+        this.refreshWorldWeatherVisual(null);
         $("#world-hud").hide();
     }
 
@@ -871,13 +890,72 @@ export class Application {
         }
     }
 
+    private refreshWorldWeatherVisual(weather: WorldSnapshot["weather"] | null) {
+        const wrapper = $("#game-area-wrapper");
+        wrapper.removeClass(WORLD_WEATHER_WRAPPER_CLASSES);
+        if (!weather || !this.worldSessionActive || this.active || this.worldResultView) {
+            wrapper.css("--world-weather-opacity", "0");
+            return;
+        }
+
+        const visual = getWorldWeatherVisualState(weather);
+        wrapper
+            .addClass(visual.weatherClass)
+            .toggleClass("world-weather-warning", weather.phase === "warning")
+            .css("--world-weather-opacity", visual.showOverlay ? visual.overlayOpacity.toFixed(2) : "0");
+    }
+
+    private renderWorldHudGear(groups: readonly WorldHudDurabilityGroup[]) {
+        const count = getWorldHudDurabilityCount(groups);
+        const lowest = getWorldHudLowestDurabilityPercent(groups);
+        const container = $("#world-hud-gear").toggleClass("world-hud-gear-empty", count === 0);
+        $("#world-hud-gear-title").text(this.localization.translate("world-hud-gear-title"));
+        $("#world-hud-gear-summary").text(
+            count > 0 && lowest !== null
+                ? this.localization.translate("world-hud-gear-summary", { count, lowest })
+                : this.localization.translate("world-hud-gear-empty"),
+        );
+
+        const list = $("#world-hud-gear-list").empty().toggle(count > 0);
+        container.show();
+        if (!count) return;
+
+        for (const group of groups) {
+            const groupEl = $("<div>").addClass(`world-hud-gear-group world-hud-gear-group-${group.key}`);
+            $("<div>")
+                .addClass("world-hud-gear-group-title")
+                .text(this.localization.translate(WORLD_HUD_GEAR_GROUP_TITLE_KEYS[group.key]))
+                .appendTo(groupEl);
+            const itemsEl = $("<ul>").addClass("world-hud-gear-items").appendTo(groupEl);
+            for (const item of group.items) {
+                const itemEl = $("<li>").addClass("world-hud-gear-item")
+                    .toggleClass("world-hud-gear-item-low", item.durabilityPercent <= 35)
+                    .toggleClass("world-hud-gear-item-critical", item.durabilityPercent <= 15);
+                $("<span>").addClass("world-hud-gear-item-label").text(item.label).appendTo(itemEl);
+                const detail = $("<span>").addClass("world-hud-gear-item-detail").appendTo(itemEl);
+                $("<span>")
+                    .addClass("world-hud-gear-meter")
+                    .append($("<span>").css("width", `${item.durabilityPercent}%`))
+                    .appendTo(detail);
+                $("<span>")
+                    .addClass("world-hud-gear-item-value")
+                    .text(`${item.durabilityText} · ${item.durabilityPercent}%`)
+                    .appendTo(detail);
+                itemEl.appendTo(itemsEl);
+            }
+            groupEl.appendTo(list);
+        }
+    }
+
     refreshWorldHud() {
         const snapshot = this.worldSnapshot;
         if (this.worldResultView) {
+            this.refreshWorldWeatherVisual(null);
             $("#world-hud").hide();
             return;
         }
         if (!snapshot || !this.worldSessionActive || this.active) {
+            this.refreshWorldWeatherVisual(null);
             $("#world-hud").hide();
             return;
         }
@@ -925,8 +1003,12 @@ export class Application {
         const weatherLabel = WORLD_WEATHER_LABELS[weather.type];
         const nextWeatherLabel = WORLD_WEATHER_LABELS[weather.nextType || weather.type];
         const weatherWarning = weather.phase === "warning";
+        const weatherVisual = getWorldWeatherVisualState(weather);
         const weatherSecondsLeft = Math.max(0, Math.ceil((weather.endsAt - Date.now()) / 1000));
+        this.refreshWorldWeatherVisual(weather);
         $("#world-hud-weather")
+            .removeClass(WORLD_HUD_WEATHER_CLASSES)
+            .addClass(weatherVisual.hudWeatherClass)
             .toggleClass("world-hud-weather-warning", weatherWarning)
             .attr(
                 "aria-label",
@@ -938,6 +1020,13 @@ export class Application {
                     : this.localization.translate("world-weather", { weather: weatherLabel }),
             );
         $("#world-hud-weather-name").text(this.localization.translate("world-weather", { weather: weatherLabel }));
+        $("#world-hud-weather-impact").text(
+            this.localization.translate(weatherVisual.impactKey, {
+                intensity: weatherVisual.intensityPercent,
+                risk: weatherVisual.riskPercent,
+                lightning: snapshot.lightning.events.length,
+            }),
+        );
         $("#world-hud-weather-hint").text(
             weatherWarning
                 ? this.localization.translate("world-weather-hint", {
@@ -957,21 +1046,20 @@ export class Application {
                 })
                 : this.localization.translate("world-terrain-normal"),
         );
-        const gear = snapshot.inventory
-            .filter((item) => item.state === "carried" || item.state === "equipped")
-            .filter((item) => item.durabilityMax > 0)
-            .map((item) => {
-                const percent = Math.round(getWorldItemDurabilityRatio(item) * 100);
-                return `${getWorldItemLabel(item.type)} ${formatWorldItemDurability(item)} (${percent}%)`;
-            })
-            .join(" · ");
-        $("#world-hud-gear").text(gear || this.localization.translate("world-gear-empty"));
+        const gearGroups = buildWorldHudDurabilityGroups(snapshot.inventory);
+        this.renderWorldHudGear(gearGroups);
+        const lowestDurability = getWorldHudLowestDurabilityPercent(gearGroups);
+        const collapsedDurability = lowestDurability === null
+            ? this.localization.translate("world-hud-collapsed-durability-empty")
+            : this.localization.translate("world-hud-collapsed-durability", { percent: lowestDurability });
         const canExtract = !dead && life.status === "alive" && snapshot.canExtract;
         $("#world-hud-collapsed-summary").text(
             dead
                 ? this.localization.translate("world-life-ended")
                 : this.localization.translate("world-hud-collapsed-summary", {
                     health: life.status === "alive" ? life.health : 0,
+                    weather: weatherLabel,
+                    durability: collapsedDurability,
                     distance: extractionDistance,
                     points: snapshot.extractionQuote?.totalPoints ?? 0,
                 }),

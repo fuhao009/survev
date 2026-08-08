@@ -1,0 +1,33 @@
+{
+  "image_url": "https://oss3.cxkedu.shop/images/2026/08/03/1785760149_ad062718c29403952e0c1eebbae79632.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "attempt_count": 1,
+  "raw": {
+    "background": "opaque",
+    "created": 1785760149,
+    "data": [
+      {
+        "revised_prompt": "Premium commercial 2D battle royale game login home screen, imposing underground command bunker carved into a coastal cliff, lone survivor in a dark tactical coat standing on the left beside a concrete observation window, stormy ocean and distant island visible beyond, hard white overhead light and a single red emergency lamp, cinematic AAA survival game key art, architectural scale, graphite black and restrained crimson palette, generous clean space on the right for a login panel. Exactly one refined black glass login window on the right with two blank input rows and one primary action button, the only interface overlay. No navigation, no leaderboard, no news, no inventory, no status bar, no extra panels, no readable words, no logo, no watermark, no icons, horizontal 16:9 composition.",
+        "url": "https://oss3.cxkedu.shop/images/2026/08/03/1785760149_ad062718c29403952e0c1eebbae79632.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 796,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 796
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 7359
+    }
+  }
+}

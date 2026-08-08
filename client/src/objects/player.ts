@@ -258,6 +258,7 @@ export class Player implements AbstractObject {
     hasteSeq = -1;
     cycleSoundInstance: SoundHandle | null = null;
     actionSoundInstance: SoundHandle | null = null;
+    showPersonalGear = false;
     useItemEmitter: Emitter | null = null;
     hasteEmitter: Emitter | null = null;
     passiveHealEmitter: Emitter | null = null;
@@ -1300,8 +1301,14 @@ export class Player implements AbstractObject {
         }
         this.throwableStatePrev = this.throwableState;
 
+        const showPersonalGear = isActivePlayer && !isSpectating;
+        if (this.showPersonalGear != showPersonalGear) {
+            this.showPersonalGear = showPersonalGear;
+            this.visualsDirty = true;
+        }
+
         if (this.visualsDirty) {
-            this.updateVisuals(playerBarn, map);
+            this.updateVisuals(playerBarn, map, showPersonalGear);
         }
         this.visualsDirty = false;
 
@@ -1479,7 +1486,7 @@ export class Player implements AbstractObject {
         this.renderZIdx = renderZIdx;
     }
 
-    updateVisuals(playerBarn: PlayerBarn, map: Map) {
+    updateVisuals(playerBarn: PlayerBarn, map: Map, showPersonalGear: boolean) {
         const outfitDef = GameObjectDefs.typeToDef(this.m_netData.m_outfit, "outfit");
         const outfitImg = outfitDef.skinImg;
         const bodyScale = this.m_bodyRad / GameConfig.player.radius;
@@ -1583,7 +1590,7 @@ export class Player implements AbstractObject {
         }
 
         // Chest
-        if (this.m_netData.m_chest == "" || outfitDef.ghillie) {
+        if (!showPersonalGear || this.m_netData.m_chest == "" || outfitDef.ghillie) {
             this.chestSprite.visible = false;
         } else {
             const chestDef = GameObjectDefs.typeToDef(this.m_netData.m_chest, "chest");
@@ -1606,7 +1613,7 @@ export class Player implements AbstractObject {
         }
 
         // Helmet
-        if (this.m_netData.m_helmet == "" || outfitDef.ghillie) {
+        if (!showPersonalGear || this.m_netData.m_helmet == "" || outfitDef.ghillie) {
             this.helmetSprite.visible = false;
         } else {
             const helmetDef = GameObjectDefs.typeToDef(this.m_netData.m_helmet, "helmet");
@@ -1633,7 +1640,7 @@ export class Player implements AbstractObject {
         }
 
         // Backpack
-        if (this.m_getBagLevel() > 0 && !outfitDef.ghillie && !this.downed) {
+        if (showPersonalGear && this.m_getBagLevel() > 0 && !outfitDef.ghillie && !this.downed) {
             const bagOffsets = [10.25, 11.5, 12.75];
             const bagLevel = this.m_getBagLevel();
             const bagOffset = bagOffsets[math.min(bagLevel - 1, bagOffsets.length - 1)];

@@ -1,0 +1,36 @@
+{
+  "image_url": "https://oss5.cxkedu.shop/images/2026/08/03/1785765162_f132d26d23b5df87353102ae1dfaa2de.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "reference_images": [
+    "/Volumes/RAID/survev/client/dist/img/main_splash.png"
+  ],
+  "attempt_count": 1,
+  "raw": {
+    "background": "opaque",
+    "created": 1785765162,
+    "data": [
+      {
+        "revised_prompt": "Create a premium commercial login home screen for the same 2D battle royale game, matching the supplied reference map exactly in style and terrain. Use colorful top-down/isometric cartoon art with bold silhouettes, green woodland, blue water inlet, tan trails, a wooden watchtower, bridge, crates and simple map objects. Scene: four rival survivors from different squads skirmish around the watchtower, with blue, red, yellow and violet character colors, one player reviving a teammate while two opponents flank, readable multiplayer tactics and competition, energetic but family-friendly, no gore. Leave a large calm space on the right for one login panel. Exactly one polished login window on the right with two blank input rows and a strong primary button, the only interface element. No HUD, no minimap, no crosshair, no team list, no leaderboard, no news, no navigation, no extra panels, no readable words, no logo, no watermark. Do not introduce realistic mountains or photorealism. Horizontal 16:9 composition.",
+        "url": "https://oss5.cxkedu.shop/images/2026/08/03/1785765162_f132d26d23b5df87353102ae1dfaa2de.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 7580,
+      "input_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 1017
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 14143
+    }
+  }
+}

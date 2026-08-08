@@ -1,0 +1,38 @@
+{
+  "image_url": "https://oss6.cxkedu.shop/images/2026/08/08/1786156105_67d6f146e9333b88ea0221452b3bbfaa.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "reference_images": [
+    "/Volumes/RAID/survev/outputs/fog-visibility-falloff_effect_20260808_102553/references/clear_single_view.png",
+    "/Volumes/RAID/survev/outputs/fog-visibility-falloff_effect_20260808_102553/references/fog_single_view.png"
+  ],
+  "attempt_count": 2,
+  "raw": {
+    "background": "opaque",
+    "created": 1786156105,
+    "data": [
+      {
+        "revised_prompt": "严格以参考图的真实游戏截图为基础，保持同样的 2D 俯视大逃杀画风、HUD 位置、地图网格、水面蓝色区域、棕色桥/木结构、绿色地块、角色比例、装备外观和 UI 密度。生成单个完整游戏视口，不要四象限重复，不要左右分屏。\n\n生成一张“浓雾视距衰减”效果图：玩家位于画面中下方偏中心，玩家身上的蓝色圆形装备/头盔按真实游戏截图保留，不要改成阵营色或橙色标记。可以在玩家前方约 18 至 24 米处放一个第二名真实游戏人物，外观仍然遵循游戏本身的人物/装备结构，不要用额外颜色轮廓标识。\n\n雾的核心规则：不是全屏白雾覆盖，也不是把远处完全擦掉。以玩家为中心做距离相关可见度衰减：\n1. 近距离清晰区：玩家附近约 18 至 22 米内，地面网格、水面、桥、墙体、障碍物、装备和近处玩家都清晰可见，颜色和边缘基本保留。\n2. 中距离过渡区：约 22 至 35 米范围内，灰白冷蓝色雾气逐层加厚，地图仍然看得见，但对比度降低、颜色变灰、边缘轻微模糊，第二名玩家如果在这个范围内仍能被辨认。\n3. 远距离轮廓区：超过约 35 米后，树、桥、建筑边缘、道路和地形仍有轮廓，不要消失，但细节明显看不清，像隔着厚雾看到低对比剪影。\n\n视觉目标：一眼能看出浓雾限制视野，但地图不是被完全覆盖；近处信息清楚，远处信息根据雾浓度逐渐变得模糊、变淡、低对比。雾要有分层和体积感，透明度随距离递增，不要纯白屏幕、不要遮掉 HUD、不要新增可读文字、logo 或水印；16:9 横向。",
+        "url": "https://oss6.cxkedu.shop/images/2026/08/08/1786156105_67d6f146e9333b88ea0221452b3bbfaa.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 13752,
+      "input_tokens_details": {
+        "image_tokens": 13126,
+        "text_tokens": 626
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 20315
+    }
+  },
+  "retry_reason": "attempt 1 exceeded 60s"
+}

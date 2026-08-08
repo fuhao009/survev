@@ -1,0 +1,3 @@
+/Volumes/RAID/survev/outputs/fog-vision-edit_20260807_231004/images/fog-vision-edit.png
+  pixelWidth: 1672
+  pixelHeight: 941

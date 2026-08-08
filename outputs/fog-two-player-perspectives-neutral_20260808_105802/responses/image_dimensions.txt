@@ -1,0 +1,6 @@
+/Volumes/RAID/survev/outputs/fog-two-player-perspectives-neutral_20260808_105802/images/player_a_pov.png
+  pixelWidth: 1672
+  pixelHeight: 941
+/Volumes/RAID/survev/outputs/fog-two-player-perspectives-neutral_20260808_105802/images/player_b_pov.png
+  pixelWidth: 1672
+  pixelHeight: 941

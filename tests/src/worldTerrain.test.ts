@@ -5,7 +5,10 @@ import type { WorldPositionSyncResponse, WorldSnapshot } from "../../shared/type
 import type { WorldTerrain, WorldTerrainPatch } from "../../shared/types/worldTerrain.ts";
 import {
     getWorldTerrain,
+    getWorldTerrainBulletModifier,
+    getWorldTerrainLightningModifier,
     getWorldTerrainMovementModifier,
+    getWorldWeatherTerrainModifier,
     WORLD_TERRAIN_CYCLE_DURATION_MS,
     WORLD_TERRAIN_PATCH_COUNT,
 } from "../../shared/types/worldTerrain.ts";
@@ -94,6 +97,70 @@ describe("authoritative world terrain", () => {
         expect(getWorldTerrainMovementModifier({ x: 25, y: 5 }, terrain).speedMultiplier).toBe(0.55);
         expect(getWorldTerrainMovementModifier({ x: 45, y: 5 }, terrain).speedMultiplier).toBe(0.65);
         expect(getWorldTerrainMovementModifier({ x: 65, y: 5 }, terrain).speedMultiplier).toBe(0.9);
+    });
+
+    test("applies deterministic weather multipliers outside and inside terrain patches", () => {
+        const terrain = terrainWithPatches(7, [
+            { id: "mud", type: "mud", bounds: { min: { x: 0, y: 0 }, max: { x: 10, y: 10 } } },
+        ]);
+        const rain = { revision: 4, type: "rain" as const };
+
+        expect(getWorldWeatherTerrainModifier(rain)).toMatchObject({
+            weatherRevision: 4,
+            weatherType: "rain",
+            movementSpeedMultiplier: 0.94,
+            bulletSpeedMultiplier: 0.96,
+            obstacleDamageMultiplier: 0.9,
+        });
+        expect(getWorldTerrainMovementModifier({ x: 20, y: 20 }, terrain, rain).speedMultiplier).toBeCloseTo(0.94);
+        expect(getWorldTerrainMovementModifier({ x: 5, y: 5 }, terrain, rain).speedMultiplier).toBeCloseTo(0.78 * 0.94);
+        expect(getWorldTerrainBulletModifier({ x: 20, y: 20 }, terrain, rain)).toMatchObject({
+            speedMultiplier: 0.96,
+            obstacleDamageMultiplier: 0.9,
+        });
+        expect(getWorldTerrainBulletModifier({ x: 5, y: 5 }, terrain, rain)).toMatchObject({
+            speedMultiplier: 0.9 * 0.96,
+            obstacleDamageMultiplier: 0.85 * 0.9,
+        });
+    });
+
+    test("locks the shared movement and bullet multipliers for all weather types", () => {
+        const terrain = terrainWithPatches(7, []);
+        const expected = [
+            ["clear", 1, 1, 1],
+            ["rain", 0.94, 0.96, 0.9],
+            ["fog", 0.97, 0.9, 1],
+            ["thunderstorm", 0.88, 0.92, 0.85],
+        ] as const;
+
+        for (const [type, movement, bullet, obstacleDamage] of expected) {
+            const weather = { revision: 3, type };
+            expect(getWorldWeatherTerrainModifier(weather)).toMatchObject({
+                movementSpeedMultiplier: movement,
+                bulletSpeedMultiplier: bullet,
+                obstacleDamageMultiplier: obstacleDamage,
+            });
+            expect(getWorldTerrainMovementModifier({ x: 20, y: 20 }, terrain, weather).speedMultiplier)
+                .toBeCloseTo(movement);
+            expect(getWorldTerrainBulletModifier({ x: 20, y: 20 }, terrain, weather)).toMatchObject({
+                speedMultiplier: bullet,
+                obstacleDamageMultiplier: obstacleDamage,
+            });
+        }
+    });
+
+    test("keeps clear weather neutral while preserving existing terrain patches", () => {
+        const terrain = terrainWithPatches(7, [
+            { id: "flooded", type: "flooded", bounds: { min: { x: 0, y: 0 }, max: { x: 10, y: 10 } } },
+        ]);
+        const clear = { revision: 8, type: "clear" as const };
+
+        expect(getWorldTerrainMovementModifier({ x: 5, y: 5 }, terrain, clear).speedMultiplier).toBe(0.55);
+        expect(getWorldTerrainBulletModifier({ x: 5, y: 5 }, terrain, clear).speedMultiplier).toBe(0.72);
+        expect(getWorldTerrainLightningModifier({ x: 5, y: 5 }, terrain, clear)).toMatchObject({
+            radiusMultiplier: 1.75,
+            damageMultiplier: 1.35,
+        });
     });
 
     test("uses default speed outside patches and includes patch boundaries", () => {

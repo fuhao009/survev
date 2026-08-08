@@ -1,0 +1,37 @@
+{
+  "image_url": "https://oss1.cxkedu.shop/images/2026/08/03/1785764442_62f3717e7acad2f000ff5253292d06cf.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "reference_images": [
+    "/Volumes/RAID/survev/client/dist/img/main_splash.png"
+  ],
+  "attempt_count": 2,
+  "raw": {
+    "background": "opaque",
+    "created": 1785764442,
+    "data": [
+      {
+        "revised_prompt": "Create a premium commercial login home screen for this exact 2D battle royale game using the supplied main map image as the strict art direction. Preserve the recognizable map language: colorful top-down island, saturated grass, blue water, tan trails, wooden bridge, chunky trees, small buildings, crates and scattered pickups, clean cartoon outlines and soft shadows. Scene: the final arena moment with six distinct surviving players from three squads converging in the central meadow, one blue duo, one red duo and one yellow duo facing off around a red crate, dynamic poses, visible teamwork and rivalry, celebratory competitive game energy, family-friendly and no gore. Keep the right side calm for a single login panel. Exactly one modern dark login window on the right with two blank input rows and one bright primary button, the only UI element. No HUD, no minimap, no crosshair, no team list, no leaderboard, no news, no navigation, no extra panels, no readable words, no logo, no watermark. Match the existing 2D game map, no realism or cinematic mountains. Horizontal 16:9 composition.",
+        "url": "https://oss1.cxkedu.shop/images/2026/08/03/1785764442_62f3717e7acad2f000ff5253292d06cf.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 7659,
+      "input_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 1096
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 14222
+    }
+  },
+  "retry_reason": "attempt 1 exceeded 60s"
+}

@@ -1,0 +1,3 @@
+/Volumes/RAID/survev/outputs/home-skin_20260803_171827/images/home-map.png
+  pixelWidth: 1672
+  pixelHeight: 941

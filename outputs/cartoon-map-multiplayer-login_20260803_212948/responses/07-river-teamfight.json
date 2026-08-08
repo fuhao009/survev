@@ -1,0 +1,36 @@
+{
+  "image_url": "https://oss1.cxkedu.shop/images/2026/08/03/1785764396_79ff63b521d675036dc04e5bbd044d78.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "reference_images": [
+    "/Volumes/RAID/survev/client/dist/img/main_splash.png"
+  ],
+  "attempt_count": 1,
+  "raw": {
+    "background": "opaque",
+    "created": 1785764396,
+    "data": [
+      {
+        "revised_prompt": "Create a premium commercial login home screen for this same 2D battle royale game with the supplied map image as visual reference. Preserve the game's top-down cartoon map design: saturated grass, blue river, tan shoreline, wooden bridge, simple trees, crates and compact map buildings, bold outlines and soft shadows. Scene: a lively 3-versus-3 team fight split across a river crossing, six distinct players in coordinated blue, red, yellow, cyan, purple and orange outfits, some taking cover behind trees and crates, others aiming across the bridge, clear multiplayer competitive energy and squad composition, no gore. Keep the left side uncluttered for one login panel. Exactly one clean glassy login window on the left with two blank fields and one primary action button, only UI element. No HUD, no minimap, no crosshair, no team list, no leaderboard, no news, no navigation, no extra panels, no readable words, no logo, no watermark. Stay in the same 2D map language, no photorealism. Horizontal 16:9 composition.",
+        "url": "https://oss1.cxkedu.shop/images/2026/08/03/1785764396_79ff63b521d675036dc04e5bbd044d78.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 7582,
+      "input_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 1019
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 14145
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "image_url": "https://oss5.cxkedu.shop/images/2026/08/07/1786122116_10fff1b87d54b835fdece3a72616a286.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "reference_images": [
+    "/Volumes/RAID/survev/outputs/fog-vision-edit_20260807_231004/images/fog-vision-edit.png",
+    "/Volumes/RAID/survev/outputs/weather-playtest-20260807-continued/11-restored-clear-scope.png"
+  ],
+  "attempt_count": 2,
+  "raw": {
+    "background": "opaque",
+    "created": 1786122116,
+    "data": [
+      {
+        "revised_prompt": "以参考图中的 2D 大逃杀俯视角、地图材质、角色比例、简洁 HUD 和蓝灰色浓雾效果为基础，生成单张完整游戏画面，不要左右分屏。\n玩家 B 视角：镜头以 B 玩家为中心，B 玩家位于画面下方偏中近景，用橙色装备或轮廓区分；玩家 A 位于 B 前方约 20 至 25 米的雾中，用冷蓝色装备或轮廓区分。两名玩家互相能看见，A 不能被雾完全吞掉，但边缘要被浓雾轻微软化。\n浓雾规则：B 周围约 20 至 25 米内的地面、障碍、墙体、树木和 A 玩家清楚可辨；超过这个距离后，建筑、树林、道路和地形逐层降低对比度，只剩看得见但看不清的模糊轮廓。雾是厚重灰白冷蓝色、分层、有体积感，不是纯白遮罩。\n画面目标：真实多个玩家在同一张地图上的浓雾视野压缩效果，强调近距离玩家仍可见、远距离信息被雾削弱。保持游戏 UI 质感，不新增奇怪角色，不加入可读文字、logo、水印；16:9 横向构图。",
+        "url": "https://oss5.cxkedu.shop/images/2026/08/07/1786122116_10fff1b87d54b835fdece3a72616a286.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 13516,
+      "input_tokens_details": {
+        "image_tokens": 13126,
+        "text_tokens": 390
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 20079
+    }
+  },
+  "retry_reason": "attempt 1 exceeded 60s"
+}

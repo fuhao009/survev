@@ -211,6 +211,9 @@ class UiState {
     gear = GEAR_TYPES.map((type) => ({
         type,
         item: "",
+        durabilityText: "",
+        durabilityRatio: 0,
+        durabilityDisplay: "hidden" as DurabilityDisplayMode,
         selectable: false,
         width: 0,
         ticker: 0,
@@ -310,7 +313,9 @@ export class UiManager2 {
         gear: [] as Array<{
             gearType: (typeof GEAR_TYPES)[number];
             div: HTMLElement;
+            inner: HTMLElement;
             level: HTMLElement;
+            count: HTMLElement;
             image: HTMLImageElement;
         }>,
         perks: [] as Array<{
@@ -429,7 +434,9 @@ export class UiManager2 {
             const L = {
                 gearType,
                 div,
+                inner: div.getElementsByClassName("ui-armor-counter-inner")[0] as HTMLElement,
                 level: div.getElementsByClassName("ui-armor-level")[0] as HTMLElement,
+                count: div.getElementsByClassName("ui-armor-count")[0] as HTMLElement,
                 image: div.getElementsByClassName(
                     "ui-armor-image",
                 )[0] as HTMLImageElement,
@@ -599,7 +606,7 @@ export class UiManager2 {
         this.durabilityDisplayMode = mode;
     }
 
-    private getWeaponDurability(type: string): ItemInstance | undefined {
+    private getItemDurability(type: string): ItemInstance | undefined {
         const item = this.worldInventory.find((entry) => entry.type === type && isVisibleDurabilityItem(entry));
         return isVisibleDurabilityItem(item) ? item : undefined;
     }
@@ -881,7 +888,7 @@ export class UiManager2 {
             if (oe == GameConfig.WeaponSlot.Throwable) {
                 ne.ammo = activePlayer.m_localData.m_inventory[se.type] || 0;
             }
-            const durability = this.getWeaponDurability(se.type);
+            const durability = this.getItemDurability(se.type);
             const showDurability = !!durability && this.durabilityDisplayMode !== "hidden";
             ne.durabilityText = showDurability ? formatWorldItemDurability(durability) : "";
             ne.durabilityRatio = showDurability ? getWorldItemDurabilityRatio(durability) : 0;
@@ -973,6 +980,12 @@ export class UiManager2 {
             }
             const Ce = Me.item;
             Me.item = Pe;
+            const durability = this.getItemDurability(Pe);
+            const showDurability = !!durability && this.durabilityDisplayMode !== "hidden";
+            const durabilityRatio = showDurability ? getWorldItemDurabilityRatio(durability) : 0;
+            Me.durabilityText = showDurability ? `${Math.round(durabilityRatio * 100)}%` : "";
+            Me.durabilityRatio = durabilityRatio;
+            Me.durabilityDisplay = showDurability ? this.durabilityDisplayMode : "hidden";
             Me.selectable = Pe != "" && !spectating;
             if (Ce != Me.item) {
                 Me.ticker = 0;
@@ -1337,6 +1350,17 @@ export class UiManager2 {
                 re.level.innerHTML = this.localization.translate(`game-level-${oe}`);
                 re.level.style.color = oe === 4 ? "#b30000" : oe === 3 ? "#ff9900" : "#ffffff";
                 re.image.src = helpers.getSvgFromGameType(ae.item);
+            }
+            if (te.durabilityDisplay || te.durabilityText || te.durabilityRatio || te.item) {
+                const showDurability = ae.durabilityDisplay !== "hidden";
+                const showValue = showDurability && ae.durabilityDisplay === "value";
+                const showBar = showDurability && ae.durabilityDisplay === "bar";
+                re.count.innerHTML = ae.durabilityText;
+                re.count.style.display = showValue ? "block" : "none";
+                re.inner.style.display = showBar ? "block" : "none";
+                re.inner.style.height = showBar ? `${Math.round(ae.durabilityRatio * 100)}%` : "0px";
+                re.div.classList.toggle("ui-armor-durability-value-mode", showValue);
+                re.div.classList.toggle("ui-armor-durability-bar-mode", showBar);
             }
             if (te.selectable) {
                 re.div.style.pointerEvents = ae.selectable ? "auto" : "none";

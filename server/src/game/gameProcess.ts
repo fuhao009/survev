@@ -264,7 +264,7 @@ class ServerGame extends Game {
 
     override getWorldBulletModifier(position: Vec2) {
         if (!this.world) return super.getWorldBulletModifier(position);
-        return getWorldTerrainBulletModifier(position, worldTerrain);
+        return getWorldTerrainBulletModifier(position, worldTerrain, worldWeather);
     }
 
     override updateWorldHazards(_dt: number) {
@@ -291,7 +291,7 @@ class ServerGame extends Game {
                     )
                 ) continue;
 
-                const terrainModifier = getWorldTerrainLightningModifier(player.pos, worldTerrain);
+                const terrainModifier = getWorldTerrainLightningModifier(player.pos, worldTerrain, worldWeather);
                 const impact = getWorldLightningImpact(event, player.pos, terrainModifier);
                 if (!impact) continue;
 

@@ -21,6 +21,8 @@ import { SpectateAction } from "../../shared/net/spectateMsg.ts";
 import type { GameWsDisconnectReason } from "../../shared/types/api.ts";
 import type { ItemInstance } from "../../shared/types/itemInstance.ts";
 import type { WorldExtractionZone } from "../../shared/types/world.ts";
+import type { WorldTerrain } from "../../shared/types/worldTerrain.ts";
+import type { WorldWeather } from "../../shared/types/worldWeather.ts";
 import type { DurabilityDisplayMode } from "./config.ts";
 import { device } from "./device.ts";
 import { EmoteBarn } from "./emote.ts";
@@ -52,6 +54,7 @@ import type { Localization } from "./ui/localization.ts";
 import { Touch } from "./ui/touch.ts";
 import { UiManager } from "./ui/ui.ts";
 import { UiManager2 } from "./ui/ui2.ts";
+import { WorldWeatherRenderer } from "./worldWeatherRenderer.ts";
 
 export interface Ctx {
     audioManager: AudioManager;
@@ -68,6 +71,9 @@ export class Game {
     m_world = false;
     m_worldExtractionZone: WorldExtractionZone | null = null;
     m_worldInventory: ItemInstance[] = [];
+    m_worldWeather: WorldWeather | null = null;
+    m_worldTerrain: WorldTerrain | null = null;
+    m_worldSeed: string | null = null;
     m_durabilityDisplayMode: DurabilityDisplayMode = "value";
 
     victoryMusic: SoundHandle | null = null;
@@ -92,6 +98,7 @@ export class Game {
     m_deadBodyBarn!: DeadBodyBarn;
     m_lootBarn!: LootBarn;
     m_gas!: Gas;
+    m_worldWeatherRenderer!: WorldWeatherRenderer;
     m_uiManager!: UiManager;
     m_ui2Manager!: UiManager2;
     m_emoteBarn!: EmoteBarn;
@@ -182,6 +189,21 @@ export class Game {
         this.m_ui2Manager?.setWorldInventory(this.m_worldInventory);
         this.debugTrace("world-inventory:set", {
             durableCount: this.m_worldInventory.filter(item => item.durabilityMax > 0).length,
+        });
+    }
+
+    setWorldWeatherState(
+        weather: WorldWeather | null,
+        terrain: WorldTerrain | null,
+        worldSeed: string | null,
+    ) {
+        this.m_worldWeather = weather;
+        this.m_worldTerrain = terrain;
+        this.m_worldSeed = worldSeed;
+        this.m_worldWeatherRenderer?.setState(weather, terrain, worldSeed);
+        this.debugTrace("world-weather:set", {
+            weather: weather?.type ?? null,
+            terrainRevision: terrain?.revision ?? null,
         });
     }
 
@@ -305,6 +327,12 @@ export class Game {
         this.m_camera = new Camera();
         this.m_renderer = new Renderer(this, this.m_canvasMode);
         this.m_particleBarn = new ParticleBarn(this.m_renderer);
+        this.m_worldWeatherRenderer = new WorldWeatherRenderer(this.m_particleBarn);
+        this.m_worldWeatherRenderer.setState(
+            this.m_worldWeather,
+            this.m_worldTerrain,
+            this.m_worldSeed,
+        );
         this.m_decalBarn = new DecalBarn();
         this.m_map = new Map(this.m_decalBarn);
         this.m_playerBarn = new PlayerBarn();
@@ -374,6 +402,7 @@ export class Game {
         this.m_debugDisplay = new PIXI.Graphics();
         const pixiContainers = [
             this.m_map.display.ground,
+            this.m_worldWeatherRenderer.terrainDisplay,
             this.m_renderer.layers[0],
             this.m_renderer.ground,
             this.m_renderer.layers[1],
@@ -381,6 +410,7 @@ export class Game {
             this.m_renderer.layers[3],
             this.m_debugDisplay,
             this.m_gas.gasRenderer.display,
+            this.m_worldWeatherRenderer.effectDisplay,
             this.m_touch.container,
             this.m_emoteBarn.container,
             this.m_uiManager.container,
@@ -447,6 +477,7 @@ export class Game {
             this.m_ui2Manager.m_free();
             this.m_uiManager.m_free();
             this.m_gas.m_free();
+            this.m_worldWeatherRenderer.free();
             this.m_airdropBarn.m_free();
             this.m_planeBarn.m_free();
             this.m_map.m_free();
@@ -953,6 +984,7 @@ export class Game {
             this.m_particleBarn,
             this.m_audioManager,
         );
+        this.m_worldWeatherRenderer.update(this.m_camera, this.m_activePlayer.layer);
         this.m_particleBarn.m_update(dt, this.m_camera);
         this.m_deadBodyBarn.m_update(
             dt,

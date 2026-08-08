@@ -1,0 +1,33 @@
+{
+  "image_url": "https://oss4.cxkedu.shop/images/2026/08/03/1785760226_7f292f040d93399013b709579b3abee0.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "attempt_count": 1,
+  "raw": {
+    "background": "opaque",
+    "created": 1785760226,
+    "data": [
+      {
+        "revised_prompt": "Premium commercial 2D battle royale game login home screen, luxurious black-and-gold tactical briefing hall inside a fortified island estate, a lone elite survivor in a tailored black combat suit standing on the left in silhouette, polished stone floor, tall architectural windows revealing a distant storm, restrained gold rim lighting, high-fashion AAA game key art, elegant cinematic realism, extremely premium and minimal, clear dark space on the right for a login panel. Exactly one black glass login window on the right with two blank input rows and one gold primary action button, the only interface element. No navigation, no leaderboard, no news, no inventory, no status bar, no extra panels, no readable words, no logo, no watermark, no icons, horizontal 16:9 composition.",
+        "url": "https://oss4.cxkedu.shop/images/2026/08/03/1785760226_7f292f040d93399013b709579b3abee0.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 782,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 782
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 7345
+    }
+  }
+}

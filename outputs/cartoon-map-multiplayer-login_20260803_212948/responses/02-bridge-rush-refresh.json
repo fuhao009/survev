@@ -1,0 +1,36 @@
+{
+  "image_url": "https://oss1.cxkedu.shop/images/2026/08/03/1785765152_bf55afeb21d4f935e4c26a6a7e45dcf6.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "reference_images": [
+    "/Volumes/RAID/survev/client/dist/img/main_splash.png"
+  ],
+  "attempt_count": 1,
+  "raw": {
+    "background": "opaque",
+    "created": 1785765152,
+    "data": [
+      {
+        "revised_prompt": "Create a premium commercial login home screen for this exact 2D battle royale game, strictly matching the supplied game-map reference. Use its colorful top-down cartoon language: clean outlined shapes, bright grass, blue river, tan shore, wooden bridges, simple trees, small loot objects and soft painted shadows. Scene: a tense multiplayer bridge rush with five distinct cartoon survivors from opposing squads crossing a wooden bridge and taking positions on both riverbanks, colored outfits in blue, red, yellow, teal and purple, visible teamwork and competition, playful action without gore. Reserve clean space on the right for the login panel. Include exactly one compact modern login window on the right with two blank input rows and one vivid primary button, the only UI element. No HUD, no minimap, no crosshair, no team list, no leaderboard, no news, no navigation, no extra panels, no readable words, no logo, no watermark. Keep the exact game-map proportions and flat cartoon style. Horizontal 16:9 composition.",
+        "url": "https://oss1.cxkedu.shop/images/2026/08/03/1785765152_bf55afeb21d4f935e4c26a6a7e45dcf6.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 7585,
+      "input_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 1022
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 14148
+    }
+  }
+}

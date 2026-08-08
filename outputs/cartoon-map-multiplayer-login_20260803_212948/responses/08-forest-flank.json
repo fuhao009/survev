@@ -1,0 +1,36 @@
+{
+  "image_url": "https://oss4.cxkedu.shop/images/2026/08/03/1785764641_f2dd93ea5e218739fdb4a1d509804438.png",
+  "image_size": "1280x720",
+  "image_tier": "custom",
+  "reference_images": [
+    "/Volumes/RAID/survev/client/dist/img/main_splash.png"
+  ],
+  "attempt_count": 1,
+  "raw": {
+    "background": "opaque",
+    "created": 1785764641,
+    "data": [
+      {
+        "revised_prompt": "Premium commercial login home screen for this exact 2D battle royale game, use the supplied main_splash map as strict reference. Keep its flat colorful cartoon map style: green woodland, blue pond, tan path, wooden bridge, watchtower, red crate, simple loot objects, bold clean outlines and soft shadows. Show five distinct visible survivors from rival squads performing a forest flank around the bridge: one blue player behind a tree, two red players moving together, two yellow players covering the rear, clear multiplayer team tactics and competitive action, no gore. Leave calm darker space on the right. Exactly one compact dark login window on the right with two blank input rows and one colorful primary button, only UI. No HUD, minimap, crosshair, team list, leaderboard, news, navigation, extra panels, readable words, logo or watermark. Preserve the 2D game map language, no photorealism, horizontal 16:9.",
+        "url": "https://oss4.cxkedu.shop/images/2026/08/03/1785764641_f2dd93ea5e218739fdb4a1d509804438.png"
+      }
+    ],
+    "moderation": "auto",
+    "output_format": "png",
+    "quality": "auto",
+    "size": "1280x720",
+    "usage": {
+      "input_tokens": 7478,
+      "input_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 915
+      },
+      "output_tokens": 6563,
+      "output_tokens_details": {
+        "image_tokens": 6563,
+        "text_tokens": 0
+      },
+      "total_tokens": 14041
+    }
+  }
+}
