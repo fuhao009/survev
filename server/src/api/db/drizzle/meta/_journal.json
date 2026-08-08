@@ -71,6 +71,13 @@
       "when": 1785807191854,
       "tag": "0009_clever_bromley",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786191603616,
+      "tag": "0010_clear_nickname",
+      "breakpoints": true
     }
   ]
 }

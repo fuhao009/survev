@@ -56,6 +56,7 @@ function profileResponse(worldInventory: ItemInstance[]): ProfileResponse {
         profile: {
             slug: "player-1",
             username: "Player",
+            nickname: "Player",
             usernameSet: true,
             linked: false,
             usernameChangeTime: 0,
@@ -83,19 +84,35 @@ function createAccount() {
     account.worldInventory = [item(700)];
     account.profile = {
         linked: false,
+        nickname: "Old Player",
         usernameSet: true,
         username: "Old Player",
         slug: "old-player",
         usernameChangeTime: 0,
     };
     account.items = [];
+    const configState = {
+        profile: { slug: "old-player", username: "Old Player", nickname: "Old Player" },
+        playerName: "",
+    };
     account.router = {
         profile: { $post: vi.fn() },
         wallet: { $get: vi.fn() },
     } as unknown as typeof account.router;
     account.config = {
-        get: vi.fn(() => ({ slug: "old-player" })),
-        set: vi.fn(),
+        get: vi.fn((key: string) => {
+            if (key === "profile") return configState.profile;
+            if (key === "playerName") return configState.playerName;
+            return undefined;
+        }),
+        set: vi.fn((key: string, value: unknown) => {
+            if (key === "profile") {
+                configState.profile = value as typeof configState.profile;
+            }
+            if (key === "playerName") {
+                configState.playerName = value as string;
+            }
+        }),
     } as unknown as typeof account.config;
     return account;
 }
@@ -143,5 +160,15 @@ describe("account center refresh contract", () => {
 
         expect(account.walletBalance).toBe(46);
         expect(account.worldInventory).toEqual([item(700)]);
+    });
+
+    test("syncs the local player name from the account nickname on refresh", async () => {
+        const account = createAccount();
+        account.router.profile.$post = vi.fn().mockResolvedValue(response(profileResponse([item(742)])));
+        account.router.wallet.$get = vi.fn().mockResolvedValue(response({ balance: 81 }));
+
+        await expect(account.refreshAccountData()).resolves.toBe(true);
+
+        expect(account.config.set).toHaveBeenCalledWith("playerName", "Player");
     });
 });

@@ -13,6 +13,7 @@ export type ProfileResponse =
         profile: {
             slug: string;
             username: string;
+            nickname: string;
             usernameSet: boolean;
             linked: boolean;
             usernameChangeTime: number;
@@ -29,6 +30,14 @@ export type UsernameResponse =
     }
     | {
         result: "failed" | "invalid" | "taken" | "change_time_not_expired";
+    };
+
+export type NicknameResponse =
+    | {
+        result: "success";
+    }
+    | {
+        result: "failed" | "invalid";
     };
 
 //

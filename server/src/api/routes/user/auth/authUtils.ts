@@ -138,6 +138,7 @@ export async function handleAuthUser(c: Context, provider: Provider, authId: str
         authId,
         linked: true,
         username: username,
+        nickname: username,
         slug,
         ...linkedProvider,
     });

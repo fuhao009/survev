@@ -610,15 +610,33 @@ export class Application {
     }
 
     setDOMFromConfig() {
-        if (SDK.isAnySDK && !this.config.get("playerName")) {
+        const storedPlayerName = String(this.config.get("playerName") ?? "");
+        const storedProfile = this.config.get("profile");
+        const profilePlayerName = storedProfile?.nickname || storedProfile?.username || "";
+        let playerName = storedPlayerName;
+
+        if ((!playerName || playerName.toLowerCase() === "play") && profilePlayerName) {
+            playerName = profilePlayerName;
+            this.config.set("playerName", playerName);
+        }
+
+        if (!profilePlayerName && playerName.toLowerCase() === "play") {
+            playerName = "";
+            this.config.set("playerName", "");
+        }
+
+        if ((!playerName || playerName.toLowerCase() === "play") && SDK.isAnySDK) {
             SDK.getPlayerName().then((username) => {
-                if (!username) return;
-                this.config.set("playerName", username);
-                this.nameInput.val(username);
+                const sanitized = helpers.sanitizeNameInput(username || "");
+                if (!sanitized || sanitized.toLowerCase() === "play") return;
+                if (!this.config.get("playerName")) {
+                    this.config.set("playerName", sanitized);
+                    this.nameInput.val(sanitized);
+                }
             });
         }
 
-        this.nameInput.val(this.config.get("playerName")!);
+        this.nameInput.val(playerName);
         this.serverSelect.find("option").each((_i, ele) => {
             const spellSyncLang = SDK.isSpellSync && window.spellSync.language;
             const configRegion = this.config.get("region");
@@ -663,6 +681,10 @@ export class Application {
 
         if (key == "highResTex") {
             location.reload();
+        }
+
+        if (key === "playerName") {
+            this.nameInput.val(this.config.get("playerName")!);
         }
 
         if (key === "debugHUD") {

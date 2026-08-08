@@ -5,7 +5,11 @@ import { UnlockDefs } from "../../../../../shared/defs/gameObjects/unlockDefs.ts
 import { Constants } from "../../../../../shared/net/net.ts";
 import { loadoutSchema } from "../../../../../shared/types/api.ts";
 import { parseItemInstance } from "../../../../../shared/types/itemInstance.ts";
-import { type ProfileResponse, type UsernameResponse } from "../../../../../shared/types/user.ts";
+import {
+    type NicknameResponse,
+    type ProfileResponse,
+    type UsernameResponse,
+} from "../../../../../shared/types/user.ts";
 import loadout, { ItemStatus } from "../../../../../shared/utils/loadout.ts";
 import { validateUserName } from "../../../utils/badWords.ts";
 import { server } from "../../apiServer.ts";
@@ -36,6 +40,7 @@ export const UserRouter = new Hono<Context>()
             slug,
             linked,
             username,
+            nickname,
             usernameSet,
             lastUsernameChangeTime,
             banned,
@@ -89,6 +94,7 @@ export const UserRouter = new Hono<Context>()
                     slug,
                     linked,
                     username,
+                    nickname,
                     usernameSet,
                     usernameChangeTime: timeUntilNextChange,
                 },
@@ -153,6 +159,7 @@ export const UserRouter = new Hono<Context>()
                     .set({
                         username: validName,
                         slug: slug,
+                        nickname: !user.nickname || user.nickname === user.username ? validName : user.nickname,
                         usernameSet: true,
                         lastUsernameChangeTime: new Date(),
                     })
@@ -163,6 +170,38 @@ export const UserRouter = new Hono<Context>()
             }
 
             return c.json<UsernameResponse>({ result: "success" }, 200);
+        },
+    )
+    .post(
+        "/nickname",
+        validateParams(
+            z.object({
+                nickname: z.string().trim().min(1).max(Constants.PlayerNameMaxLen),
+            }),
+            { result: "invalid" } satisfies NicknameResponse,
+        ),
+        async (c) => {
+            const user = c.get("user")!;
+            const { nickname } = c.req.valid("json");
+
+            const { validName, originalWasInvalid } = validateUserName(nickname);
+            if (originalWasInvalid) {
+                return c.json<NicknameResponse>({ result: "invalid" }, 200);
+            }
+
+            try {
+                await db
+                    .update(usersTable)
+                    .set({
+                        nickname: validName,
+                    })
+                    .where(eq(usersTable.id, user.id));
+            } catch (err) {
+                server.logger.error("/api/nickname: Error updating nickname", err);
+                return c.json<NicknameResponse>({ result: "failed" }, 500);
+            }
+
+            return c.json<NicknameResponse>({ result: "success" }, 200);
         },
     )
     .post("/loadout", validateParams(z.object({ loadout: loadoutSchema })), async (c) => {

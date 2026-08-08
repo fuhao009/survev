@@ -38,6 +38,7 @@ export const usersTable = pgTable("users", {
     banReason: text("ban_reason").notNull().default(""),
     bannedBy: text("banned_by").notNull().default(""),
     username: text("username").notNull().default(""),
+    nickname: text("nickname").notNull().default(""),
     usernameSet: boolean("username_set").notNull().default(false),
     userCreated: timestamp("user_created", { withTimezone: true }).notNull().defaultNow(),
     lastUsernameChangeTime: timestamp("last_username_change_time"),

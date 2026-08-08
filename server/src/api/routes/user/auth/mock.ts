@@ -29,6 +29,7 @@ MockRouter.get("/", async (c) => {
         id: userId,
         authId: MOCK_USER_ID,
         username: MOCK_USER_ID,
+        nickname: MOCK_USER_ID,
         linked: true,
         slug: MOCK_USER_ID,
     });

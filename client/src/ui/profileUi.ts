@@ -139,6 +139,7 @@ function createLoginOptions(
 
 export class ProfileUi {
     setNameModal: MenuModal | null = null;
+    setNicknameModal: MenuModal | null = null;
     resetStatsModal: MenuModal | null = null;
     deleteAccountModal: MenuModal | null = null;
     userSettingsModal: MenuModal | null = null;
@@ -200,6 +201,39 @@ export class ProfileUi {
         $("#modal-account-name-input").on("keypress", (e) => {
             if (e.key === "Enter") {
                 $("#modal-account-name-finish").trigger("click");
+            }
+        });
+
+        const clearNicknamePrompt = function() {
+            $("#modal-body-warning-nickname").css("display", "none");
+            $("#modal-account-nickname-input").val("");
+        };
+        this.setNicknameModal = new MenuModal($("#modal-account-nickname-change"));
+        this.setNicknameModal.onShow(clearNicknamePrompt);
+        this.setNicknameModal.onHide(clearNicknamePrompt);
+        $("#modal-account-nickname-finish").on("click", (t) => {
+            t.stopPropagation();
+            const nickname = $("#modal-account-nickname-input").val() as string;
+            this.account.setNickname(nickname, (error?: string) => {
+                if (error) {
+                    const ERROR_CODE_TO_LOCALIZATION = {
+                        failed: "设置昵称失败。",
+                        invalid: "昵称无效。",
+                    };
+                    const message = ERROR_CODE_TO_LOCALIZATION[
+                        error as keyof typeof ERROR_CODE_TO_LOCALIZATION
+                    ] || ERROR_CODE_TO_LOCALIZATION.failed;
+                    $("#modal-body-warning-nickname").hide();
+                    $("#modal-body-warning-nickname").html(message);
+                    $("#modal-body-warning-nickname").fadeIn();
+                } else {
+                    this.setNicknameModal!.hide();
+                }
+            });
+        });
+        $("#modal-account-nickname-input").on("keypress", (e) => {
+            if (e.key === "Enter") {
+                $("#modal-account-nickname-finish").trigger("click");
             }
         });
 
@@ -302,7 +336,7 @@ export class ProfileUi {
         });
 
         $(
-            "#modal-account-name-change, #modal-account-reset-stats, #modal-account-delete, #modal-customize",
+            "#modal-account-name-change, #modal-account-nickname-change, #modal-account-reset-stats, #modal-account-delete, #modal-customize",
         ).find(".close-corner").on("click", (event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -398,6 +432,13 @@ export class ProfileUi {
             }
             return false;
         });
+        $(".btn-account-change-nickname").on("click", () => {
+            this.userSettingsModal!.hide();
+            this.userCenterModal!.hide();
+            this.modalMobileAccount.hide();
+            this.setNicknameModal!.show();
+            return false;
+        });
         $(".btn-account-reset-stats").on("click", () => {
             this.userSettingsModal!.hide();
             this.userCenterModal!.hide();
@@ -448,6 +489,7 @@ export class ProfileUi {
 
     openUserCenter() {
         this.setNameModal?.hide();
+        this.setNicknameModal?.hide();
         this.resetStatsModal?.hide();
         this.deleteAccountModal?.hide();
         this.loadoutMenu.hide();
@@ -482,6 +524,7 @@ export class ProfileUi {
         this.userCenterModal!.hide();
         this.loginOptionsModalMobile.hide();
         this.loginOptionsModal!.hide();
+        this.setNicknameModal?.hide();
         this.render();
         if (!this.account.profile.usernameSet) {
             this.setNameModal!.show(true);
@@ -574,12 +617,14 @@ export class ProfileUi {
 
     renderUserCenter() {
         const username = this.account.profile.username || this.localization.translate("index-log-in-desc");
+        const nickname = this.account.profile.nickname || username;
         const accountId = this.account.profile.slug || "本地账号";
         const walletBalance = this.account.loggedIn && Number.isFinite(this.account.walletBalance)
             ? this.account.walletBalance
             : 0;
         const inventorySize = loadout.getUserAvailableItems(this.account.items).length;
-        $("#user-center-username").text(username);
+        $("#user-center-nickname").text(nickname);
+        $("#user-center-username").text(`账号名 · ${username}`);
         $("#user-center-id").text(`ID · ${accountId}`);
         $("#user-center-points").text(walletBalance.toLocaleString());
         $("#user-center-item-count").text(inventorySize.toLocaleString());
@@ -614,7 +659,7 @@ export class ProfileUi {
         const loading = this.account.requestsInFlight > 0;
         $(".account-loading").css("opacity", loading ? 1 : 0);
 
-        let usernameText = helpers.htmlEscape(this.account.profile.username || "");
+        let usernameText = helpers.htmlEscape(this.account.profile.nickname || this.account.profile.username || "");
         if (!this.account.loggedIn) {
             usernameText = this.account.loggingIn
                 ? `${this.localization.translate("index-logging-in")}...`

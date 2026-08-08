@@ -75,6 +75,7 @@ LocalRouter.post(
             loginUsername,
             passwordHash: hashPassword(password),
             linked: true,
+            nickname: username,
             usernameSet: true,
             username,
             slug,

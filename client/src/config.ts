@@ -89,6 +89,12 @@ export const BuildingEditorConfig = {
 
 export type DurabilityDisplayMode = "value" | "bar" | "hidden";
 
+export type StoredProfile = {
+    slug: string;
+    username?: string;
+    nickname?: string;
+};
+
 const defaultConfig = {
     muteAudio: true,
     masterVolume: 1,
@@ -103,7 +109,7 @@ const defaultConfig = {
     touchAimStyle: "anywhere" as "locked" | "anywhere",
     touchAimLine: true,
     durabilityDisplay: "value" as DurabilityDisplayMode,
-    profile: null as { slug: string } | null,
+    profile: null as StoredProfile | null,
     playerName: "",
     region: "na",
     gameModeIdx: 0,

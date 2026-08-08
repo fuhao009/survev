@@ -753,6 +753,25 @@
             </div>
           </div>
         </div>
+        <div id="modal-account-nickname-change" class="modal modal-account">
+          <div class="modal-content modal-close">
+            <div class="modal-header modal-header-name">
+              <span class="close close-corner" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
+              <h2 id="modal-account-nickname-title">修改昵称</h2>
+            </div>
+            <div class="modal-body modal-body-name">
+              <div class="modal-settings-item">
+                <p id="modal-account-nickname-desc" class="modal-body-text">设置您的昵称：</p>
+                <div id="modal-body-warning-nickname"></div>
+                <input type="text" class="menu-option player-name-input" tabindex="0" placeholder="请输入昵称" id="modal-account-nickname-input" maxlength="16" />
+              </div>
+            </div>
+            <div class="modal-footer modal-footer-name modal-footer-round">
+              <button type="button" class="account-return-user-center">返回用户中心</button>
+              <h3 id="modal-account-nickname-finish" class="finish">完成</h3>
+            </div>
+          </div>
+        </div>
         <div id="modal-account-reset-stats" class="modal modal-account">
           <div class="modal-content modal-close">
             <div class="modal-header modal-header-reset-stats">
@@ -859,6 +878,7 @@
               <div class="account-buttons">
                 <!-- <div class="btn-account-link btn-account-turq menu-option btn-darken btn-standard" data-l10n="index-link-account">Link Account</div> -->
                 <div class="btn-account-change-name btn-account-turq menu-option btn-darken btn-standard" data-l10n="index-change-account-name">修改用户名</div>
+                <div class="btn-account-change-nickname btn-account-turq menu-option btn-darken btn-standard">修改昵称</div>
                 <div class="btn-account-reset-stats btn-account-turq menu-option btn-darken btn-standard" data-l10n="index-reset-stats">重置数据</div>
                 <div class="btn-account-delete btn-account-turq menu-option btn-darken btn-standard" data-l10n="index-delete-account">删除帐号</div>
                 <div class="btn-account-logout btn-account-grey menu-option btn-darken btn-standard" data-l10n="index-log-out">退出登录</div>
@@ -1324,7 +1344,8 @@
           <div class="user-center-body">
             <div class="user-center-profile">
               <span class="account-label" data-l10n="home-account-label">账号状态</span>
-              <strong id="user-center-username">-</strong>
+              <strong id="user-center-nickname">-</strong>
+              <div id="user-center-username" class="account-player-meta"></div>
               <code id="user-center-id">-</code>
             </div>
             <div class="user-center-metrics" aria-label="账号概览" data-l10n="account-overview" data-l10n-attr="aria-label">
@@ -1356,6 +1377,7 @@
               <a class="user-center-option account-stats-link" href="#user-center" data-l10n="index-my-stats">我的数据</a>
               <a class="user-center-option account-leaderboard-link" href="/stats" target="_blank" data-l10n="index-leaderboards">排行榜</a>
               <a class="user-center-option btn-account-change-name" href="#user-center" data-l10n="index-change-account-name">修改用户名</a>
+              <a class="user-center-option btn-account-change-nickname" href="#user-center">修改昵称</a>
               <a class="user-center-option btn-account-reset-stats" href="#user-center" data-l10n="index-reset-stats">重置数据</a>
             </div>
           </div>

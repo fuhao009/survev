@@ -24,6 +24,7 @@ type UserRouterPost<Path extends UserRouterPostPath> = Extract<
     UserRouter[Path],
     { $post: (...args: any[]) => any }
 >["$post"];
+type SuccessfulProfile = Extract<ProfileResponse, { success: true }>["profile"];
 
 type AccountEventMap = {
     request: (account: Account) => void;
@@ -44,6 +45,7 @@ export class Account {
     loggedIn = false;
     profile = {
         linked: false,
+        nickname: "",
         usernameSet: false,
         username: "",
         slug: "",
@@ -239,8 +241,11 @@ export class Account {
             this.worldInventory = data.worldInventory;
             this.loadout = data.loadout;
             this.walletBalance = walletBalance;
-            const profile = this.config.get("profile") || { slug: "" };
+            this.syncPlayerNameFromProfile(data.profile);
+            const profile = this.config.get("profile") || { slug: "", username: "", nickname: "" };
             profile.slug = data.profile.slug;
+            profile.username = data.profile.username;
+            profile.nickname = data.profile.nickname;
             this.config.set("profile", profile);
             this.emit("items", this.items);
             this.emit("worldInventory", this.worldInventory);
@@ -294,8 +299,11 @@ export class Account {
                 this.items = data.items;
                 this.worldInventory = data.worldInventory;
                 this.loadout = data.loadout;
-                const profile = this.config.get("profile") || { slug: "" };
+                this.syncPlayerNameFromProfile(data.profile);
+                const profile = this.config.get("profile") || { slug: "", username: "", nickname: "" };
                 profile.slug = data.profile.slug;
+                profile.username = data.profile.username;
+                profile.nickname = data.profile.nickname;
                 this.config.set("profile", profile);
             }
             if (!this.loggedIn) {
@@ -343,6 +351,24 @@ export class Account {
                 return;
             }
             if (res.result == "success") {
+                this.loadProfile();
+                callback();
+            } else {
+                callback(res.result);
+            }
+        });
+    }
+
+    setNickname(nickname: string, callback: (err?: string) => void) {
+        const cleanedNickname = helpers.sanitizeNameInput(nickname);
+        this.fetchApi("nickname", { json: { nickname: cleanedNickname } }, (err, res) => {
+            if (err) {
+                errorLogManager.storeGeneric("account", "set_nickname_error");
+                callback(err);
+                return;
+            }
+            if (res.result == "success") {
+                this.config.set("playerName", cleanedNickname);
                 this.loadProfile();
                 callback();
             } else {
@@ -428,6 +454,26 @@ export class Account {
                 this.getPass(false);
             }
         });
+    }
+
+    private syncPlayerNameFromProfile(profile: SuccessfulProfile) {
+        const currentPlayerName = String(this.config.get("playerName") ?? "");
+        const storedProfile = this.config.get("profile");
+        const storedProfileNames = new Set([
+            storedProfile?.nickname || "",
+            storedProfile?.username || "",
+        ]);
+        if (
+            currentPlayerName
+            && currentPlayerName.toLowerCase() !== "play"
+            && !storedProfileNames.has(currentPlayerName)
+        ) {
+            return;
+        }
+        const nextPlayerName = profile.nickname || profile.username;
+        if (nextPlayerName && nextPlayerName !== currentPlayerName) {
+            this.config.set("playerName", nextPlayerName);
+        }
     }
 
     refreshQuest(idx: number) {

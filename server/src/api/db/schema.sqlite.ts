@@ -26,6 +26,7 @@ export const usersTable = sqliteTable("users", {
     banReason: text("ban_reason").notNull().default(""),
     bannedBy: text("banned_by").notNull().default(""),
     username: text("username").notNull().default(""),
+    nickname: text("nickname").notNull().default(""),
     usernameSet: integer("username_set", { mode: "boolean" }).notNull().default(false),
     userCreated: integer("user_created", { mode: "timestamp_ms" }).notNull().defaultNow(),
     lastUsernameChangeTime: integer("last_username_change_time", { mode: "timestamp_ms" }),
