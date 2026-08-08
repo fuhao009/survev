@@ -205,10 +205,10 @@ export class WorldWeatherRenderer {
                 const crossCloud = Math.sin(worldX * -0.19 + worldY * 0.42 + 1.7);
                 const fineMist = Math.sin(worldX * 1.23 - worldY * 0.91 + 0.4);
                 const cloudFactor = Math.max(
-                    0.78,
-                    Math.min(1.08, 0.93 + lowCloud * 0.08 + crossCloud * 0.05 + fineMist * 0.025),
+                    0.98,
+                    Math.min(1.04, 1 + lowCloud * 0.025 + crossCloud * 0.018 + fineMist * 0.01),
                 );
-                const alpha = Math.min(0.95, baseAlpha * cloudFactor);
+                const alpha = Math.min(0.99, baseAlpha * cloudFactor);
                 const offset = (y * width + x) * 4;
                 data[offset] = red;
                 data[offset + 1] = green;

@@ -27,6 +27,8 @@ export interface WorldFogVisibilityState {
     enabled: boolean;
     clearRadius: number;
     fadeRadius: number;
+    hiddenRadius: number;
+    silhouetteAlpha: number;
     maxAlpha: number;
     color: number;
 }
@@ -80,6 +82,8 @@ export function getWorldFogVisibilityState(
             enabled: false,
             clearRadius: 0,
             fadeRadius: 0,
+            hiddenRadius: 0,
+            silhouetteAlpha: 0,
             maxAlpha: 0,
             color: 0xdce7e3,
         };
@@ -88,13 +92,16 @@ export function getWorldFogVisibilityState(
     const intensity = Math.max(0.25, Math.min(1, weather.intensity));
     const rawDensity = weather.type === "thunderstorm" ? intensity * 0.65 : intensity;
     const density = weather.type === "fog" ? Math.max(MIN_FOG_VISUAL_DENSITY, rawDensity) : rawDensity;
-    const clearRadius = 26 - density * 8;
-    const fadeRadius = 45 - density * 14;
+    const clearRadius = 9 - density * 3;
+    const fadeRadius = 18 - density * 4;
+    const hiddenRadius = 31 - density * 8;
     return {
         enabled: true,
         clearRadius,
-        fadeRadius: Math.max(clearRadius + 12, fadeRadius),
-        maxAlpha: 0.48 + density * 0.22,
+        fadeRadius: Math.max(clearRadius + 8, fadeRadius),
+        hiddenRadius: Math.max(clearRadius + 17, hiddenRadius),
+        silhouetteAlpha: 0.72 + density * 0.08,
+        maxAlpha: 0.97 + density * 0.02,
         color: weather.type === "thunderstorm" ? 0x9bb1bf : 0xb4c8cd,
     };
 }
@@ -104,9 +111,13 @@ export function getWorldFogFalloffSampleAlpha(
     state: WorldFogVisibilityState,
 ): number {
     if (!state.enabled || distance <= state.clearRadius) return 0;
-    if (distance >= state.fadeRadius) return state.maxAlpha;
-    const progress = (distance - state.clearRadius) / (state.fadeRadius - state.clearRadius);
-    return state.maxAlpha * smoothStep(progress);
+    if (distance <= state.fadeRadius) {
+        const progress = (distance - state.clearRadius) / (state.fadeRadius - state.clearRadius);
+        return state.silhouetteAlpha * smoothStep(progress);
+    }
+    if (distance >= state.hiddenRadius) return state.maxAlpha;
+    const progress = (distance - state.fadeRadius) / (state.hiddenRadius - state.fadeRadius);
+    return state.silhouetteAlpha + (state.maxAlpha - state.silhouetteAlpha) * smoothStep(progress);
 }
 
 export function getWorldTerrainPatchVisual(
