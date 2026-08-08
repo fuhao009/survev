@@ -6,12 +6,15 @@ import { v2, type Vec2 } from "../../shared/utils/v2.ts";
 import type { Camera } from "./camera.ts";
 import { type Emitter, ParticleBarn } from "./objects/particles.ts";
 import {
+    getWorldFogFalloffSampleAlpha,
+    getWorldFogVisibilityState,
     getWorldLightningVisualState,
     getWorldTerrainPatchVisual,
     getWorldWeatherEmitterState,
 } from "./worldWeatherPresentation.ts";
 
 const WEATHER_PARTICLE_LAYER = 3;
+const FOG_FALLOFF_RING_COUNT = 9;
 
 function hashText(value: string): number {
     let hash = 2166136261;
@@ -69,6 +72,7 @@ export class WorldWeatherRenderer {
     readonly terrainDisplay = new PIXI.Graphics();
     readonly effectDisplay = new PIXI.Container();
 
+    private readonly fogFalloffGraphics = new PIXI.Graphics();
     private readonly lightningGraphics = new PIXI.Graphics();
     private readonly flashGraphics = new PIXI.Graphics();
     private readonly rainEmitter: Emitter;
@@ -79,7 +83,7 @@ export class WorldWeatherRenderer {
 
     constructor(private readonly particleBarn: ParticleBarn) {
         this.effectDisplay.interactiveChildren = false;
-        this.effectDisplay.addChild(this.lightningGraphics, this.flashGraphics);
+        this.effectDisplay.addChild(this.fogFalloffGraphics, this.lightningGraphics, this.flashGraphics);
         this.rainEmitter = particleBarn.addEmitter("world_rain", {
             pos: v2.create(0, 0),
             dir: v2.create(0, -1),
@@ -122,7 +126,7 @@ export class WorldWeatherRenderer {
         this.fogEmitter.pos = position;
         this.fogEmitter.radius = radius * 0.85;
         this.fogEmitter.rateMult = emitterState.fogRateMultiplier;
-        this.fogEmitter.alpha = emitterState.fogEnabled ? Math.min(1, intensity * 0.9) : 0;
+        this.fogEmitter.alpha = emitterState.fogEnabled ? Math.min(0.42, intensity * 0.5) : 0;
         this.fogEmitter.enabled = emitterState.fogEnabled;
     }
 
@@ -145,6 +149,41 @@ export class WorldWeatherRenderer {
                     this.terrainDisplay.lineTo(rect.x + rect.width - 10, rect.y + offset + 3);
                 }
             }
+        }
+    }
+
+    private renderFogFalloff(camera: Camera, playerLayer: number, focusPosition: Vec2) {
+        this.fogFalloffGraphics.clear();
+        const fogState = getWorldFogVisibilityState(this.weather, playerLayer);
+        if (!fogState.enabled) return;
+
+        const center = camera.m_pointToScreen(focusPosition);
+        const clearRadius = camera.m_scaleToScreen(fogState.clearRadius);
+        const fadeRadius = camera.m_scaleToScreen(fogState.fadeRadius);
+
+        this.fogFalloffGraphics.beginFill(fogState.color, fogState.maxAlpha);
+        this.fogFalloffGraphics.drawRect(0, 0, camera.m_screenWidth, camera.m_screenHeight);
+        this.fogFalloffGraphics.beginHole();
+        this.fogFalloffGraphics.drawCircle(center.x, center.y, fadeRadius);
+        this.fogFalloffGraphics.endHole();
+        this.fogFalloffGraphics.endFill();
+
+        for (let index = 0; index < FOG_FALLOFF_RING_COUNT; index++) {
+            const innerProgress = index / FOG_FALLOFF_RING_COUNT;
+            const outerProgress = (index + 1) / FOG_FALLOFF_RING_COUNT;
+            const innerRadius = clearRadius + (fadeRadius - clearRadius) * innerProgress;
+            const outerRadius = clearRadius + (fadeRadius - clearRadius) * outerProgress;
+            const sampleDistance = fogState.clearRadius
+                + (fogState.fadeRadius - fogState.clearRadius) * (innerProgress + outerProgress) * 0.5;
+            const alpha = getWorldFogFalloffSampleAlpha(sampleDistance, fogState);
+            if (alpha <= 0) continue;
+
+            this.fogFalloffGraphics.beginFill(fogState.color, alpha);
+            this.fogFalloffGraphics.drawCircle(center.x, center.y, outerRadius);
+            this.fogFalloffGraphics.beginHole();
+            this.fogFalloffGraphics.drawCircle(center.x, center.y, innerRadius);
+            this.fogFalloffGraphics.endHole();
+            this.fogFalloffGraphics.endFill();
         }
     }
 
@@ -184,9 +223,10 @@ export class WorldWeatherRenderer {
         }
     }
 
-    update(camera: Camera, playerLayer: number, now = Date.now()) {
+    update(camera: Camera, playerLayer: number, focusPosition: Vec2, now = Date.now()) {
         this.updateEmitters(camera, playerLayer);
         this.renderTerrain(camera);
+        this.renderFogFalloff(camera, playerLayer, focusPosition);
         this.renderLightning(camera, now);
     }
 
@@ -194,6 +234,7 @@ export class WorldWeatherRenderer {
         this.rainEmitter.free();
         this.fogEmitter.free();
         this.terrainDisplay.clear();
+        this.fogFalloffGraphics.clear();
         this.lightningGraphics.clear();
         this.flashGraphics.clear();
         this.effectDisplay.removeChildren();

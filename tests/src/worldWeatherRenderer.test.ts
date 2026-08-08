@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
+    getWorldFogFalloffSampleAlpha,
+    getWorldFogVisibilityState,
     getWorldLightningVisualState,
     getWorldTerrainPatchVisual,
     getWorldWeatherEmitterState,
@@ -21,6 +23,22 @@ describe("world weather renderer state", () => {
             rainEnabled: false,
             fogEnabled: false,
         });
+    });
+
+    test("keeps fog clear around the player and fades distant visibility instead of covering the whole map", () => {
+        const mild = getWorldFogVisibilityState({ type: "fog", intensity: 0.25 }, 0);
+        const dense = getWorldFogVisibilityState({ type: "fog", intensity: 1 }, 0);
+
+        expect(mild.enabled).toBe(true);
+        expect(dense.clearRadius).toBeLessThan(mild.clearRadius);
+        expect(dense.clearRadius).toBeGreaterThanOrEqual(20);
+        expect(dense.fadeRadius).toBeGreaterThan(dense.clearRadius + 20);
+        expect(dense.maxAlpha).toBeLessThan(0.65);
+
+        expect(getWorldFogFalloffSampleAlpha(dense.clearRadius - 1, dense)).toBe(0);
+        expect(getWorldFogFalloffSampleAlpha(dense.clearRadius + 8, dense)).toBeGreaterThan(0);
+        expect(getWorldFogFalloffSampleAlpha(dense.fadeRadius + 10, dense)).toBe(dense.maxAlpha);
+        expect(getWorldFogVisibilityState({ type: "fog", intensity: 1 }, 1).enabled).toBe(false);
     });
 
     test("makes rain and thunderstorm terrain patches visually stronger", () => {

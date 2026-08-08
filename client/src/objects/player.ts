@@ -1518,7 +1518,7 @@ export class Player implements AbstractObject {
             this.updateFrozenImage = false;
         }
 
-        if (map.factionMode && !outfitDef.ghillie) {
+        if (showPersonalGear && map.factionMode && !outfitDef.ghillie) {
             const playerInfo = playerBarn.getPlayerInfo(this.__id);
             const teamId = playerInfo.teamId;
 
@@ -1579,7 +1579,7 @@ export class Player implements AbstractObject {
         setFootSprite(this.footRSprite, outfitImg.footSprite, footTint, this.downed);
 
         // Flak Jacket
-        if (this.m_hasPerk("flak_jacket") && !outfitDef.ghillie) {
+        if (showPersonalGear && this.m_hasPerk("flak_jacket") && !outfitDef.ghillie) {
             this.flakSprite.texture = PIXI.Texture.from("player-armor-base-01.img");
             this.flakSprite.scale.set(0.215, 0.215);
             this.flakSprite.tint = 3671558;
@@ -1602,7 +1602,7 @@ export class Player implements AbstractObject {
         }
 
         // Steelskin
-        if (this.m_hasPerk("steelskin") && !outfitDef.ghillie) {
+        if (showPersonalGear && this.m_hasPerk("steelskin") && !outfitDef.ghillie) {
             this.steelskinSprite.texture = PIXI.Texture.from("loot-melee-pan-black.img");
             this.steelskinSprite.scale.set(0.4, 0.4);
             this.steelskinSprite.anchor.set(0.575, 0.5);
@@ -1659,7 +1659,7 @@ export class Player implements AbstractObject {
         }
 
         // Hip
-        if (this.m_netData.m_wearingPan) {
+        if (showPersonalGear && this.m_netData.m_wearingPan) {
             const imgDef = GameObjectDefs.typeToDef("pan", "melee").hipImg!;
             this.hipSprite.texture = PIXI.Texture.from(imgDef.sprite);
             this.hipSprite.position.set(imgDef.pos.x, imgDef.pos.y);
@@ -1821,6 +1821,7 @@ export class Player implements AbstractObject {
             && GameObjectDefs.typeToDef(this.m_netData.m_role, "role").visorImg
             && this.m_netData.m_helmet != ""
             && !outfitDef.ghillie
+            && showPersonalGear
         ) {
             const roleDef = GameObjectDefs.typeToDef(this.m_netData.m_role, "role");
             const visorSkin = roleDef.visorImg!;

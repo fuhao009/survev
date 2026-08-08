@@ -984,7 +984,11 @@ export class Game {
             this.m_particleBarn,
             this.m_audioManager,
         );
-        this.m_worldWeatherRenderer.update(this.m_camera, this.m_activePlayer.layer);
+        this.m_worldWeatherRenderer.update(
+            this.m_camera,
+            this.m_activePlayer.layer,
+            this.m_activePlayer.m_visualPos,
+        );
         this.m_particleBarn.m_update(dt, this.m_camera);
         this.m_deadBodyBarn.m_update(
             dt,
