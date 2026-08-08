@@ -85,14 +85,14 @@ export function getWorldFogVisibilityState(
 
     const intensity = Math.max(0.25, Math.min(1, weather.intensity));
     const density = weather.type === "thunderstorm" ? intensity * 0.65 : intensity;
-    const clearRadius = 28 - density * 8;
-    const fadeRadius = 72 - density * 22;
+    const clearRadius = 29 - density * 11;
+    const fadeRadius = 58 - density * 28;
     return {
         enabled: true,
         clearRadius,
-        fadeRadius: Math.max(clearRadius + 22, fadeRadius),
-        maxAlpha: 0.28 + density * 0.32,
-        color: weather.type === "thunderstorm" ? 0xcddce4 : 0xdce7e3,
+        fadeRadius: Math.max(clearRadius + 16, fadeRadius),
+        maxAlpha: 0.4 + density * 0.32,
+        color: weather.type === "thunderstorm" ? 0x839fb2 : 0x91aebb,
     };
 }
 

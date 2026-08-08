@@ -27,13 +27,19 @@ describe("world weather renderer state", () => {
 
     test("keeps fog clear around the player and fades distant visibility instead of covering the whole map", () => {
         const mild = getWorldFogVisibilityState({ type: "fog", intensity: 0.25 }, 0);
+        const reference = getWorldFogVisibilityState({ type: "fog", intensity: 0.7 }, 0);
         const dense = getWorldFogVisibilityState({ type: "fog", intensity: 1 }, 0);
 
         expect(mild.enabled).toBe(true);
         expect(dense.clearRadius).toBeLessThan(mild.clearRadius);
-        expect(dense.clearRadius).toBeGreaterThanOrEqual(20);
-        expect(dense.fadeRadius).toBeGreaterThan(dense.clearRadius + 20);
-        expect(dense.maxAlpha).toBeLessThan(0.65);
+        expect(reference.clearRadius).toBeGreaterThanOrEqual(18);
+        expect(reference.clearRadius).toBeLessThanOrEqual(22);
+        expect(reference.fadeRadius).toBeGreaterThanOrEqual(37);
+        expect(reference.fadeRadius).toBeLessThanOrEqual(39);
+        expect(reference.maxAlpha).toBeGreaterThanOrEqual(0.55);
+        expect(reference.color).toBe(0x91aebb);
+        expect(dense.fadeRadius).toBeGreaterThan(dense.clearRadius + 15);
+        expect(dense.maxAlpha).toBeLessThan(0.75);
 
         expect(getWorldFogFalloffSampleAlpha(dense.clearRadius - 1, dense)).toBe(0);
         expect(getWorldFogFalloffSampleAlpha(dense.clearRadius + 8, dense)).toBeGreaterThan(0);

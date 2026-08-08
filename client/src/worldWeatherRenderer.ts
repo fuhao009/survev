@@ -14,7 +14,7 @@ import {
 } from "./worldWeatherPresentation.ts";
 
 const WEATHER_PARTICLE_LAYER = 3;
-const FOG_FALLOFF_RING_COUNT = 9;
+const FOG_FALLOFF_RING_COUNT = 14;
 
 function hashText(value: string): number {
     let hash = 2166136261;
