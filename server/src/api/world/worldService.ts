@@ -42,8 +42,6 @@ import {
 const WORLD_ID = "gun-world";
 const SHARD_ID = "gun-world-local-1";
 const WORLD_SEED = "gun-world-seed-1";
-const INITIAL_GEAR = ["ak47", "m9"] as const;
-const INITIAL_EQUIPMENT = ["backpack01", "helmet01", "chest01"] as const;
 const LOCKS = new Map<string, Promise<void>>();
 const RECENT_EXTRACTION_WINDOW_MS = 15 * 60 * 1000;
 const WORLD_DURABLE_GAME_OBJECT_TYPES = new Set([
@@ -230,7 +228,7 @@ function toWorldLife(row: typeof worldLivesTable.$inferSelect): WorldLife {
     };
 }
 
-function itemSnapshot(
+export function buildWorldCarriedItemsSnapshot(
     items: Array<typeof worldItemInstancesTable.$inferSelect>,
     ownerId: string,
     revision: number,
@@ -254,10 +252,10 @@ function itemSnapshot(
                 loadedAmmo: 0,
             })),
         equipment: {
-            outfit: equippedType("outfit", "outfitBase"),
-            backpack: equippedType("backpack", "backpack01"),
-            helmet: equippedType("helmet", "helmet01"),
-            chest: equippedType("chest", "chest01"),
+            outfit: equippedType("outfit", ""),
+            backpack: equippedType("backpack", ""),
+            helmet: equippedType("helmet", ""),
+            chest: equippedType("chest", ""),
             perks: [],
         },
     };
@@ -315,32 +313,9 @@ export class WorldService {
         };
     }
 
-    private async ensureStarterItems(userId: string, loadout: Loadout) {
-        const existing = await db.select().from(worldItemInstancesTable).where(
-            and(
-                eq(worldItemInstancesTable.userId, userId),
-                inArray(worldItemInstancesTable.state, ["stash", "equipped"]),
-            ),
-        );
-        const wanted = new Set<string>([
-            ...INITIAL_GEAR,
-            ...INITIAL_EQUIPMENT,
-            loadout.outfit,
-            loadout.melee,
-            loadout.player_icon,
-            loadout.crosshair.type,
-        ].filter(Boolean));
-        const existingTypes = new Set(existing.map((item) => item.type));
-        const missing = [...wanted].filter((type) => !existingTypes.has(type));
-        if (missing.length) {
-            await db.insert(worldItemInstancesTable).values(missing.map((type) => ({
-                instanceId: randomUUID(),
-                userId,
-                type,
-                ...getInitialItemDurability(type),
-                state: "stash",
-            })));
-        }
+    private async ensureStarterItems(userId: string) {
+        // World lives no longer synthesize starter gear here; only pre-existing
+        // stash/equipped items should be carried into the next life.
         return db.select().from(worldItemInstancesTable).where(
             and(
                 eq(worldItemInstancesTable.userId, userId),
@@ -460,7 +435,7 @@ export class WorldService {
         };
     }
 
-    async enter(userId: string, loadout: Loadout, newLife = false): Promise<WorldSnapshot> {
+    async enter(userId: string, _loadout: Loadout, newLife = false): Promise<WorldSnapshot> {
         return this.withLock(userId, async () => {
             this.trace("enter:start", { userId, newLife });
             const shard = await this.ensureShard();
@@ -498,17 +473,16 @@ export class WorldService {
                 }
             }
 
-            const items = await this.ensureStarterItems(userId, loadout);
+            const items = await this.ensureStarterItems(userId);
             const lifeId = randomUUID();
             this.trace("enter:create-life", {
                 userId,
                 lifeId,
-                starterItemCount: items.length,
-                loadout,
+                worldItemCount: items.length,
             });
             const carried = {
                 state: "carried" as const,
-                snapshot: itemSnapshot(items, userId, 1),
+                snapshot: buildWorldCarriedItemsSnapshot(items, userId, 1),
                 capturedAt: Date.now(),
             } satisfies WorldCarriedItems;
             await db.insert(worldLivesTable).values({
