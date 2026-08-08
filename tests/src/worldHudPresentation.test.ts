@@ -55,6 +55,39 @@ describe("world HUD presentation", () => {
         });
 
         expect(getWorldWeatherVisualState({
+            type: "rain",
+            phase: "stable",
+            intensity: 0.65,
+        })).toMatchObject({
+            weatherClass: "world-weather-rain",
+            hudWeatherClass: "world-hud-weather-rain",
+            impactKey: "world-weather-impact-rain",
+            overlayOpacity: 0.18,
+            showOverlay: true,
+        });
+
+        expect(getWorldWeatherVisualState({
+            type: "fog",
+            phase: "stable",
+            intensity: 0.7,
+        })).toMatchObject({
+            weatherClass: "world-weather-fog",
+            hudWeatherClass: "world-hud-weather-fog",
+            impactKey: "world-weather-impact-fog",
+            overlayOpacity: 0,
+            showOverlay: false,
+        });
+
+        expect(getWorldWeatherVisualState({
+            type: "fog",
+            phase: "warning",
+            intensity: 0.7,
+        })).toMatchObject({
+            overlayOpacity: 0,
+            showOverlay: false,
+        });
+
+        expect(getWorldWeatherVisualState({
             type: "thunderstorm",
             phase: "warning",
             intensity: 0.9,

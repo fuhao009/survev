@@ -55,7 +55,9 @@ const WORLD_DURABILITY_GROUP_ORDER: readonly WorldHudDurabilityGroupKey[] = ["we
 const WORLD_WEATHER_OVERLAY_OPACITY: Record<WorldWeatherType, number> = {
     clear: 0,
     rain: 0.18,
-    fog: 0.24,
+    // Fog visibility is rendered as a Pixi falloff around the local player.
+    // A DOM overlay here turns it back into a uniform screen wash.
+    fog: 0,
     thunderstorm: 0.3,
 };
 
@@ -121,9 +123,12 @@ export function getWorldWeatherVisualState(
 ): WorldWeatherVisualState {
     const intensityPercent = Math.round(Math.max(0, Math.min(1, weather.intensity)) * 100);
     const riskPercent = Math.round(Math.max(0, Math.min(1, weather.intensity)) * 22);
-    const overlayOpacity = weather.phase === "warning"
-        ? Math.max(0.12, WORLD_WEATHER_OVERLAY_OPACITY[weather.type])
-        : WORLD_WEATHER_OVERLAY_OPACITY[weather.type];
+    const baseOverlayOpacity = WORLD_WEATHER_OVERLAY_OPACITY[weather.type];
+    const overlayOpacity = weather.type === "fog"
+        ? 0
+        : weather.phase === "warning"
+        ? Math.max(0.12, baseOverlayOpacity)
+        : baseOverlayOpacity;
     return {
         weatherClass: `world-weather-${weather.type}`,
         hudWeatherClass: `world-hud-weather-${weather.type}`,
@@ -133,6 +138,6 @@ export function getWorldWeatherVisualState(
         intensityPercent,
         riskPercent,
         overlayOpacity,
-        showOverlay: weather.type !== "clear" || weather.phase === "warning",
+        showOverlay: overlayOpacity > 0,
     };
 }
