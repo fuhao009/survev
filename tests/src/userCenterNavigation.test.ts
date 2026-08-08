@@ -49,9 +49,25 @@ describe("user center navigation contract", () => {
         }
     });
 
+    test("world equipment stays grouped inside the warehouse card", () => {
+        const warehouseStart = indexHtml.indexOf("class=\"user-center-option user-center-warehouse-option\"");
+        const statsStart = indexHtml.indexOf("class=\"user-center-option account-stats-link\"");
+        expect(warehouseStart).toBeGreaterThan(-1);
+        expect(statsStart).toBeGreaterThan(warehouseStart);
+
+        const warehouseHtml = indexHtml.slice(warehouseStart, statsStart);
+        expect(warehouseHtml).toContain("class=\"user-center-warehouse-link account-loadout-link\"");
+        expect(warehouseHtml).toContain("class=\"user-center-world-inventory\"");
+        expect(warehouseHtml).toContain("id=\"user-center-world-items\"");
+        expect(warehouseHtml).toContain("id=\"user-center-refresh\" type=\"button\"");
+        expect(warehouseHtml.indexOf("id=\"user-center-refresh\"")).toBeGreaterThan(
+            warehouseHtml.indexOf("class=\"user-center-warehouse-link account-loadout-link\""),
+        );
+    });
+
     test("subviews expose a visible Chinese return action and leaderboard has a hub link", () => {
-        expect(indexHtml.match(/class="account-return-user-center"/g)?.length).toBe(4);
-        expect(indexHtml.match(/data-l10n="home-return-user-center"/g)?.length).toBe(4);
+        expect(indexHtml.match(/class="account-return-user-center"/g)?.length).toBe(5);
+        expect(indexHtml.match(/data-l10n="home-return-user-center"/g)?.length).toBe(5);
         expect(indexHtml).toContain(USER_CENTER_RETURN_LABEL);
         expect(statsHtml).toContain("href=\"/#user-center\"");
     });
