@@ -6,6 +6,7 @@ import {
     getInitialItemDurability,
     getRepairCost,
     isDamageWearItemType,
+    isOneTimeItemType,
     isWeaponWearItemType,
     repairItem,
     wearItem,
@@ -74,6 +75,17 @@ interface CompetitiveWorldMetrics {
     recentExtractions: number;
 }
 
+export interface WorldItemLedgerRow {
+    instanceId: string;
+    userId: string;
+    lifeId: string | null;
+    type: string;
+    quantity: number;
+    durability: number;
+    durabilityMax: number;
+    state: string;
+}
+
 function withForUpdate<T>(query: T): T {
     if (Config.database.driver === "postgres") {
         return (query as T & { for: (mode: "update") => T }).for("update");
@@ -94,7 +106,7 @@ const safeZone: WorldSafeZone = {
 const BASE_POSITION = { position: { ...safeZone.current.center }, layer: 0 } as const;
 
 function worldItemBasePoints(
-    item: Pick<typeof worldItemInstancesTable.$inferSelect, "type" | "durability" | "durabilityMax">,
+    item: Pick<WorldItemLedgerRow, "type" | "durability" | "durabilityMax">,
 ) {
     const direct = WORLD_ITEM_BASE_POINTS[item.type];
     if (direct !== undefined) return direct;
@@ -120,9 +132,30 @@ function worldItemBasePoints(
     }
 }
 
-function durabilityRatio(item: Pick<typeof worldItemInstancesTable.$inferSelect, "durability" | "durabilityMax">) {
+function itemQuantity(item: Pick<WorldItemLedgerRow, "quantity">) {
+    return Math.max(1, Math.trunc(item.quantity));
+}
+
+function durabilityRatio(item: Pick<WorldItemLedgerRow, "durability" | "durabilityMax">) {
     if (item.durabilityMax <= 0) return 1;
     return Math.max(0, Math.min(1, item.durability / item.durabilityMax));
+}
+
+function parseWorldItemInstance(item: WorldItemLedgerRow, stateOverride?: ItemInstance["state"]): ItemInstance {
+    return parseItemInstance({
+        instanceId: item.instanceId,
+        type: item.type,
+        quantity: itemQuantity(item),
+        durability: item.durability,
+        durabilityMax: item.durabilityMax,
+        state: stateOverride ?? item.state,
+        ownerId: item.userId,
+    });
+}
+
+function positiveStackQuantity(quantity: number) {
+    if (!Number.isFinite(quantity)) return 0;
+    return Math.max(0, Math.trunc(quantity));
 }
 
 function worldDurableItemTypes(snapshot: WorldCarriedItemsSnapshot): Set<string> {
@@ -143,6 +176,58 @@ function worldDurableItemTypes(snapshot: WorldCarriedItemsSnapshot): Set<string>
         if (def && WORLD_DURABLE_GAME_OBJECT_TYPES.has(def.type)) types.add(itemType);
     }
     return types;
+}
+
+function worldStackItemQuantities(snapshot: WorldCarriedItemsSnapshot): Map<string, number> {
+    const quantities = new Map<string, number>();
+    for (const stack of snapshot.stacks) {
+        if (!isOneTimeItemType(stack.itemType)) continue;
+        const quantity = positiveStackQuantity(stack.quantity);
+        if (quantity <= 0) continue;
+        quantities.set(stack.itemType, (quantities.get(stack.itemType) ?? 0) + quantity);
+    }
+    return quantities;
+}
+
+function createWorldStackItemRow(
+    userId: string,
+    lifeId: string | null,
+    type: string,
+    quantity: number,
+    state: "carried" | "stash",
+): WorldItemLedgerRow {
+    return {
+        instanceId: randomUUID(),
+        userId,
+        lifeId,
+        type,
+        quantity,
+        ...getInitialItemDurability(type),
+        state,
+    };
+}
+
+export function buildMissingWorldStackItemRows(
+    userId: string,
+    lifeId: string | null,
+    snapshot: WorldCarriedItemsSnapshot,
+    existingItems: readonly WorldItemLedgerRow[],
+    state: "carried" | "stash",
+): WorldItemLedgerRow[] {
+    const availableByType = new Map<string, number>();
+    for (const item of existingItems) {
+        if (!isOneTimeItemType(item.type)) continue;
+        availableByType.set(item.type, (availableByType.get(item.type) ?? 0) + itemQuantity(item));
+    }
+
+    const rows: WorldItemLedgerRow[] = [];
+    for (const [type, quantity] of worldStackItemQuantities(snapshot)) {
+        const backedQuantity = Math.min(quantity, availableByType.get(type) ?? 0);
+        const missingQuantity = quantity - backedQuantity;
+        if (missingQuantity <= 0) continue;
+        rows.push(createWorldStackItemRow(userId, lifeId, type, missingQuantity, state));
+    }
+    return rows;
 }
 
 function toWorldShard(row: typeof worldShardsTable.$inferSelect, now = Date.now()): WorldShard {
@@ -233,11 +318,17 @@ export function buildWorldCarriedItemsSnapshot(
 ): WorldCarriedItemsSnapshot {
     const equippedType = (gameObjectType: string, fallback: string) =>
         items.find((item) => GameObjectDefs.typeToDefSafe(item.type)?.type === gameObjectType)?.type ?? fallback;
+    const stacks = [...items.reduce((totals, item) => {
+        if (!isOneTimeItemType(item.type)) return totals;
+        totals.set(item.type, (totals.get(item.type) ?? 0) + itemQuantity(item));
+        return totals;
+    }, new Map<string, number>())].map(([itemType, quantity]) => ({ itemType, quantity }));
+
     return {
         kind: "carried_items_snapshot",
         ownerId,
         revision,
-        stacks: [],
+        stacks,
         weapons: items
             .filter((item) => ["ak47", "m9", "fists"].includes(item.type))
             .map((item) => ({
@@ -347,7 +438,7 @@ export class WorldService {
 
     private buildExtractionQuote(
         life: typeof worldLivesTable.$inferSelect,
-        carriedItems: Array<typeof worldItemInstancesTable.$inferSelect>,
+        carriedItems: readonly WorldItemLedgerRow[],
         worldShard: WorldShard,
         extractionZone: WorldExtractionZone,
         metrics: CompetitiveWorldMetrics,
@@ -357,10 +448,12 @@ export class WorldService {
             item.lifeId === life.lifeId && (item.state === "carried" || item.state === "equipped")
         );
         const baseItemPoints = quotedItems.reduce((total, item) => {
-            return total + worldItemBasePoints(item) * durabilityRatio(item);
+            return total + worldItemBasePoints(item) * durabilityRatio(item) * itemQuantity(item);
         }, 0);
-        const durabilityAverage = quotedItems.length
-            ? quotedItems.reduce((total, item) => total + durabilityRatio(item), 0) / quotedItems.length
+        const quotedQuantity = quotedItems.reduce((total, item) => total + itemQuantity(item), 0);
+        const durabilityAverage = quotedQuantity > 0
+            ? quotedItems.reduce((total, item) => total + durabilityRatio(item) * itemQuantity(item), 0)
+                / quotedQuantity
             : 1;
         const terrainMovement = getWorldTerrainMovementModifier(
             extractionZone.center,
@@ -400,16 +493,8 @@ export class WorldService {
         const inventoryRows = await db.select().from(worldItemInstancesTable).where(
             eq(worldItemInstancesTable.userId, userId),
         );
-        const inventory = inventoryRows.map((item) =>
-            parseItemInstance({
-                instanceId: item.instanceId,
-                type: item.type,
-                quantity: 1,
-                durability: item.durability,
-                durabilityMax: item.durabilityMax,
-                state: item.state,
-                ownerId: item.userId,
-            })
+        const inventory = inventoryRows.filter((item) => item.state !== "listed").map((item) =>
+            parseWorldItemInstance(item)
         );
         const metrics = await this.competitiveMetrics(shard.shardId, now);
         const extractionQuote = lifeRow.status === "alive"
@@ -746,8 +831,38 @@ export class WorldService {
                     });
                 }
 
+                for (const [type, quantity] of worldStackItemQuantities(snapshot)) {
+                    const existing = currentItems.find((item) =>
+                        item.type === type && isOneTimeItemType(item.type) && !retainedIds.has(item.instanceId)
+                    );
+                    if (existing) {
+                        retainedIds.add(existing.instanceId);
+                        if (
+                            existing.quantity !== quantity
+                            || existing.state !== "carried"
+                            || existing.lifeId !== life.lifeId
+                        ) {
+                            await tx.update(worldItemInstancesTable).set({
+                                quantity,
+                                lifeId: life.lifeId,
+                                ...getInitialItemDurability(type),
+                                state: "carried",
+                                updatedAt: new Date(),
+                            }).where(eq(worldItemInstancesTable.instanceId, existing.instanceId));
+                        }
+                        continue;
+                    }
+
+                    await tx.insert(worldItemInstancesTable).values(
+                        createWorldStackItemRow(userId, life.lifeId, type, quantity, "carried"),
+                    );
+                }
+
                 const droppedIds = currentItems
-                    .filter((item) => !retainedIds.has(item.instanceId) && !desiredTypes.has(item.type))
+                    .filter((item) =>
+                        !retainedIds.has(item.instanceId)
+                        && (isOneTimeItemType(item.type) || !desiredTypes.has(item.type))
+                    )
                     .map((item) => item.instanceId);
                 if (droppedIds.length) {
                     await tx.update(worldItemInstancesTable).set({
@@ -861,23 +976,35 @@ export class WorldService {
                 eq(worldItemInstancesTable.lifeId, life.lifeId),
             ),
         );
+        const missingStackItems = buildMissingWorldStackItemRows(
+            userId,
+            life.lifeId,
+            life.carriedItems.snapshot,
+            items,
+            "carried",
+        );
         const worldShard = toWorldShard(shard, now);
         const metrics = await this.competitiveMetrics(shard.shardId, now);
-        const quote = this.buildExtractionQuote(life, items, worldShard, extractionZone, metrics, now);
+        const quote = this.buildExtractionQuote(
+            life,
+            [...items, ...missingStackItems],
+            worldShard,
+            extractionZone,
+            metrics,
+            now,
+        );
         const rewardPoints = quote.totalPoints;
         let securedInventory: ItemInstance[] = [];
         await db.transaction(async (tx) => {
-            securedInventory = items.map((item) =>
-                parseItemInstance({
-                    instanceId: item.instanceId,
-                    type: item.type,
-                    quantity: 1,
-                    durability: item.durability,
-                    durabilityMax: item.durabilityMax,
-                    state: "stash",
-                    ownerId: item.userId,
-                })
-            );
+            const newStackItems = missingStackItems.map((item) => ({
+                ...item,
+                lifeId: null,
+                state: "stash" as const,
+            }));
+            securedInventory = [
+                ...items.map((item) => parseWorldItemInstance(item, "stash")),
+                ...newStackItems.map((item) => parseWorldItemInstance(item)),
+            ];
             await tx.insert(worldSettlementsTable).values({
                 settlementId,
                 playerId: userId,
@@ -899,6 +1026,9 @@ export class WorldService {
                 revision: life.revision + 1,
                 updatedAt: new Date(),
             }).where(eq(worldLivesTable.lifeId, life.lifeId));
+            if (newStackItems.length) {
+                await tx.insert(worldItemInstancesTable).values(newStackItems);
+            }
             await tx.update(worldItemInstancesTable).set({ state: "stash", lifeId: null, updatedAt: new Date() }).where(
                 and(eq(worldItemInstancesTable.userId, userId), eq(worldItemInstancesTable.lifeId, life.lifeId)),
             );

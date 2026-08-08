@@ -3,10 +3,12 @@ import { z } from "zod";
 export const ITEM_DURABILITY_MIN = 0;
 export const ITEM_DURABILITY_MAX = 1000;
 export const ITEM_INSTANCE_QUANTITY = 1 as const;
+export const ITEM_INSTANCE_QUANTITY_MIN = 1 as const;
 
 export const ITEM_INSTANCE_STATES = [
     "stash",
     "equipped",
+    "listed",
     "carried",
     "world",
     "destroyed",
@@ -31,7 +33,7 @@ export const zItemInstanceState = z.enum(ITEM_INSTANCE_STATES);
 export const zItemInstance = z.strictObject({
     instanceId: z.string().min(1),
     type: z.string().min(1),
-    quantity: z.literal(ITEM_INSTANCE_QUANTITY),
+    quantity: z.number().int().min(ITEM_INSTANCE_QUANTITY_MIN),
     durability: zItemDurability,
     durabilityMax: zItemDurability,
     state: zItemInstanceState,

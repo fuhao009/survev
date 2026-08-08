@@ -82,7 +82,7 @@ export const UserRouter = new Hono<Context>()
                 .where(
                     and(
                         eq(worldItemInstancesTable.userId, user.id),
-                        inArray(worldItemInstancesTable.state, ["stash", "equipped"]),
+                        inArray(worldItemInstancesTable.state, ["stash", "equipped", "listed"]),
                     ),
                 ),
         ]);
@@ -104,7 +104,7 @@ export const UserRouter = new Hono<Context>()
                     parseItemInstance({
                         instanceId: item.instanceId,
                         type: item.type,
-                        quantity: 1,
+                        quantity: item.quantity,
                         durability: item.durability,
                         durabilityMax: item.durabilityMax,
                         state: item.state,

@@ -9428,19 +9428,59 @@ input [type="image"]:focus {
 }
 
 .user-center-world-items li {
-  align-items: baseline;
+  align-items: center;
   background: rgba(100, 200, 187, 0.08);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-  justify-content: space-between;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  min-height: 46px;
   padding: 6px 8px;
+}
+
+.user-center-world-items li.user-center-world-items-empty {
+  color: #aeb8bd;
+  display: block;
+  min-height: 0;
+}
+
+.user-center-world-item-icon {
+  align-items: center;
+  background: rgba(7, 21, 24, 0.42);
+  border: 1px solid rgba(174, 184, 189, 0.22);
+  box-sizing: border-box;
+  display: flex;
+  height: 34px;
+  justify-content: center;
+  overflow: hidden;
+  width: 34px;
+}
+
+.user-center-world-item-icon img {
+  display: block;
+  max-height: 28px;
+  max-width: 28px;
+  object-fit: contain;
+}
+
+.user-center-world-item-name {
+  color: #f4f0dc;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .user-center-world-item-detail,
 #user-center-refresh-status {
   color: #aeb8bd;
   font-size: 12px;
+}
+
+.user-center-world-item-detail {
+  line-height: 1.25;
+  text-align: right;
+  white-space: nowrap;
 }
 
 #user-center-refresh {
@@ -9461,6 +9501,17 @@ input [type="image"]:focus {
 @media (max-width: 500px) {
   #modal-user-center .user-center-grid {
     grid-template-columns: 1fr;
+  }
+
+  .user-center-world-items li {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .user-center-world-item-detail {
+    grid-column: 2;
+    justify-self: start;
+    text-align: left;
+    white-space: normal;
   }
 
   #modal-user-center .user-center-footer {

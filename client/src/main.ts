@@ -891,14 +891,15 @@ export class Application {
             ),
         );
 
+        const listSection = $("#world-result-items").closest(".world-result-list-section");
+        listSection.toggle(result.outcome !== "extracted");
         const list = $("#world-result-items").empty();
+        if (result.outcome === "extracted") {
+            return;
+        }
         if (result.items.length === 0) {
             $("<li>").text(
-                this.localization.translate(
-                    result.outcome === "extracted"
-                        ? "world-settlement-no-items-extracted"
-                        : "world-settlement-no-items-dead",
-                ),
+                this.localization.translate("world-settlement-no-items-dead"),
             ).appendTo(list);
             return;
         }

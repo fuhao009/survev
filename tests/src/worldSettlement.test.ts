@@ -32,11 +32,12 @@ function item(
     state: ItemInstance["state"],
     durability: number,
     durabilityMax = 1000,
+    quantity = 1,
 ): ItemInstance {
     return {
         instanceId: `${type}-${state}`,
         type,
-        quantity: 1,
+        quantity,
         durability,
         durabilityMax,
         state,
@@ -79,7 +80,7 @@ const finalizedSettlement = {
         extractionId: "extraction-1",
         securedAt: 2,
     },
-    securedInventory: [item("ak47", "stash", 742), item("helmet01", "stash", 1000)],
+    securedInventory: [item("ak47", "stash", 742), item("helmet01", "stash", 1000), item("bandage", "stash", 0, 0, 3)],
     rewards: [{
         rewardType: "points",
         quantity: 35,
@@ -103,9 +104,13 @@ const finalizedSettlement = {
 } satisfies Extract<WorldSettlementState, { status: "finalized" }>;
 
 describe("world settlement presentation", () => {
-    test("renders extraction reward, wallet change, durability, and stacks", () => {
+    test("summarizes extraction reward and warehouse storage without item details", () => {
         const before = snapshot([item("ak47", "carried", 742), item("helmet01", "carried", 1000)], 46);
-        const after = snapshot([item("ak47", "stash", 742), item("helmet01", "stash", 1000)], 81);
+        const after = snapshot([
+            item("ak47", "stash", 742),
+            item("helmet01", "stash", 1000),
+            item("bandage", "stash", 0, 0, 3),
+        ], 81);
         const result = buildExtractedWorldResult(finalizedSettlement, before, after);
 
         expect(result.outcome).toBe("extracted");
@@ -115,12 +120,8 @@ describe("world settlement presentation", () => {
         expect(result.walletBefore).toBe(46);
         expect(result.walletAfter).toBe(81);
         expect(result.carriedCount).toBe(5);
-        expect(result.warehouseCount).toBe(2);
-        expect(result.items).toEqual(expect.arrayContaining([
-            expect.objectContaining({ label: "AK-47", durability: 742, durabilityMax: 1000 }),
-            expect.objectContaining({ kind: "stack", label: "bandage", quantity: 3 }),
-        ]));
-        expect(result.items.find((item) => item.kind === "stack")).not.toHaveProperty("durability");
+        expect(result.warehouseCount).toBe(5);
+        expect(result.items).toEqual([]);
     });
 
     test("keeps death semantics and shows dropped equipment without reward", () => {

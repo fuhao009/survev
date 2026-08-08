@@ -636,14 +636,32 @@ export class ProfileUi {
         );
         const worldItemsList = $("#user-center-world-items").empty();
         if (worldItems.length == 0) {
-            $("<li>").text(this.localization.translate("account-no-world-items")).appendTo(worldItemsList);
+            $("<li>")
+                .addClass("user-center-world-items-empty")
+                .text(this.localization.translate("account-no-world-items"))
+                .appendTo(worldItemsList);
         } else {
             for (const item of worldItems) {
                 const detail = item.durabilityMax > 0
                     ? `${item.durability}/${item.durabilityMax} · ${getWorldItemStateLabel(item.state)}`
                     : `${item.quantity} 件`;
+                const iconSrc = helpers.getSvgFromGameType(item.type);
+                const icon = $("<span>").addClass("user-center-world-item-icon").attr("aria-hidden", "true");
+                if (iconSrc) {
+                    icon.append(
+                        $("<img>", {
+                            alt: "",
+                            src: iconSrc,
+                        }).css("transform", helpers.getCssTransformFromGameType(item.type)),
+                    );
+                }
                 $("<li>")
-                    .append($("<span>").text(`${getWorldItemLabel(item.type)} ×${item.quantity}`))
+                    .append(icon)
+                    .append(
+                        $("<span>").addClass("user-center-world-item-name").text(
+                            `${getWorldItemLabel(item.type)} ×${item.quantity}`,
+                        ),
+                    )
                     .append($("<span>").addClass("user-center-world-item-detail").text(detail))
                     .appendTo(worldItemsList);
             }

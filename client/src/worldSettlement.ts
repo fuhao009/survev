@@ -15,6 +15,7 @@ const ITEM_LABELS: Record<string, string> = {
 
 const ITEM_STATE_LABELS: Record<string, string> = {
     stash: "已入库",
+    listed: "已上架",
     world: "已掉落",
     destroyed: "已损坏",
     carried: "携带中",
@@ -67,9 +68,9 @@ export function formatWorldItemDurability(
     return `${item.durability}/${item.durabilityMax}`;
 }
 
-function durableItemRows(items: readonly ItemInstance[], stateOverride?: string): WorldResultItem[] {
+function itemInstanceRows(items: readonly ItemInstance[], stateOverride?: string): WorldResultItem[] {
     return items.map((item) => ({
-        kind: "durable" as const,
+        kind: item.durabilityMax > 0 ? "durable" as const : "stack" as const,
         type: item.type,
         label: getWorldItemLabel(item.type),
         quantity: item.quantity,
@@ -80,13 +81,35 @@ function durableItemRows(items: readonly ItemInstance[], stateOverride?: string)
     }));
 }
 
-function stackRows(snapshot: WorldSnapshot["life"]["carriedItems"]["snapshot"]): WorldResultItem[] {
-    return snapshot.stacks.map((stack) => ({
-        kind: "stack" as const,
-        type: stack.itemType,
-        label: getWorldItemLabel(stack.itemType),
-        quantity: stack.quantity,
-    }));
+function stackRows(
+    snapshot: WorldSnapshot["life"]["carriedItems"]["snapshot"],
+    existingItems: readonly ItemInstance[] = [],
+): WorldResultItem[] {
+    const existingQuantities = existingItems.reduce((totals, item) => {
+        if (item.durabilityMax > 0) return totals;
+        totals.set(item.type, (totals.get(item.type) ?? 0) + item.quantity);
+        return totals;
+    }, new Map<string, number>());
+
+    return snapshot.stacks.flatMap((stack) => {
+        const existingQuantity = existingQuantities.get(stack.itemType) ?? 0;
+        existingQuantities.set(stack.itemType, Math.max(0, existingQuantity - stack.quantity));
+        const missingQuantity = Math.max(0, stack.quantity - existingQuantity);
+        if (missingQuantity === 0) return [];
+        return [{
+            kind: "stack" as const,
+            type: stack.itemType,
+            label: getWorldItemLabel(stack.itemType),
+            quantity: missingQuantity,
+        }];
+    });
+}
+
+function countInventoryItems(items: readonly ItemInstance[], state?: ItemInstance["state"]): number {
+    return items.reduce((total, item) => {
+        if (state !== undefined && item.state !== state) return total;
+        return total + item.quantity;
+    }, 0);
 }
 
 function countItems(rows: readonly WorldResultItem[]): number {
@@ -98,9 +121,10 @@ export function buildExtractedWorldResult(
     before: WorldSnapshot,
     after: WorldSnapshot,
 ): WorldResultViewModel {
-    const equipment = durableItemRows(settlement.securedInventory);
-    const stacks = stackRows(settlement.securedItems.snapshot);
-    const items = [...equipment, ...stacks];
+    const securedRows = [
+        ...itemInstanceRows(settlement.securedInventory),
+        ...stackRows(settlement.securedItems.snapshot, settlement.securedInventory),
+    ];
     const rewardPoints = settlement.rewards
         .filter((reward) => reward.rewardType === "points")
         .reduce((total, reward) => total + reward.quantity, 0);
@@ -114,9 +138,9 @@ export function buildExtractedWorldResult(
         rewardPoints,
         walletBefore: before.walletBalance,
         walletAfter: after.walletBalance,
-        carriedCount: countItems(items),
-        warehouseCount: after.inventory.filter((item) => item.state === "stash").length,
-        items,
+        carriedCount: countItems(securedRows),
+        warehouseCount: countInventoryItems(after.inventory, "stash"),
+        items: [],
         extractionQuote,
     };
 }
@@ -124,8 +148,8 @@ export function buildExtractedWorldResult(
 export function buildDeadWorldResult(snapshot: WorldSnapshot): WorldResultViewModel {
     const dropped = snapshot.inventory.filter((item) => item.state === "world" || item.state === "destroyed");
     const items = [
-        ...durableItemRows(dropped),
-        ...stackRows(snapshot.life.carriedItems.snapshot),
+        ...itemInstanceRows(dropped),
+        ...stackRows(snapshot.life.carriedItems.snapshot, dropped),
     ];
     return {
         outcome: "dead",
@@ -135,7 +159,7 @@ export function buildDeadWorldResult(snapshot: WorldSnapshot): WorldResultViewMo
         walletBefore: snapshot.walletBalance,
         walletAfter: snapshot.walletBalance,
         carriedCount: countItems(items),
-        warehouseCount: snapshot.inventory.filter((item) => item.state === "stash").length,
+        warehouseCount: countInventoryItems(snapshot.inventory, "stash"),
         items,
     };
 }
