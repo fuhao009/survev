@@ -14,6 +14,8 @@ const TERRAIN_COLORS: Record<WorldTerrainPatchType, number> = {
     scorched: 0x542c27,
 };
 
+export const MIN_FOG_VISUAL_DENSITY = 0.8;
+
 export interface WorldWeatherEmitterState {
     rainEnabled: boolean;
     fogEnabled: boolean;
@@ -84,15 +86,16 @@ export function getWorldFogVisibilityState(
     }
 
     const intensity = Math.max(0.25, Math.min(1, weather.intensity));
-    const density = weather.type === "thunderstorm" ? intensity * 0.65 : intensity;
-    const clearRadius = 29 - density * 11;
-    const fadeRadius = 58 - density * 28;
+    const rawDensity = weather.type === "thunderstorm" ? intensity * 0.65 : intensity;
+    const density = weather.type === "fog" ? Math.max(MIN_FOG_VISUAL_DENSITY, rawDensity) : rawDensity;
+    const clearRadius = 26 - density * 8;
+    const fadeRadius = 45 - density * 14;
     return {
         enabled: true,
         clearRadius,
-        fadeRadius: Math.max(clearRadius + 16, fadeRadius),
-        maxAlpha: 0.4 + density * 0.32,
-        color: weather.type === "thunderstorm" ? 0x839fb2 : 0x91aebb,
+        fadeRadius: Math.max(clearRadius + 12, fadeRadius),
+        maxAlpha: 0.48 + density * 0.22,
+        color: weather.type === "thunderstorm" ? 0x9bb1bf : 0xb4c8cd,
     };
 }
 

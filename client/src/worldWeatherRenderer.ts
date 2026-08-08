@@ -11,10 +11,11 @@ import {
     getWorldLightningVisualState,
     getWorldTerrainPatchVisual,
     getWorldWeatherEmitterState,
+    MIN_FOG_VISUAL_DENSITY,
 } from "./worldWeatherPresentation.ts";
 
 const WEATHER_PARTICLE_LAYER = 3;
-const FOG_FALLOFF_RING_COUNT = 14;
+const FOG_FALLOFF_TEXTURE_SCALE = 0.25;
 
 function hashText(value: string): number {
     let hash = 2166136261;
@@ -72,7 +73,10 @@ export class WorldWeatherRenderer {
     readonly terrainDisplay = new PIXI.Graphics();
     readonly effectDisplay = new PIXI.Container();
 
-    private readonly fogFalloffGraphics = new PIXI.Graphics();
+    private readonly fogFalloffCanvas = document.createElement("canvas");
+    private readonly fogFalloffContext = this.fogFalloffCanvas.getContext("2d")!;
+    private readonly fogFalloffTexture = PIXI.Texture.from(this.fogFalloffCanvas);
+    private readonly fogFalloffSprite = new PIXI.Sprite(this.fogFalloffTexture);
     private readonly lightningGraphics = new PIXI.Graphics();
     private readonly flashGraphics = new PIXI.Graphics();
     private readonly rainEmitter: Emitter;
@@ -83,7 +87,8 @@ export class WorldWeatherRenderer {
 
     constructor(private readonly particleBarn: ParticleBarn) {
         this.effectDisplay.interactiveChildren = false;
-        this.effectDisplay.addChild(this.fogFalloffGraphics, this.lightningGraphics, this.flashGraphics);
+        this.fogFalloffTexture.baseTexture.scaleMode = PIXI.SCALE_MODES.LINEAR;
+        this.effectDisplay.addChild(this.fogFalloffSprite, this.lightningGraphics, this.flashGraphics);
         this.rainEmitter = particleBarn.addEmitter("world_rain", {
             pos: v2.create(0, 0),
             dir: v2.create(0, -1),
@@ -111,6 +116,9 @@ export class WorldWeatherRenderer {
     private updateEmitters(camera: Camera, playerLayer: number) {
         const emitterState = getWorldWeatherEmitterState(this.weather, playerLayer);
         const intensity = this.weather?.intensity ?? 0;
+        const fogIntensity = this.weather?.type === "fog"
+            ? Math.max(MIN_FOG_VISUAL_DENSITY, Math.min(1, intensity))
+            : intensity;
         const radius = Math.min(
             160,
             Math.max(80, Math.max(camera.m_screenWidth, camera.m_screenHeight) / (2 * camera.m_z()) + 24),
@@ -126,7 +134,7 @@ export class WorldWeatherRenderer {
         this.fogEmitter.pos = position;
         this.fogEmitter.radius = radius * 0.85;
         this.fogEmitter.rateMult = emitterState.fogRateMultiplier;
-        this.fogEmitter.alpha = emitterState.fogEnabled ? Math.min(0.42, intensity * 0.5) : 0;
+        this.fogEmitter.alpha = emitterState.fogEnabled ? Math.min(0.42, fogIntensity * 0.5) : 0;
         this.fogEmitter.enabled = emitterState.fogEnabled;
     }
 
@@ -152,39 +160,69 @@ export class WorldWeatherRenderer {
         }
     }
 
+    private resizeFogFalloffTexture(camera: Camera) {
+        const width = Math.max(1, Math.ceil(camera.m_screenWidth * FOG_FALLOFF_TEXTURE_SCALE));
+        const height = Math.max(1, Math.ceil(camera.m_screenHeight * FOG_FALLOFF_TEXTURE_SCALE));
+        if (this.fogFalloffCanvas.width !== width || this.fogFalloffCanvas.height !== height) {
+            this.fogFalloffCanvas.width = width;
+            this.fogFalloffCanvas.height = height;
+            this.fogFalloffTexture.baseTexture.setRealSize(width, height);
+        }
+        return { width, height };
+    }
+
     private renderFogFalloff(camera: Camera, playerLayer: number, focusPosition: Vec2) {
-        this.fogFalloffGraphics.clear();
         const fogState = getWorldFogVisibilityState(this.weather, playerLayer);
-        if (!fogState.enabled) return;
+        if (!fogState.enabled) {
+            this.fogFalloffSprite.visible = false;
+            return;
+        }
 
         const center = camera.m_pointToScreen(focusPosition);
-        const clearRadius = camera.m_scaleToScreen(fogState.clearRadius);
-        const fadeRadius = camera.m_scaleToScreen(fogState.fadeRadius);
+        const { width, height } = this.resizeFogFalloffTexture(camera);
+        const imageData = this.fogFalloffContext.createImageData(width, height);
+        const data = imageData.data;
+        const red = (fogState.color >> 16) & 255;
+        const green = (fogState.color >> 8) & 255;
+        const blue = fogState.color & 255;
+        const screenStepX = camera.m_screenWidth / width;
+        const screenStepY = camera.m_screenHeight / height;
+        const zoom = camera.m_z();
 
-        this.fogFalloffGraphics.beginFill(fogState.color, fogState.maxAlpha);
-        this.fogFalloffGraphics.drawRect(0, 0, camera.m_screenWidth, camera.m_screenHeight);
-        this.fogFalloffGraphics.beginHole();
-        this.fogFalloffGraphics.drawCircle(center.x, center.y, fadeRadius);
-        this.fogFalloffGraphics.endHole();
-        this.fogFalloffGraphics.endFill();
+        for (let y = 0; y < height; y++) {
+            const screenY = (y + 0.5) * screenStepY;
+            const worldY = camera.m_pos.y + (camera.m_screenHeight * 0.5 - screenY) / zoom;
+            const dy = (center.y - screenY) / zoom;
+            for (let x = 0; x < width; x++) {
+                const screenX = (x + 0.5) * screenStepX;
+                const worldX = camera.m_pos.x + (screenX - camera.m_screenWidth * 0.5) / zoom;
+                const dx = (screenX - center.x) / zoom;
+                const distance = Math.hypot(dx, dy);
+                const baseAlpha = getWorldFogFalloffSampleAlpha(distance, fogState);
+                if (baseAlpha <= 0) continue;
 
-        for (let index = 0; index < FOG_FALLOFF_RING_COUNT; index++) {
-            const innerProgress = index / FOG_FALLOFF_RING_COUNT;
-            const outerProgress = (index + 1) / FOG_FALLOFF_RING_COUNT;
-            const innerRadius = clearRadius + (fadeRadius - clearRadius) * innerProgress;
-            const outerRadius = clearRadius + (fadeRadius - clearRadius) * outerProgress;
-            const sampleDistance = fogState.clearRadius
-                + (fogState.fadeRadius - fogState.clearRadius) * (innerProgress + outerProgress) * 0.5;
-            const alpha = getWorldFogFalloffSampleAlpha(sampleDistance, fogState);
-            if (alpha <= 0) continue;
-
-            this.fogFalloffGraphics.beginFill(fogState.color, alpha);
-            this.fogFalloffGraphics.drawCircle(center.x, center.y, outerRadius);
-            this.fogFalloffGraphics.beginHole();
-            this.fogFalloffGraphics.drawCircle(center.x, center.y, innerRadius);
-            this.fogFalloffGraphics.endHole();
-            this.fogFalloffGraphics.endFill();
+                const lowCloud = Math.sin(worldX * 0.34 + worldY * 0.27);
+                const crossCloud = Math.sin(worldX * -0.19 + worldY * 0.42 + 1.7);
+                const fineMist = Math.sin(worldX * 1.23 - worldY * 0.91 + 0.4);
+                const cloudFactor = Math.max(
+                    0.78,
+                    Math.min(1.08, 0.93 + lowCloud * 0.08 + crossCloud * 0.05 + fineMist * 0.025),
+                );
+                const alpha = Math.min(0.95, baseAlpha * cloudFactor);
+                const offset = (y * width + x) * 4;
+                data[offset] = red;
+                data[offset + 1] = green;
+                data[offset + 2] = blue;
+                data[offset + 3] = Math.round(alpha * 255);
+            }
         }
+
+        this.fogFalloffContext.putImageData(imageData, 0, 0);
+        this.fogFalloffTexture.update();
+        this.fogFalloffSprite.position.set(0, 0);
+        this.fogFalloffSprite.width = camera.m_screenWidth;
+        this.fogFalloffSprite.height = camera.m_screenHeight;
+        this.fogFalloffSprite.visible = true;
     }
 
     private renderLightning(camera: Camera, now: number) {
@@ -234,13 +272,13 @@ export class WorldWeatherRenderer {
         this.rainEmitter.free();
         this.fogEmitter.free();
         this.terrainDisplay.clear();
-        this.fogFalloffGraphics.clear();
         this.lightningGraphics.clear();
         this.flashGraphics.clear();
         this.effectDisplay.removeChildren();
         this.terrainDisplay.parent?.removeChild(this.terrainDisplay);
         this.effectDisplay.parent?.removeChild(this.effectDisplay);
         this.terrainDisplay.destroy();
+        this.fogFalloffTexture.destroy(true);
         this.effectDisplay.destroy({ children: true });
     }
 }

@@ -178,6 +178,10 @@ export class LootBarn {
         for (let i = 0; i < loots.length; i++) {
             const loot = loots[i];
             if (loot.active) {
+                const visibleToActivePlayer = loot.ownerId == 0 || loot.ownerId == activePlayer.__id;
+                loot.container.visible = visibleToActivePlayer;
+                if (!visibleToActivePlayer) continue;
+
                 if (
                     util.sameLayer(loot.layer, activePlayer.layer)
                     && !activePlayer.m_netData.m_dead

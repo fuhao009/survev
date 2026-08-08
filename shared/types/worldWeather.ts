@@ -25,7 +25,7 @@ export const WORLD_WEATHER_CYCLE_DURATION_MS = WORLD_WEATHER_STABLE_DURATION_MS 
 const WEATHER_INTENSITY: Record<WorldWeatherType, number> = {
     clear: 0,
     rain: 0.65,
-    fog: 0.7,
+    fog: 0.85,
     thunderstorm: 0.9,
 };
 
