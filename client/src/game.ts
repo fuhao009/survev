@@ -20,7 +20,12 @@ import { GameObjectDefs } from "../../shared/defs/register.ts";
 import { SpectateAction } from "../../shared/net/spectateMsg.ts";
 import type { GameWsDisconnectReason } from "../../shared/types/api.ts";
 import type { ItemInstance } from "../../shared/types/itemInstance.ts";
-import type { WorldExtractionZone } from "../../shared/types/world.ts";
+import {
+    gameMapPositionToWorld,
+    isWithinWorldExtractionZone,
+    type WorldExtractionZone,
+    type WorldPosition,
+} from "../../shared/types/world.ts";
 import type { WorldTerrain } from "../../shared/types/worldTerrain.ts";
 import type { WorldWeather } from "../../shared/types/worldWeather.ts";
 import type { DurabilityDisplayMode } from "./config.ts";
@@ -182,6 +187,19 @@ export class Game {
         this.m_worldExtractionZone = zone ? { ...zone, center: { ...zone.center } } : null;
         this.m_uiManager?.setWorldExtractionZone(this.m_worldExtractionZone);
         this.debugTrace("world-extraction-zone:set", { zone: this.m_worldExtractionZone });
+    }
+
+    getLocalWorldPosition(): WorldPosition | null {
+        if (!this.m_world || !this.initialized || !this.m_activePlayer || !this.m_map) return null;
+        return {
+            position: gameMapPositionToWorld(this.m_activePlayer.m_pos, this.m_map.width, this.m_map.height),
+            layer: this.m_activePlayer.layer,
+        };
+    }
+
+    isLocalPlayerInWorldExtractionZone(zone: WorldExtractionZone | null) {
+        const localPosition = this.getLocalWorldPosition();
+        return !!zone && !!localPosition && isWithinWorldExtractionZone(localPosition.position, zone);
     }
 
     setWorldInventory(inventory: readonly ItemInstance[] | null) {

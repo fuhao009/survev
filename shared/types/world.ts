@@ -90,6 +90,22 @@ export function getWorldExtractionZone(seed: string, createdAt: number, now = Da
     };
 }
 
+export function isWithinWorldExtractionZone(position: Vec2, zone: Pick<WorldExtractionZone, "center" | "radius">) {
+    return Math.hypot(
+        position.x - zone.center.x,
+        position.y - zone.center.y,
+    ) <= zone.radius;
+}
+
+export function shouldRejectWorldActionRevision(
+    action: { type: string; expectedRevision?: number },
+    actualRevision: number,
+) {
+    if (action.expectedRevision === undefined || action.expectedRevision === actualRevision) return false;
+    // Extraction revalidates current server state; position heartbeats can make an otherwise valid click look stale.
+    return action.type !== "extract";
+}
+
 export function worldPositionToGameMap(position: Vec2, mapWidth: number, mapHeight: number): Vec2 {
     return {
         x: Math.max(0, Math.min(mapWidth, (position.x / WORLD_MAP_SIZE) * mapWidth)),

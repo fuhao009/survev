@@ -12,7 +12,12 @@ import {
 } from "../../../../shared/types/itemDurability.ts";
 import { parseItemInstance } from "../../../../shared/types/itemInstance.ts";
 import type { ItemInstance } from "../../../../shared/types/itemInstance.ts";
-import { getWorldExtractionQuote, getWorldExtractionZone } from "../../../../shared/types/world.ts";
+import {
+    getWorldExtractionQuote,
+    getWorldExtractionZone,
+    isWithinWorldExtractionZone,
+    shouldRejectWorldActionRevision,
+} from "../../../../shared/types/world.ts";
 import type {
     WorldCarriedItems,
     WorldCarriedItemsSnapshot,
@@ -138,13 +143,6 @@ function worldDurableItemTypes(snapshot: WorldCarriedItemsSnapshot): Set<string>
         if (def && WORLD_DURABLE_GAME_OBJECT_TYPES.has(def.type)) types.add(itemType);
     }
     return types;
-}
-
-function isWithinExtractionZone(position: { x: number; y: number }, zone: WorldExtractionZone) {
-    return Math.hypot(
-        position.x - zone.center.x,
-        position.y - zone.center.y,
-    ) <= zone.radius;
 }
 
 function toWorldShard(row: typeof worldShardsTable.$inferSelect, now = Date.now()): WorldShard {
@@ -425,7 +423,10 @@ export class WorldService {
             onlinePlayers: metrics.onlinePlayers,
             extractionZone,
             extractionQuote,
-            canExtract: lifeRow.status === "alive" && isWithinExtractionZone(lifeRow.position.position, extractionZone),
+            canExtract: lifeRow.status === "alive" && isWithinWorldExtractionZone(
+                lifeRow.position.position,
+                extractionZone,
+            ),
             terrain: worldShard.terrain,
             terrainMovement: "position" in life
                 ? getWorldTerrainMovementModifier(life.position.position, worldShard.terrain, worldShard.weather)
@@ -528,7 +529,7 @@ export class WorldService {
                 ),
             });
             if (!life) throw new WorldActionError("no_alive_life");
-            if (action.expectedRevision !== undefined && action.expectedRevision !== life.revision) {
+            if (shouldRejectWorldActionRevision(action, life.revision)) {
                 this.trace("action:stale-revision", {
                     userId,
                     type: action.type,
@@ -607,7 +608,9 @@ export class WorldService {
                 const pos = life.position.position;
                 const now = Date.now();
                 const extractionZone = getWorldExtractionZone(shard.seed, shard.createdAt.getTime(), now);
-                if (!isWithinExtractionZone(pos, extractionZone)) throw new WorldActionError("outside_extraction_zone");
+                if (!isWithinWorldExtractionZone(pos, extractionZone)) {
+                    throw new WorldActionError("outside_extraction_zone");
+                }
                 settlement = await this.extract(userId, life, shard, extractionZone, now);
                 this.trace("action:extract", {
                     userId,

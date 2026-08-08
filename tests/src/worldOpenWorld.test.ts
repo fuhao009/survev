@@ -5,6 +5,8 @@ import {
     gameMapPositionToWorld,
     getWorldExtractionQuote,
     getWorldExtractionZone,
+    isWithinWorldExtractionZone,
+    shouldRejectWorldActionRevision,
     WORLD_EXTRACTION_CYCLE_DURATION_MS,
     WORLD_MAP_SIZE,
     worldPositionToGameMap,
@@ -126,6 +128,15 @@ describe("open-world survival loop", () => {
         expect(first.center.y).toBeGreaterThan(first.radius);
         expect(first.center.x).toBeLessThan(WORLD_MAP_SIZE - first.radius);
         expect(first.center.y).toBeLessThan(WORLD_MAP_SIZE - first.radius);
+    });
+
+    test("uses shared extraction-zone and stale-revision rules", () => {
+        const zone = getWorldExtractionZone("gun-world-test", 1_700_000_000_000, 1_700_000_001_000);
+
+        expect(isWithinWorldExtractionZone(zone.center, zone)).toBe(true);
+        expect(isWithinWorldExtractionZone({ x: zone.center.x + zone.radius + 1, y: zone.center.y }, zone)).toBe(false);
+        expect(shouldRejectWorldActionRevision({ type: "move", expectedRevision: 3 }, 4)).toBe(true);
+        expect(shouldRejectWorldActionRevision({ type: "extract", expectedRevision: 3 }, 4)).toBe(false);
     });
 
     test("quotes extraction points from competitive dynamics instead of a fixed value", () => {

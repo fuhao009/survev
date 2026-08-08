@@ -120,6 +120,7 @@ export class Application {
     worldDeathPending = false;
     worldPollTimer: number | null = null;
     worldResultView: WorldResultViewModel | null = null;
+    worldHudRefreshTime = 0;
     findGameAttempts = 0;
     findGameTime = 0;
     pauseTime = 0;
@@ -231,6 +232,16 @@ export class Application {
             worldHealth: matchArgs.worldHealth,
             worldBoost: matchArgs.worldBoost,
         };
+    }
+
+    private getWorldExtractionPosition(snapshot: WorldSnapshot) {
+        if (snapshot.life.status !== "alive") return snapshot.extractionZone.center;
+        return this.game?.getLocalWorldPosition()?.position ?? snapshot.life.position.position;
+    }
+
+    private canAttemptWorldExtraction(snapshot: WorldSnapshot | null = this.worldSnapshot) {
+        if (!snapshot || this.worldDeathPending || snapshot.life.status !== "alive") return false;
+        return snapshot.canExtract || this.game?.isLocalPlayerInWorldExtractionZone(snapshot.extractionZone) === true;
     }
 
     updateLogoBasedOnLanguage(lang: string) {
@@ -939,9 +950,7 @@ export class Application {
         );
         const extractionZone = snapshot.extractionZone;
         const extractionSecondsLeft = Math.max(0, Math.ceil((extractionZone.activeUntil - Date.now()) / 1000));
-        const extractionPosition = life.status === "alive"
-            ? life.position.position
-            : extractionZone.center;
+        const extractionPosition = this.getWorldExtractionPosition(snapshot);
         const extractionDistance = Math.max(
             0,
             Math.round(
@@ -1016,7 +1025,7 @@ export class Application {
                 })
                 : this.localization.translate("world-terrain-normal"),
         );
-        const canExtract = !dead && life.status === "alive" && snapshot.canExtract;
+        const canExtract = !dead && this.canAttemptWorldExtraction(snapshot);
         $("#world-hud-collapsed-summary").text(
             dead
                 ? this.localization.translate("world-life-ended")
@@ -1082,7 +1091,7 @@ export class Application {
     async extractWorld() {
         if (!this.worldSessionActive || this.active) return;
         const message = $("#world-hud-message");
-        if (!this.worldSnapshot?.canExtract) {
+        if (!this.canAttemptWorldExtraction()) {
             message.text(this.localization.translate("world-message-extract-unavailable"));
             return;
         }
@@ -1091,47 +1100,60 @@ export class Application {
         });
         message.text(this.localization.translate("world-settlement-settling"));
         try {
-            const response = await fetch(api.resolveUrl("/api/world/action"), {
-                method: "POST",
-                headers: this.debugJsonHeaders("world-action-extract"),
-                body: JSON.stringify({ type: "extract", expectedRevision: this.worldSnapshot?.life.revision }),
-                credentials: "include",
-            });
-            const data = await response.json() as WorldActionResponse | { success: false; error?: string };
-            this.debugTrace("world:extract:response", {
-                ok: response.ok,
-                success: data.success,
-                error: data.success === false ? data.error : undefined,
-                settlement: data.success && data.settlement ? data.settlement.status : undefined,
-                snapshot: data.success ? this.summarizeWorldSnapshot(data.snapshot) : undefined,
-            });
-            if (!response.ok || !data.success) {
-                message.text(
-                    data.success === false
-                        ? this.localization.translate("world-settlement-extract-failed", {
-                            reason: data.error || this.localization.translate("world-settlement-unknown-reason"),
-                        })
-                        : this.localization.translate("world-settlement-extract-failed", {
-                            reason: this.localization.translate("world-settlement-unknown-reason"),
-                        }),
-                );
+            for (let attempt = 0; attempt < 2; attempt++) {
+                const response = await fetch(api.resolveUrl("/api/world/action"), {
+                    method: "POST",
+                    headers: this.debugJsonHeaders("world-action-extract"),
+                    body: JSON.stringify({ type: "extract" }),
+                    credentials: "include",
+                });
+                const data = await response.json() as WorldActionResponse | { success: false; error?: string };
+                this.debugTrace("world:extract:response", {
+                    ok: response.ok,
+                    success: data.success,
+                    error: data.success === false ? data.error : undefined,
+                    settlement: data.success && data.settlement ? data.settlement.status : undefined,
+                    snapshot: data.success ? this.summarizeWorldSnapshot(data.snapshot) : undefined,
+                    attempt,
+                });
+                if (!response.ok || !data.success) {
+                    if (
+                        attempt === 0
+                        && data.success === false
+                        && data.error === "outside_extraction_zone"
+                        && this.canAttemptWorldExtraction()
+                    ) {
+                        await new Promise((resolve) => window.setTimeout(resolve, 350));
+                        continue;
+                    }
+                    message.text(
+                        data.success === false
+                            ? this.localization.translate("world-settlement-extract-failed", {
+                                reason: data.error || this.localization.translate("world-settlement-unknown-reason"),
+                            })
+                            : this.localization.translate("world-settlement-extract-failed", {
+                                reason: this.localization.translate("world-settlement-unknown-reason"),
+                            }),
+                    );
+                    return;
+                }
+                if (data.settlement?.status !== "finalized" || !this.worldSnapshot) {
+                    message.text(this.localization.translate("world-settlement-unavailable"));
+                    return;
+                }
+                const before = this.worldSnapshot;
+                const result = buildExtractedWorldResult(data.settlement, before, data.snapshot);
+                this.game?.free();
+                this.stopWorldSession();
+                this.setAppActive(true);
+                this.setPlayLockout(false);
+                this.worldResultView = result;
+                this.refreshWorldResult();
+                this.ambience.onGameComplete(this.audioManager);
+                SDK.gamePlayStop();
+                this.refreshUi();
                 return;
             }
-            if (data.settlement?.status !== "finalized" || !this.worldSnapshot) {
-                message.text(this.localization.translate("world-settlement-unavailable"));
-                return;
-            }
-            const before = this.worldSnapshot;
-            const result = buildExtractedWorldResult(data.settlement, before, data.snapshot);
-            this.game?.free();
-            this.stopWorldSession();
-            this.setAppActive(true);
-            this.setPlayLockout(false);
-            this.worldResultView = result;
-            this.refreshWorldResult();
-            this.ambience.onGameComplete(this.audioManager);
-            SDK.gamePlayStop();
-            this.refreshUi();
         } catch (_err) {
             message.text(this.localization.translate("world-settlement-request-failed"));
         }
@@ -1489,6 +1511,11 @@ export class Application {
                 this.setPlayLockout(true);
             }
             this.game.update(dt);
+            const now = Date.now();
+            if (this.worldSessionActive && now - this.worldHudRefreshTime >= 250) {
+                this.worldHudRefreshTime = now;
+                this.refreshWorldHud();
+            }
         }
 
         // LoadoutDisplay update
