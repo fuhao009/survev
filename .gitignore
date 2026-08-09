@@ -22,6 +22,9 @@ lost_game_data/
 # Compiled source
 dist/
 
+# Generated local validation artifacts
+outputs/
+
 # Node modules
 node_modules/
 

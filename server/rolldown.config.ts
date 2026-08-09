@@ -11,7 +11,7 @@ const config: RolldownOptions = {
         dir: "./dist",
         format: "es",
         polyfillRequire: false,
-        sourcemap: true,
+        sourcemap: false,
         minify: {
             compress: {
                 unused: true,
