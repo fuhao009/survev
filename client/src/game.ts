@@ -231,6 +231,19 @@ export class Game {
         this.debugTrace("durability-display:set", { mode });
     }
 
+    setShowOwnPlayerName(showOwnPlayerName: boolean) {
+        if (this.m_playerBarn) {
+            this.m_playerBarn.showOwnPlayerName = showOwnPlayerName;
+        }
+        this.m_uiManager?.setShowOwnPlayerName(showOwnPlayerName);
+    }
+
+    setAnonPlayerNames(anonPlayerNames: boolean) {
+        if (this.m_playerBarn) {
+            this.m_playerBarn.anonPlayerNames = anonPlayerNames;
+        }
+    }
+
     tryJoinGame(
         url: string,
         matchPriv: string,
@@ -475,7 +488,8 @@ export class Game {
         this.m_camera.m_setShakeEnabled(this.m_config.get("screenShake")!);
         this.m_camera.m_setInterpEnabled(this.m_config.get("interpolation")!);
         this.m_camera.m_setRotationEnabled(this.m_config.get("localRotation")!);
-        this.m_playerBarn.anonPlayerNames = this.m_config.get("anonPlayerNames")!;
+        this.setShowOwnPlayerName(this.m_config.get("showOwnPlayerName")!);
+        this.setAnonPlayerNames(this.m_config.get("anonPlayerNames")!);
         this.initialized = true;
     }
 

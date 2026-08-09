@@ -163,6 +163,7 @@ export class UiManager {
     moveStyleButton = $("#btn-game-move-style");
     aimLineButton = $("#btn-game-aim-line");
     aimStyleButton = $("#btn-game-aim-style");
+    ownNameButton = $("#btn-game-own-name");
 
     fullScreenButton = $("#btn-game-fullscreen");
     resumeButton = $("#btn-game-resume");
@@ -337,6 +338,13 @@ export class UiManager {
         });
         this.aimLineButton.on("touchstart", () => {
             touch.toggleAimLine();
+        });
+        this.ownNameButton.on("click", (e) => {
+            e.stopPropagation();
+            this.game.m_config.set(
+                "showOwnPlayerName",
+                !this.game.m_config.get("showOwnPlayerName"),
+            );
         });
         this.onTouchScreen = (e: Event) => {
             if ((e.target as HTMLElement)?.id == "cvs") {
@@ -2392,6 +2400,10 @@ export class UiManager {
         } else {
             this.inputBindUi.cancelBind();
         }
+    }
+
+    setShowOwnPlayerName(showOwnPlayerName: boolean) {
+        this.ownNameButton.toggleClass("btn-game-menu-selected", showOwnPlayerName);
     }
 
     setRoleMenuActive(active: boolean) {

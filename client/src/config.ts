@@ -104,6 +104,7 @@ const defaultConfig = {
     interpolation: true,
     localRotation: false,
     screenShake: true,
+    showOwnPlayerName: true,
     anonPlayerNames: false,
     touchMoveStyle: "anywhere" as "locked" | "anywhere",
     touchAimStyle: "anywhere" as "locked" | "anywhere",

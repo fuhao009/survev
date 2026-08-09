@@ -702,6 +702,16 @@ export class Application {
             this.game?.debugHUD?.onConfigModified();
         }
 
+        if (key === "showOwnPlayerName") {
+            const showOwnPlayerName = this.config.get("showOwnPlayerName")!;
+            $("#showOwnPlayerName").prop("checked", showOwnPlayerName);
+            this.game?.setShowOwnPlayerName(showOwnPlayerName);
+        }
+
+        if (key === "anonPlayerNames") {
+            this.game?.setAnonPlayerNames(this.config.get("anonPlayerNames")!);
+        }
+
         const durabilityDisplay = this.config.get("durabilityDisplay")!;
         this.durabilityDisplaySelects.val(durabilityDisplay);
         this.game?.setDurabilityDisplayMode(durabilityDisplay);

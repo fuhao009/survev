@@ -20,6 +20,7 @@ import { coldet } from "../../../shared/utils/coldet.ts";
 import { collider } from "../../../shared/utils/collider.ts";
 import { collisionHelpers } from "../../../shared/utils/collisionHelpers.ts";
 import { math } from "../../../shared/utils/math.ts";
+import { shouldShowPlayerNameLabel } from "../../../shared/utils/playerNameVisibility.ts";
 import type { River } from "../../../shared/utils/river.ts";
 import { util } from "../../../shared/utils/util.ts";
 import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
@@ -875,11 +876,9 @@ export class Player implements AbstractObject {
         this.noCeilingRevealTicker -= dt;
 
         // Update nameTex
-        const activeGroupId = playerBarn.getPlayerInfo(activeId).groupId;
         const playerInfo = playerBarn.getPlayerInfo(this.__id);
-        const inSameGroup = playerInfo.groupId == activeGroupId;
         this.nameText.text = playerInfo.name;
-        this.nameText.visible = inSameGroup;
+        this.nameText.visible = playerBarn.shouldShowPlayerName(this.__id, activeId);
 
         // Locate nearby obstacles that may play interaction effects
         let insideObstacle: Obstacle | null = null;
@@ -2607,6 +2606,7 @@ export class PlayerBarn {
     > = {};
 
     playerStatus: Record<number, PlayerStatus> = {};
+    showOwnPlayerName = true;
     anonPlayerNames = false;
 
     m_update(
@@ -2963,6 +2963,18 @@ export class PlayerBarn {
             name = info.anonName;
         }
         return name;
+    }
+
+    shouldShowPlayerName(playerId: number, activePlayerId: number) {
+        const info = this.getPlayerInfo(playerId);
+        const activeInfo = this.getPlayerInfo(activePlayerId);
+        return shouldShowPlayerNameLabel({
+            playerId,
+            activePlayerId,
+            playerGroupId: info.groupId,
+            activeGroupId: activeInfo.groupId,
+            showOwnPlayerName: this.showOwnPlayerName,
+        });
     }
 
     addDeathEffect(
