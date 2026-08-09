@@ -387,9 +387,15 @@ export class ProfileUi {
             });
             return false;
         });
-        $(".account-loadout-link, #btn-customize").on("click", () => {
+        $(".account-loadout-link:not(.user-center-warehouse-link), #btn-customize").on("click", () => {
             this.userCenterModal!.hide();
             this.loadoutMenu.show();
+            return false;
+        });
+        $(".user-center-warehouse-link").on("click", () => {
+            this.userCenterModal!.hide();
+            this.loadoutMenu.show("warehouse");
+            void this.account.refreshAccountData();
             return false;
         });
         $(".user-center-world-link").on("click", () => {

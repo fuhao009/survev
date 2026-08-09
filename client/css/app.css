@@ -5154,6 +5154,60 @@ input [type="image"]:focus {
   width: 100%;
 }
 
+.customize-list-item-world {
+  box-sizing: border-box;
+  padding: 6px 6px 5px;
+}
+
+.customize-list-item-world > .customize-item-image {
+  background-size: contain;
+  height: 44px;
+  margin: 0 auto 2px;
+  max-width: 62px;
+  width: 62px;
+}
+
+.world-warehouse-item-quantity {
+  background: rgba(0, 0, 0, 0.68);
+  color: #fff2d0;
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 11px;
+  margin: 0 auto 2px;
+  max-width: max-content;
+  padding: 1px 4px;
+}
+
+.world-warehouse-item-name,
+.world-warehouse-item-meta {
+  display: block;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.world-warehouse-item-name {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 13px;
+}
+
+.world-warehouse-item-meta {
+  color: #d2ff7b;
+  font-size: 9px;
+  line-height: 11px;
+}
+
+.customize-list-empty-world {
+  color: #d2ff7b;
+  font-size: 18px;
+  line-height: 1.4;
+  padding: 18px;
+}
+
 #customize-crosshair-selected {
   background-color: rgba(0, 0, 0, 0.5);
   display: block;

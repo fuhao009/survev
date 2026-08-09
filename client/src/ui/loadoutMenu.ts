@@ -7,6 +7,7 @@ import type { MeleeDef } from "../../../shared/defs/gameObjects/meleeDefs.ts";
 import type { OutfitDef } from "../../../shared/defs/gameObjects/outfitDefs.ts";
 import { GameObjectDefs } from "../../../shared/defs/register.ts";
 import { EmoteSlot, Rarity } from "../../../shared/gameConfig.ts";
+import type { ItemInstance } from "../../../shared/types/itemInstance.ts";
 import type { Item } from "../../../shared/utils/loadout.ts";
 import { type Crosshair, type Loadout, loadout } from "../../../shared/utils/loadout.ts";
 import { util } from "../../../shared/utils/util.ts";
@@ -15,6 +16,7 @@ import { crosshair } from "../crosshair.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
 import { SDK } from "../sdk/sdk.ts";
+import { formatWorldItemDurability, getWorldItemLabel, getWorldItemStateLabel } from "../worldSettlement.ts";
 import type { Localization } from "./localization.ts";
 import { MenuModal } from "./menuModal.ts";
 import type { LoadoutDisplay } from "./opponentDisplay.ts";
@@ -113,6 +115,8 @@ interface ItemInfo {
     outerDiv: JQuery<HTMLElement> | null;
 }
 
+type LoadoutCategoryType = Exclude<keyof Loadout, "emotes"> | "emote" | "warehouse";
+
 // use itemInfo?
 interface EquippedItem {
     loadoutType: string;
@@ -137,8 +141,8 @@ export class LoadoutMenu {
     localAckItems: Item[] = [];
 
     categories: Array<{
-        loadoutType: Exclude<keyof Loadout, "emotes"> | "emote";
-        gameType: GameObjectDef["type"];
+        loadoutType: LoadoutCategoryType;
+        gameType: GameObjectDef["type"] | "world_item";
         categoryImage: string;
     }> = [
         {
@@ -155,6 +159,11 @@ export class LoadoutMenu {
             loadoutType: "emote",
             gameType: "emote",
             categoryImage: "img/gui/loadout-emote.svg",
+        },
+        {
+            loadoutType: "warehouse",
+            gameType: "world_item",
+            categoryImage: "img/loot/loot-pack-03.svg",
         },
         {
             loadoutType: "heal",
@@ -186,6 +195,7 @@ export class LoadoutMenu {
 
     emotesLoaded = false;
     selectedCatIdx = 0;
+    selectedCatType: LoadoutCategoryType = "outfit";
     selectedCatItems: ItemInfo[] = [];
     equippedItems: EquippedItem[] = [];
 
@@ -257,6 +267,7 @@ export class LoadoutMenu {
         account.addEventListener("request", this.onRequest.bind(this));
         account.addEventListener("loadout", this.onLoadout.bind(this));
         account.addEventListener("items", this.onItems.bind(this));
+        account.addEventListener("worldInventory", this.onWorldInventory.bind(this));
     }
 
     init() {
@@ -359,7 +370,8 @@ export class LoadoutMenu {
         }
     }
 
-    show() {
+    show(categoryType: LoadoutCategoryType = "outfit") {
+        this.selectedCatType = categoryType;
         this.init();
         this.modal.show();
     }
@@ -379,7 +391,7 @@ export class LoadoutMenu {
                 this.localAckItems.push(item);
             }
         }
-        this.selectCat(0);
+        this.selectCat(this.getCategoryIdx(this.selectedCatType));
         this.tryBeginConfirmingItems();
         $("#start-bottom-right, #start-main").fadeOut(200);
         $("#background").hide();
@@ -460,6 +472,17 @@ export class LoadoutMenu {
             this.tryBeginConfirmingItems();
             this.selectCat(this.selectedCatIdx);
         }
+    }
+
+    onWorldInventory() {
+        if (this.active && this.categories[this.selectedCatIdx]?.loadoutType == "warehouse") {
+            this.selectCat(this.selectedCatIdx);
+        }
+    }
+
+    getCategoryIdx(loadoutType: LoadoutCategoryType) {
+        const idx = this.categories.findIndex((category) => category.loadoutType == loadoutType);
+        return idx >= 0 ? idx : 0;
     }
 
     getCategory(gameType: string) {
@@ -663,6 +686,8 @@ export class LoadoutMenu {
             $("#color-picker-hex").val(color);
             $("#crosshair-size").val(this.loadout.crosshair.size);
             $("#crosshair-stroke").val(this.loadout.crosshair.stroke);
+        } else if (loadoutType == "warehouse") {
+            return;
         }
     }
 
@@ -689,6 +714,8 @@ export class LoadoutMenu {
                 size: size.toFixed(2),
                 stroke: stroke.toFixed(2),
             };
+        } else if (loadoutType == "warehouse") {
+            return;
         } else {
             this.loadout[loadoutType] = this.selectedItem.type;
         }
@@ -877,6 +904,7 @@ export class LoadoutMenu {
     selectCat(catIdx: number) {
         const r = this.selectedCatIdx;
         this.selectedCatIdx = catIdx;
+        this.selectedCatType = this.categories[catIdx]?.loadoutType ?? "outfit";
         this.setItemsAckd(this.selectedCatIdx);
         if (r != this.selectedCatIdx) {
             const category = this.categories[r];
@@ -958,87 +986,146 @@ export class LoadoutMenu {
         this.selectedCatItems = [];
         let loadoutItemDiv: JQuery<HTMLElement> | "" = "";
         const listItems = $("<div/>");
-        for (let i = 0; i < loadoutItems.length; i++) {
-            const item = loadoutItems[i];
-            const objDef = GameObjectDefs.typeToDef(item.type) as OutfitDef | MeleeDef;
-
-            const itemInfo: ItemInfo = {
-                loadoutType: category.loadoutType,
-                type: item.type,
-                rarity: objDef.rarity || Rarity.Stock,
-                displayName: this.localization.translate(`game-${item.type}`) || objDef.name,
-                displayLore: this.localization.translate(`game-${item.type}-lore`) || objDef.lore!,
-                displaySource: getItemSourceName(item.source),
-                timeAcquired: item.timeAcquired,
-                idx: i,
-                subcat: (objDef as unknown as EmoteDef).category,
-                outerDiv: null,
-            };
-
-            // Create div for emote customization list
-            const outerDiv = $("<div/>", {
-                class: "customize-list-item customize-list-item-unlocked",
-                "data-idx": i,
-            });
-
-            const svg = helpers.getSvgFromGameType(item.type);
-            const transform = helpers.getCssTransformFromGameType(item.type);
-            const innerDiv = $("<div/>", {
-                class: "customize-item-image",
-                css: {
-                    "background-image": `url(${svg})`,
-                    transform,
-                    filter: objDef.type === "outfit" ? helpers.getSvgFilterForTint(objDef.lootImg.tint) : "",
-                },
-                "data-img": `url(${svg})`,
-                draggable,
-            });
-            outerDiv.append(innerDiv);
-
-            // Notification pulse
-            if (
-                this.localAckItems.findIndex((x) => {
-                    return x.type == item.type;
-                }) !== -1
-            ) {
-                const alertDiv = $("<div/>", {
-                    class: "account-alert account-alert-cat",
-                    css: {
-                        display: "block",
-                    },
+        if (category.loadoutType == "warehouse") {
+            const worldItems = this.getWarehouseItems();
+            if (worldItems.length == 0) {
+                $("<div/>", {
+                    class: "customize-list-empty-world",
+                    text: this.localization.translate("account-no-world-items"),
+                }).appendTo(listItems);
+            }
+            for (let i = 0; i < worldItems.length; i++) {
+                const item = worldItems[i];
+                const label = this.localization.translate(`game-${item.type}`) || getWorldItemLabel(item.type);
+                const detail = item.durabilityMax > 0
+                    ? `${formatWorldItemDurability(item)} · ${getWorldItemStateLabel(item.state)}`
+                    : `${item.quantity} × ${getWorldItemStateLabel(item.state)}`;
+                const itemInfo: ItemInfo = {
+                    loadoutType: "warehouse",
+                    type: item.type,
+                    rarity: Rarity.Common,
+                    displayName: label,
+                    displayLore: detail,
+                    displaySource: "account-warehouse",
+                    timeAcquired: i,
+                    idx: i,
+                    subcat: EmoteCategory.Default,
+                    outerDiv: null,
+                };
+                const outerDiv = $("<div/>", {
+                    class: "customize-list-item customize-list-item-unlocked customize-list-item-world",
+                    "data-idx": i,
                 });
-                outerDiv.append(alertDiv);
+                const svg = helpers.getSvgFromGameType(item.type);
+                const transform = helpers.getCssTransformFromGameType(item.type);
+                $("<div/>", {
+                    class: "customize-item-image",
+                    css: {
+                        "background-image": svg ? `url(${svg})` : "none",
+                        transform,
+                    },
+                    "data-img": svg ? `url(${svg})` : "none",
+                    draggable: false,
+                }).appendTo(outerDiv);
+                $("<span/>", {
+                    class: "world-warehouse-item-quantity",
+                    text: `×${item.quantity}`,
+                }).appendTo(outerDiv);
+                $("<span/>", {
+                    class: "world-warehouse-item-name",
+                    text: label,
+                }).appendTo(outerDiv);
+                $("<span/>", {
+                    class: "world-warehouse-item-meta",
+                    text: detail,
+                }).appendTo(outerDiv);
+                listItems.append(outerDiv);
+                itemInfo.outerDiv = outerDiv;
+                this.selectedCatItems.push(itemInfo);
             }
+        } else {
+            for (let i = 0; i < loadoutItems.length; i++) {
+                const item = loadoutItems[i];
+                const objDef = GameObjectDefs.typeToDef(item.type) as OutfitDef | MeleeDef;
 
-            // Crosshair specific styling
-            if (category.gameType == "crosshair") {
-                // Change the pointer in this slot
-                const crosshairDef = {
-                    type: itemInfo.type,
-                    color: 0xffffff,
-                    size: 1,
-                    stroke: 0,
-                } as unknown as Crosshair;
-                crosshair.setElemCrosshair(outerDiv, crosshairDef);
-            }
+                const itemInfo: ItemInfo = {
+                    loadoutType: category.loadoutType,
+                    type: item.type,
+                    rarity: objDef.rarity || Rarity.Stock,
+                    displayName: this.localization.translate(`game-${item.type}`) || objDef.name,
+                    displayLore: this.localization.translate(`game-${item.type}-lore`) || objDef.lore!,
+                    displaySource: getItemSourceName(item.source),
+                    timeAcquired: item.timeAcquired,
+                    idx: i,
+                    subcat: (objDef as unknown as EmoteDef).category,
+                    outerDiv: null,
+                };
 
-            listItems.append(outerDiv);
+                // Create div for emote customization list
+                const outerDiv = $("<div/>", {
+                    class: "customize-list-item customize-list-item-unlocked",
+                    "data-idx": i,
+                });
 
-            // Add the itemInfo to the currently selected items array
-            itemInfo.outerDiv = outerDiv;
-            this.selectedCatItems.push(itemInfo);
-            if (!loadoutItemDiv) {
+                const svg = helpers.getSvgFromGameType(item.type);
+                const transform = helpers.getCssTransformFromGameType(item.type);
+                const innerDiv = $("<div/>", {
+                    class: "customize-item-image",
+                    css: {
+                        "background-image": `url(${svg})`,
+                        transform,
+                        filter: objDef.type === "outfit" ? helpers.getSvgFilterForTint(objDef.lootImg.tint) : "",
+                    },
+                    "data-img": `url(${svg})`,
+                    draggable,
+                });
+                outerDiv.append(innerDiv);
+
+                // Notification pulse
                 if (
-                    category.loadoutType == "crosshair"
-                    && itemInfo.type == this.loadout.crosshair.type
+                    this.localAckItems.findIndex((x) => {
+                        return x.type == item.type;
+                    }) !== -1
                 ) {
-                    loadoutItemDiv = itemInfo.outerDiv;
-                } else if (
-                    category.loadoutType != "emote"
-                    && itemInfo.type
-                        == this.loadout[category.loadoutType as keyof typeof this.loadout]
-                ) {
-                    loadoutItemDiv = itemInfo.outerDiv;
+                    const alertDiv = $("<div/>", {
+                        class: "account-alert account-alert-cat",
+                        css: {
+                            display: "block",
+                        },
+                    });
+                    outerDiv.append(alertDiv);
+                }
+
+                // Crosshair specific styling
+                if (category.gameType == "crosshair") {
+                    // Change the pointer in this slot
+                    const crosshairDef = {
+                        type: itemInfo.type,
+                        color: 0xffffff,
+                        size: 1,
+                        stroke: 0,
+                    } as unknown as Crosshair;
+                    crosshair.setElemCrosshair(outerDiv, crosshairDef);
+                }
+
+                listItems.append(outerDiv);
+
+                // Add the itemInfo to the currently selected items array
+                itemInfo.outerDiv = outerDiv;
+                this.selectedCatItems.push(itemInfo);
+                if (!loadoutItemDiv) {
+                    if (
+                        category.loadoutType == "crosshair"
+                        && itemInfo.type == this.loadout.crosshair.type
+                    ) {
+                        loadoutItemDiv = itemInfo.outerDiv;
+                    } else if (
+                        category.loadoutType != "emote"
+                        && itemInfo.type
+                            == this.loadout[category.loadoutType as keyof typeof this.loadout]
+                    ) {
+                        loadoutItemDiv = itemInfo.outerDiv;
+                    }
                 }
             }
         }
@@ -1109,6 +1196,21 @@ export class LoadoutMenu {
             }
         }
         this.onResize();
+    }
+
+    private getWarehouseItems(): ItemInstance[] {
+        const stateRank = { stash: 0, equipped: 1, listed: 2 } as Record<string, number>;
+        return this.account.worldInventory
+            .filter((item) => item.state === "stash" || item.state === "equipped" || item.state === "listed")
+            .slice()
+            .sort((a, b) => {
+                const stateDiff = (stateRank[a.state] ?? 99) - (stateRank[b.state] ?? 99);
+                if (stateDiff !== 0) return stateDiff;
+                const labelDiff = (this.localization.translate(`game-${a.type}`) || getWorldItemLabel(a.type))
+                    .localeCompare(this.localization.translate(`game-${b.type}`) || getWorldItemLabel(b.type));
+                if (labelDiff !== 0) return labelDiff;
+                return b.durability - a.durability;
+            });
     }
 
     setCategoryAlerts() {
