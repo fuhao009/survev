@@ -3,10 +3,17 @@ import path from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 import { stripProductionClientConfig } from "../../client/src/config.ts";
 import { configFileName, getConfig } from "../../config.ts";
+import { privateApiKeyMatches } from "../../server/src/api/auth/middleware.ts";
 import { stripBlockPlugin } from "../../shared/utils/stripBlockPlugin.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const temporaryConfigDirectories: string[] = [];
+const productionSecrets = {
+    secrets: {
+        SURVEV_API_KEY: "test-production-api-key-0000000000000000",
+        SURVEV_IP_SECRET: "test-production-ip-secret-000000000000",
+    },
+};
 
 afterEach(() => {
     for (const directory of temporaryConfigDirectories.splice(0)) {
@@ -18,7 +25,10 @@ function readProductionConfig(localConfig: Record<string, unknown>) {
     const directory = fs.mkdtempSync(path.join(repoRoot, ".tmp-survev-config-"));
     temporaryConfigDirectories.push(directory);
 
-    fs.writeFileSync(path.join(directory, configFileName), JSON.stringify(localConfig));
+    fs.writeFileSync(
+        path.join(directory, configFileName),
+        JSON.stringify({ ...productionSecrets, ...localConfig }),
+    );
     return getConfig(true, path.relative(repoRoot, directory));
 }
 
@@ -52,6 +62,35 @@ function stripWithProductionServerPlugin(code: string, id: string) {
 }
 
 describe("production hardening", () => {
+    test("requires strong private secrets in production config", () => {
+        const directory = fs.mkdtempSync(path.join(repoRoot, ".tmp-survev-config-"));
+        temporaryConfigDirectories.push(directory);
+
+        fs.writeFileSync(
+            path.join(directory, configFileName),
+            JSON.stringify({
+                secrets: {
+                    SURVEV_API_KEY: "",
+                    SURVEV_IP_SECRET: "short",
+                },
+            }),
+        );
+
+        expect(() => getConfig(true, path.relative(repoRoot, directory))).toThrow(
+            "SURVEV_API_KEY must be set",
+        );
+    });
+
+    test("matches private API keys without accepting missing or partial keys", () => {
+        const expected = productionSecrets.secrets.SURVEV_API_KEY;
+
+        expect(privateApiKeyMatches(expected, expected)).toBe(true);
+        expect(privateApiKeyMatches(undefined, expected)).toBe(false);
+        expect(privateApiKeyMatches("", expected)).toBe(false);
+        expect(privateApiKeyMatches(expected.slice(0, -1), expected)).toBe(false);
+        expect(privateApiKeyMatches(`${expected.slice(0, -1)}x`, expected)).toBe(false);
+    });
+
     test("forces editable debug gates closed in production config", () => {
         const config = readProductionConfig({
             debug: {

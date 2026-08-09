@@ -7,6 +7,7 @@ import { App, SSLApp, type WebSocket } from "uWebSockets.js";
 import pkgJson from "../../package.json" with { type: "json" };
 import { GameConfig } from "../../shared/gameConfig.ts";
 import type { GameWsDisconnectReason } from "../../shared/types/api.ts";
+import { privateApiKeyMatches } from "./api/auth/middleware.ts";
 import { Config } from "./config.ts";
 import { GameProcessManager, type GameSocketData, ProcState } from "./game/gameProcessManager.ts";
 import { apiPrivateRouter } from "./utils/apiRouter.ts";
@@ -161,7 +162,7 @@ app.get("/health", (res) => {
 });
 
 app.get("/private/status", (res, req) => {
-    if (req.getHeader("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
+    if (!privateApiKeyMatches(req.getHeader("survev-api-key"))) {
         uwsHelpers.forbidden(res);
         return;
     }
@@ -185,7 +186,7 @@ app.post("/api/find_game", async (res, req) => {
         res.aborted = true;
     });
 
-    if (req.getHeader("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
+    if (!privateApiKeyMatches(req.getHeader("survev-api-key"))) {
         uwsHelpers.forbidden(res);
         return;
     }

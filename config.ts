@@ -14,6 +14,12 @@ const mockAccountGateKey = ["allow", "Mock", "Account"].join("") as "allowMockAc
 const spawnModeDebugKey = ["spawn", "Mode"].join("") as "spawnMode";
 const spawnPosDebugKey = ["spawn", "Pos"].join("") as "spawnPos";
 
+function assertProductionSecret(name: string, value: string | undefined) {
+    if (!value || value.length < 32) {
+        throw new Error(`${name} must be set to at least 32 characters in production`);
+    }
+}
+
 export function getConfig(isProduction: boolean, dir: string) {
     const isDev = !isProduction;
 
@@ -108,6 +114,8 @@ export function getConfig(isProduction: boolean, dir: string) {
     util.mergeDeep(config, localConfig);
 
     if (isProduction) {
+        assertProductionSecret("SURVEV_API_KEY", config.secrets.SURVEV_API_KEY);
+        assertProductionSecret("SURVEV_IP_SECRET", config.secrets.SURVEV_IP_SECRET);
         config.debug[botGateKey] = false;
         config.debug[debugEditGateKey] = false;
         config.debug[mockAccountGateKey] = false;

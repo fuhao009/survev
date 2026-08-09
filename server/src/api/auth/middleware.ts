@@ -1,6 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import type { Context, Next } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
+import { timingSafeEqual } from "node:crypto";
 import type { z } from "zod";
 import { Config } from "../../config.ts";
 import { HTTPRateLimit } from "../../utils/rateLimit.ts";
@@ -74,8 +75,25 @@ export async function databaseEnabledMiddleware(c: Context, next: Next) {
     await next();
 }
 
+export function privateApiKeyMatches(provided: string | undefined, expected = Config.secrets.SURVEV_API_KEY) {
+    if (!provided || !expected) return false;
+
+    const expectedBuffer = Buffer.from(expected);
+    if (expectedBuffer.length === 0) return false;
+
+    const providedBuffer = Buffer.from(provided);
+    if (providedBuffer.length !== expectedBuffer.length) {
+        const paddedProvided = Buffer.alloc(expectedBuffer.length);
+        providedBuffer.copy(paddedProvided, 0, 0, Math.min(providedBuffer.length, expectedBuffer.length));
+        timingSafeEqual(paddedProvided, expectedBuffer);
+        return false;
+    }
+
+    return timingSafeEqual(providedBuffer, expectedBuffer);
+}
+
 export async function privateMiddleware(c: Context, next: Next) {
-    if (c.req.header("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
+    if (!privateApiKeyMatches(c.req.header("survev-api-key"))) {
         return c.json({ error: "Forbidden" }, 403);
     }
     await next();
