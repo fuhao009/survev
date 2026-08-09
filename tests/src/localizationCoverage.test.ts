@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
 import { MapDefs } from "../../shared/defs/mapDefs.ts";
 
-const indexHtml = readFileSync(
+const rawIndexHtml = readFileSync(
     fileURLToPath(new URL("../../client/index.html", import.meta.url)),
     "utf8",
 );
@@ -20,6 +20,19 @@ const clientMapTs = readFileSync(
     fileURLToPath(new URL("../../client/src/map.ts", import.meta.url)),
     "utf8",
 );
+function stripProductionClientBlocks(code: string) {
+    return code
+        .replace(
+            /\/\*\s*STRIP_FROM_PROD_CLIENT:START\s*\*\/[\s\S]*?\/\*\s*STRIP_FROM_PROD_CLIENT:END\s*\*\//g,
+            "",
+        )
+        .replace(
+            /<!--\s*STRIP_FROM_PROD_CLIENT:START\s*-->[\s\S]*?<!--\s*STRIP_FROM_PROD_CLIENT:END\s*-->/g,
+            "",
+        );
+}
+
+const indexHtml = stripProductionClientBlocks(rawIndexHtml);
 const mapPlaceNames = [
     ...new Set(
         Object.values(MapDefs).flatMap((map: any) =>

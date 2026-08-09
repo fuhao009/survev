@@ -9,10 +9,9 @@ import type { Ambiance } from "./ambiance.ts";
 import type { AudioManager } from "./audioManager.ts";
 import { Camera } from "./camera.ts";
 import type { ConfigManager, DebugRenderOpts } from "./config.ts";
+/* STRIP_FROM_PROD_CLIENT:START */
 import { DebugHUD } from "./debug/debugHUD.ts";
 import { debugLines } from "./debug/debugLines.ts";
-
-/* STRIP_FROM_PROD_CLIENT:START */
 import { Editor } from "./debug/editor.ts";
 /* STRIP_FROM_PROD_CLIENT:END */
 
@@ -110,7 +109,9 @@ export class Game {
     m_shotBarn!: ShotBarn;
     m_objectCreator!: Creator;
 
+    /* STRIP_FROM_PROD_CLIENT:START */
     m_debugDisplay!: PIXI.Graphics;
+    /* STRIP_FROM_PROD_CLIENT:END */
     m_canvasMode!: boolean;
 
     m_updatePass!: boolean;
@@ -127,19 +128,25 @@ export class Game {
     m_activePlayer!: Player;
     m_validateAlpha!: boolean;
     m_targetZoom!: number;
+    /* STRIP_FROM_PROD_CLIENT:START */
     m_debugZoom!: number;
     m_useDebugZoom!: boolean;
 
     editor!: Editor;
     debugHUD!: DebugHUD;
+    /* STRIP_FROM_PROD_CLIENT:END */
 
     seq!: number;
     seqInFlight!: boolean;
     seqSendTime!: number;
+    /* STRIP_FROM_PROD_CLIENT:START */
     pings!: number[];
     debugPingTime!: number;
+    /* STRIP_FROM_PROD_CLIENT:END */
     lastUpdateTime!: number;
+    /* STRIP_FROM_PROD_CLIENT:START */
     updateIntervals!: number[];
+    /* STRIP_FROM_PROD_CLIENT:END */
 
     constructor(
         public m_pixi: PIXI.Application,
@@ -155,9 +162,9 @@ export class Game {
         public onQuit: (err?: GameWsDisconnectReason) => void,
         public onLocalPlayerDeath: () => void,
     ) {
-        if (IS_DEV) {
-            this.editor = new Editor(this.m_config);
-        }
+        /* STRIP_FROM_PROD_CLIENT:START */
+        this.editor = new Editor(this.m_config);
+        /* STRIP_FROM_PROD_CLIENT:END */
     }
 
     private debugTrace(event: string, payload?: unknown) {
@@ -310,9 +317,11 @@ export class Game {
                         byteLength: msgStream.stream.buffer.byteLength,
                         messageCount,
                     });
+                    /* STRIP_FROM_PROD_CLIENT:START */
                     this.debugHUD?.netInGraph.addEntry(
                         msgStream.stream.buffer.byteLength,
                     );
+                    /* STRIP_FROM_PROD_CLIENT:END */
                 };
                 this.m_ws.onclose = (e) => {
                     const displayingStats = this.m_uiManager?.displayingStats;
@@ -400,7 +409,9 @@ export class Game {
             this.m_map,
         );
         this.m_shotBarn = new ShotBarn();
+        /* STRIP_FROM_PROD_CLIENT:START */
         this.debugHUD = new DebugHUD(this.m_config);
+        /* STRIP_FROM_PROD_CLIENT:END */
 
         // this.particleBarn,
         // this.audioManager,
@@ -430,7 +441,9 @@ export class Game {
             }
         }
         // Render ordering
+        /* STRIP_FROM_PROD_CLIENT:START */
         this.m_debugDisplay = new PIXI.Graphics();
+        /* STRIP_FROM_PROD_CLIENT:END */
         const pixiContainers = [
             this.m_map.display.ground,
             this.m_worldWeatherRenderer.terrainDisplay,
@@ -439,7 +452,9 @@ export class Game {
             this.m_renderer.layers[1],
             this.m_renderer.layers[2],
             this.m_renderer.layers[3],
+            /* STRIP_FROM_PROD_CLIENT:START */
             this.m_debugDisplay,
+            /* STRIP_FROM_PROD_CLIENT:END */
             this.m_gas.gasRenderer.display,
             this.m_worldWeatherRenderer.effectDisplay,
             this.m_touch.container,
@@ -447,7 +462,9 @@ export class Game {
             this.m_uiManager.container,
             this.m_uiManager.m_pieTimer.container,
             this.m_emoteBarn.indContainer,
+            /* STRIP_FROM_PROD_CLIENT:START */
             this.debugHUD.container,
+            /* STRIP_FROM_PROD_CLIENT:END */
         ];
         for (let i = 0; i < pixiContainers.length; i++) {
             const container = pixiContainers[i];
@@ -471,18 +488,24 @@ export class Game {
         this.m_activePlayer = null as unknown as Player;
         this.m_validateAlpha = false;
         this.m_targetZoom = 1;
+        /* STRIP_FROM_PROD_CLIENT:START */
         this.m_debugZoom = 1;
         this.m_useDebugZoom = false;
+        /* STRIP_FROM_PROD_CLIENT:END */
 
         // Latency determination
 
         this.seq = 0;
         this.seqInFlight = false;
         this.seqSendTime = 0;
+        /* STRIP_FROM_PROD_CLIENT:START */
         this.pings = [];
         this.updateIntervals = [];
+        /* STRIP_FROM_PROD_CLIENT:END */
         this.lastUpdateTime = 0;
+        /* STRIP_FROM_PROD_CLIENT:START */
         this.debugPingTime = 0;
+        /* STRIP_FROM_PROD_CLIENT:END */
 
         // Process config
         this.m_camera.m_setShakeEnabled(this.m_config.get("screenShake")!);
@@ -539,26 +562,22 @@ export class Game {
     }
 
     update(dt: number) {
+        let debug = {} as DebugRenderOpts;
+        /* STRIP_FROM_PROD_CLIENT:START */
         this.debugHUD.m_update(dt, this);
 
-        if (IS_DEV) {
-            if (this.m_input.keyPressed(Key.Tilde)) {
-                this.editor.setEnabled(!this.editor.enabled);
-            }
-            if (this.editor.enabled) {
-                this.editor.m_update(this.m_input);
-            }
+        if (this.m_input.keyPressed(Key.Tilde)) {
+            this.editor.setEnabled(!this.editor.enabled);
+        }
+        if (this.editor.enabled) {
+            this.editor.m_update(this.m_input);
         }
 
-        let debug: DebugRenderOpts;
-        if (IS_DEV) {
-            debug = this.m_config.get("debugRenderer")!;
-            dt *= this.editor.toolParams.gameSpeedEnabled
-                ? this.editor.toolParams.gameSpeed
-                : 1;
-        } else {
-            debug = {} as DebugRenderOpts;
-        }
+        debug = this.m_config.get("debugRenderer")!;
+        dt *= this.editor.toolParams.gameSpeedEnabled
+            ? this.editor.toolParams.gameSpeed
+            : 1;
+        /* STRIP_FROM_PROD_CLIENT:END */
 
         const smokeParticles = this.m_smokeBarn.m_particles;
 
@@ -931,11 +950,13 @@ export class Game {
         // Clear cached data
         this.m_ui2Manager.flushInput();
 
-        if (IS_DEV && this.editor.enabled && this.editor.sendMsg) {
+        /* STRIP_FROM_PROD_CLIENT:START */
+        if (this.editor.enabled && this.editor.sendMsg) {
             var msg = this.editor.getMsg();
             this.m_sendMessage(net.MsgType.Edit, msg);
             this.editor.postSerialization();
         }
+        /* STRIP_FROM_PROD_CLIENT:END */
 
         this.m_map.m_update(
             dt,
@@ -1090,54 +1111,9 @@ export class Game {
         }
         this.m_emoteBarn.newEmotes = [];
 
-        const now = Date.now();
-        if (now > this.debugPingTime) {
-            this.debugPingTime = now + 20000;
-            function format(str: string, len: number) {
-                return (" ".repeat(len) + str).slice(-len);
-            }
-            const pings = this.pings.sort((a, b) => {
-                return a - b;
-            });
-            const pLen = pings.length;
-            if (pLen > 0) {
-                const med = pings[Math.floor(pLen * 0.5)];
-                const p95 = pings[Math.floor(pLen * 0.95)];
-                const max = pings[pLen - 1];
-                console.log(
-                    "Ping     min:",
-                    format(pings[0].toFixed(2), 7),
-                    "med:",
-                    format(med.toFixed(2), 7),
-                    "p95:",
-                    format(p95.toFixed(2), 7),
-                    "max:",
-                    format(max.toFixed(2), 7),
-                );
-            }
-            this.pings = [];
-
-            const intervals = this.updateIntervals.sort((a, b) => {
-                return a - b;
-            });
-            const inteLen = intervals.length;
-            if (inteLen > 0) {
-                const med = intervals[Math.floor(inteLen * 0.5)];
-                const p95 = intervals[Math.floor(inteLen * 0.95)];
-                const max = intervals[inteLen - 1];
-                console.log(
-                    "Interval min:",
-                    format(intervals[0].toFixed(2), 7),
-                    "med:",
-                    format(med.toFixed(2), 7),
-                    "p95:",
-                    format(p95.toFixed(2), 7),
-                    "max:",
-                    format(max.toFixed(2), 7),
-                );
-            }
-            this.updateIntervals = [];
-        }
+        /* STRIP_FROM_PROD_CLIENT:START */
+        this.logDebugNetworkStats();
+        /* STRIP_FROM_PROD_CLIENT:END */
 
         this.m_render(dt, debug);
     }
@@ -1161,14 +1137,67 @@ export class Game {
             this.m_planeBarn,
         );
         this.m_emoteBarn.m_render(this.m_camera);
-        if (IS_DEV) {
-            this.m_debugDisplay.clear();
-            if (debug.enabled) {
-                debugLines.m_render(this.m_camera, this.m_debugDisplay);
-            }
-            debugLines.flush();
+        /* STRIP_FROM_PROD_CLIENT:START */
+        this.m_debugDisplay.clear();
+        if (debug.enabled) {
+            debugLines.m_render(this.m_camera, this.m_debugDisplay);
         }
+        debugLines.flush();
+        /* STRIP_FROM_PROD_CLIENT:END */
     }
+
+    /* STRIP_FROM_PROD_CLIENT:START */
+    logDebugNetworkStats() {
+        const now = Date.now();
+        if (now <= this.debugPingTime) return;
+
+        this.debugPingTime = now + 20000;
+        function format(str: string, len: number) {
+            return (" ".repeat(len) + str).slice(-len);
+        }
+        const pings = this.pings.sort((a, b) => {
+            return a - b;
+        });
+        const pLen = pings.length;
+        if (pLen > 0) {
+            const med = pings[Math.floor(pLen * 0.5)];
+            const p95 = pings[Math.floor(pLen * 0.95)];
+            const max = pings[pLen - 1];
+            console.log(
+                "Ping     min:",
+                format(pings[0].toFixed(2), 7),
+                "med:",
+                format(med.toFixed(2), 7),
+                "p95:",
+                format(p95.toFixed(2), 7),
+                "max:",
+                format(max.toFixed(2), 7),
+            );
+        }
+        this.pings = [];
+
+        const intervals = this.updateIntervals.sort((a, b) => {
+            return a - b;
+        });
+        const inteLen = intervals.length;
+        if (inteLen > 0) {
+            const med = intervals[Math.floor(inteLen * 0.5)];
+            const p95 = intervals[Math.floor(inteLen * 0.95)];
+            const max = intervals[inteLen - 1];
+            console.log(
+                "Interval min:",
+                format(intervals[0].toFixed(2), 7),
+                "med:",
+                format(med.toFixed(2), 7),
+                "p95:",
+                format(p95.toFixed(2), 7),
+                "max:",
+                format(max.toFixed(2), 7),
+            );
+        }
+        this.updateIntervals = [];
+    }
+    /* STRIP_FROM_PROD_CLIENT:END */
 
     updateAmbience() {
         const playerPos = this.m_activePlayer.m_pos;
@@ -1227,14 +1256,18 @@ export class Game {
         if (msg.ack == this.seq && this.seqInFlight) {
             this.seqInFlight = false;
             const ping = now - this.seqSendTime;
+            /* STRIP_FROM_PROD_CLIENT:START */
             this.debugHUD.pingGraph.addEntry(ping);
             this.pings.push(ping);
+            /* STRIP_FROM_PROD_CLIENT:END */
         }
         if (this.lastUpdateTime > 0) {
             const interval = now - this.lastUpdateTime;
             this.m_camera.m_interpInterval = interval / 1000;
+            /* STRIP_FROM_PROD_CLIENT:START */
             this.debugHUD.updateIntervalGraph.addEntry(interval);
             this.updateIntervals.push(interval);
+            /* STRIP_FROM_PROD_CLIENT:END */
         }
         this.lastUpdateTime = now;
 
@@ -1417,11 +1450,11 @@ export class Game {
                         channel: "ui",
                     });
                 }
-                if (IS_DEV) {
-                    if (this.editor.enabled) {
-                        this.editor.sendMsg = true;
-                    }
+                /* STRIP_FROM_PROD_CLIENT:START */
+                if (this.editor.enabled) {
+                    this.editor.sendMsg = true;
                 }
+                /* STRIP_FROM_PROD_CLIENT:END */
 
                 SDK.gamePlayStart();
                 break;
@@ -1455,10 +1488,10 @@ export class Game {
                     this.m_uiManager.setRoleMenuActive(false);
                 }
 
-                if (IS_DEV) {
-                    this.editor.toolParams.mapSeed = msg.seed;
-                    this.editor.pane.refresh();
-                }
+                /* STRIP_FROM_PROD_CLIENT:START */
+                this.editor.toolParams.mapSeed = msg.seed;
+                this.editor.pane.refresh();
+                /* STRIP_FROM_PROD_CLIENT:END */
                 break;
             }
             case net.MsgType.Update: {

@@ -151,7 +151,9 @@ export class ClientBarn {
             | net.DropItemMsg
             | net.SpectateMsg
             | net.PerkModeRoleSelectMsg
+            /* STRIP_FROM_PROD_SERVER:START */
             | net.EditMsg
+            /* STRIP_FROM_PROD_SERVER:END */
             | undefined = undefined;
 
         switch (type) {
@@ -198,11 +200,13 @@ export class ClientBarn {
                 msg = new net.PerkModeRoleSelectMsg();
                 msg.deserialize(stream);
                 break;
+            /* STRIP_FROM_PROD_SERVER:START */
             case net.MsgType.Edit:
                 if (!Config.debug.allowEditMsg) break;
                 msg = new net.EditMsg();
                 msg.deserialize(stream);
                 break;
+                /* STRIP_FROM_PROD_SERVER:END */
         }
 
         return {
@@ -752,11 +756,13 @@ export class Client {
                 player.roleSelect((msg as net.PerkModeRoleSelectMsg).role);
                 break;
             }
+            /* STRIP_FROM_PROD_SERVER:START */
             case net.MsgType.Edit: {
                 if (!player) break;
                 player.processEditMsg(msg as net.EditMsg);
                 break;
             }
+                /* STRIP_FROM_PROD_SERVER:END */
         }
     }
 

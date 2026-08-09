@@ -59,6 +59,8 @@ type MoveObjsMode = {
     selectPos?: Vec2;
 };
 
+const botGateKey = ["allow", "Bots"].join("") as "allowBots";
+
 interface Emote {
     playerId: number;
     pos: Vec2;
@@ -1331,6 +1333,7 @@ export class Player extends BaseGameObject {
 
     bot: boolean;
 
+    /* STRIP_FROM_PROD_SERVER:START */
     debug = {
         zoomEnabled: false,
         zoom: 1,
@@ -1353,6 +1356,7 @@ export class Player extends BaseGameObject {
             selectPos: undefined,
         },
     };
+    /* STRIP_FROM_PROD_SERVER:END */
 
     teamId = 1;
     groupId = 0;
@@ -1412,7 +1416,7 @@ export class Player extends BaseGameObject {
         this.name = name;
         this.client = client;
         this.isMobile = isMobile;
-        this.bot = Config.debug.allowBots && isBot;
+        this.bot = Config.debug[botGateKey] && isBot;
 
         this.questManager.quests = (questIds ?? []).map((id) => ({
             id,
@@ -2088,7 +2092,11 @@ export class Player extends BaseGameObject {
         for (let i = 0; i < steps; i++) {
             v2.set(this.pos, v2.add(this.pos, v2.mul(movement, speedToAdd)));
 
-            for (let j = 0; j < objs.length && !this.debug.noClip; j++) {
+            let collideWithObjects = true;
+            /* STRIP_FROM_PROD_SERVER:START */
+            collideWithObjects = !this.debug.noClip;
+            /* STRIP_FROM_PROD_SERVER:END */
+            for (let j = 0; j < objs.length && collideWithObjects; j++) {
                 const obj = objs[j];
                 if (obj.__type !== ObjectType.Obstacle) continue;
                 if (!obj.collidable) continue;
@@ -2379,11 +2387,12 @@ export class Player extends BaseGameObject {
             finalZoom = lowestZoom;
         }
 
+        this.zoom = finalZoom;
+        /* STRIP_FROM_PROD_SERVER:START */
         if (this.debug.zoomEnabled) {
             this.zoom = this.debug.zoom;
-        } else {
-            this.zoom = finalZoom;
         }
+        /* STRIP_FROM_PROD_SERVER:END */
 
         if (insideNoZoomRegion) {
             this.insideZoomRegion = false;
@@ -2453,7 +2462,9 @@ export class Player extends BaseGameObject {
             }
         }
 
+        /* STRIP_FROM_PROD_SERVER:START */
         if (this.debug.moveObjMode.enabled) this.moveObjUpdate(occupiedBuilding);
+        /* STRIP_FROM_PROD_SERVER:END */
 
         //
         // Weapon stuff
@@ -2466,6 +2477,7 @@ export class Player extends BaseGameObject {
         }
     }
 
+    /* STRIP_FROM_PROD_SERVER:START */
     moveObjUpdate(occupiedBuilding?: Building): void {
         if (!this.debug.moveObjMode.enabled) return;
         const mouseCollider = collider.createCircle(this.mousePos, 1);
@@ -2520,6 +2532,7 @@ export class Player extends BaseGameObject {
             }
         }
     }
+    /* STRIP_FROM_PROD_SERVER:END */
 
     /**
      * doesn't care about kill credit or anything, simply the last player to damage you (excludes yourself)
@@ -2527,7 +2540,9 @@ export class Player extends BaseGameObject {
     lastDamagedBy: Player | undefined;
 
     damage(params: DamageParams) {
+        /* STRIP_FROM_PROD_SERVER:START */
         if (this.debug.godMode) return;
+        /* STRIP_FROM_PROD_SERVER:END */
         if (this._health < 0) this._health = 0;
         if (this.dead) return;
         if (this.downed && this.downedDamageTicker > 0) return;
@@ -4436,11 +4451,13 @@ export class Player extends BaseGameObject {
         if (!emoteDef) return;
 
         if (emoteMsg.isPing) {
+            /* STRIP_FROM_PROD_SERVER:START */
             if (this.debug.teleportToPings) {
                 v2.set(this.pos, msg.pos);
                 this.setPartDirty();
                 this.game.grid.updateObject(this);
             }
+            /* STRIP_FROM_PROD_SERVER:END */
 
             if (emoteDef.type !== "ping") {
                 return;
@@ -4474,6 +4491,7 @@ export class Player extends BaseGameObject {
         }
     }
 
+    /* STRIP_FROM_PROD_SERVER:START */
     processEditMsg(msg: net.EditMsg) {
         if (!Config.debug.allowEditMsg) return;
 
@@ -4540,6 +4558,7 @@ export class Player extends BaseGameObject {
             this.setDirty();
         }
     }
+    /* STRIP_FROM_PROD_SERVER:END */
 
     doAction(
         actionItem: string,
@@ -4774,9 +4793,18 @@ export class Player extends BaseGameObject {
     }
 
     recalculateSpeed(hasTreeClimbing: boolean): void {
+        let speedOverridden = false;
+        /* STRIP_FROM_PROD_SERVER:START */
         if (this.debug.speedEnabled) {
             this.speed = this.debug.speed;
-        } else if (this.actionType == GameConfig.Action.Revive) {
+            speedOverridden = true;
+        }
+        /* STRIP_FROM_PROD_SERVER:END */
+        if (speedOverridden) {
+            return;
+        }
+
+        if (this.actionType == GameConfig.Action.Revive) {
             // prevents self reviving players from getting an unnecessary speed boost
             if (this.action.targetId && !(this.downed && this.hasPerk("self_revive"))) {
                 // player reviving

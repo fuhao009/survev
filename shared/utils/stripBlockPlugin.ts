@@ -16,25 +16,38 @@ export const stripBlockPlugin = (options: StripBlockPluginOptions): Plugin => {
     // ref: https://github.com/jballant/webpack-strip-block
     const startEsc = escapeRe(options.start || "develblock:start");
     const endEsc = escapeRe(options.end || "develblock:end");
-    const regexPattern = new RegExp(
-        `\\/\\* ?${startEsc} ?\\*\\/[\\s\\S]*?\\/\\* ?${endEsc} ?\\*\\/`,
-        "g",
-    );
+    const regexPatterns = [
+        new RegExp(
+            `\\/\\* ?${startEsc} ?\\*\\/[\\s\\S]*?\\/\\* ?${endEsc} ?\\*\\/`,
+            "g",
+        ),
+        new RegExp(
+            `<!--\\s*${startEsc}\\s*-->[\\s\\S]*?<!--\\s*${endEsc}\\s*-->`,
+            "g",
+        ),
+    ];
 
     return {
         name: "vite-plugin-strip-block",
         // needed for vite
         enforce: "pre",
         transform(code, id) {
-            // is not 'js, jsx, ts, tsx' file then bypass
-            if (!/\.([jt]sx?)$/.test(id)) {
+            // is not 'css, html, js, jsx, ts, tsx' file then bypass
+            if (!/\.(css|html|[jt]sx?)(?:[?#].*)?$/.test(id)) {
                 return null;
             }
-            regexPattern.lastIndex = 0;
             const s = new RolldownMagicString(code);
-            let match: RegExpExecArray | null;
-            while ((match = regexPattern.exec(code)) !== null) {
-                s.remove(match.index, match.index + match[0].length);
+            let changed = false;
+            for (const regexPattern of regexPatterns) {
+                regexPattern.lastIndex = 0;
+                let match: RegExpExecArray | null;
+                while ((match = regexPattern.exec(code)) !== null) {
+                    changed = true;
+                    s.remove(match.index, match.index + match[0].length);
+                }
+            }
+            if (!changed) {
+                return null;
             }
             return {
                 code: s.toString(),

@@ -698,9 +698,11 @@ export class Application {
             this.nameInput.val(this.config.get("playerName")!);
         }
 
+        /* STRIP_FROM_PROD_CLIENT:START */
         if (key === "debugHUD") {
             this.game?.debugHUD?.onConfigModified();
         }
+        /* STRIP_FROM_PROD_CLIENT:END */
 
         if (key === "showOwnPlayerName") {
             const showOwnPlayerName = this.config.get("showOwnPlayerName")!;

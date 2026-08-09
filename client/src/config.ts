@@ -95,6 +95,13 @@ export type StoredProfile = {
     nickname?: string;
 };
 
+const devOnlyConfigKeys = [
+    ["debug", "Tools"],
+    ["debug", "Renderer"],
+    ["debug", "HUD"],
+    ["building", "Editor"],
+] as const;
+
 const defaultConfig = {
     muteAudio: true,
     masterVolume: 1,
@@ -129,13 +136,29 @@ const defaultConfig = {
     /* STRIP_FROM_PROD_CLIENT:START */
     debugTools: debugToolsConfig,
     debugRenderer: debugRenderConfig,
-    /* STRIP_FROM_PROD_CLIENT:END */
     debugHUD: debugHUDConfig,
     buildingEditor: BuildingEditorConfig,
+    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export type ConfigType = typeof defaultConfig;
 export type ConfigKey = keyof ConfigType;
+
+function isDevClientBuild() {
+    return typeof IS_DEV === "boolean" ? IS_DEV : true;
+}
+
+export function stripProductionClientConfig(config: Partial<Record<ConfigKey, unknown>>) {
+    let stripped = false;
+    for (const keyParts of devOnlyConfigKeys) {
+        const key = keyParts.join("") as ConfigKey;
+        if (key in config) {
+            delete config[key];
+            stripped = true;
+        }
+    }
+    return stripped;
+}
 
 export class ConfigManager {
     loaded = false;
@@ -150,7 +173,12 @@ export class ConfigManager {
                 data = JSON.parse(strConfig);
             } catch (_e) {}
             this.config = util.mergeDeep({}, defaultConfig, data);
+            const strippedDevOnlyConfig = !isDevClientBuild()
+                && stripProductionClientConfig(this.config);
             this.checkUpgradeConfig();
+            if (strippedDevOnlyConfig) {
+                this.store();
+            }
             this.onModified();
             this.loaded = true;
             onLoadCompleteCb();

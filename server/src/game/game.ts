@@ -101,9 +101,11 @@ export class Game {
 
     logger: ServerLogger;
 
+    /* STRIP_FROM_PROD_SERVER:START */
     // for debug
     preventStart = false;
     debugSpeedMulti = 1;
+    /* STRIP_FROM_PROD_SERVER:END */
 
     constructor(id: string, config: ServerGameConfig) {
         const start = Date.now();
@@ -164,7 +166,9 @@ export class Game {
 
         this.timeRunning += dt;
 
+        /* STRIP_FROM_PROD_SERVER:START */
         dt *= this.debugSpeedMulti;
+        /* STRIP_FROM_PROD_SERVER:END */
 
         this.now = now;
 
@@ -176,7 +180,12 @@ export class Game {
             }
         }
 
-        if (!this.started && !this.preventStart) {
+        if (
+            !this.started
+            /* STRIP_FROM_PROD_SERVER:START */
+            && !this.preventStart
+            /* STRIP_FROM_PROD_SERVER:END */
+        ) {
             this.started = this.world || this.modeManager.isGameStarted();
             if (this.started) {
                 if (this.world) {

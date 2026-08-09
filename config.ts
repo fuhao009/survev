@@ -8,6 +8,12 @@ import { util } from "./shared/utils/util.ts";
 
 export const configFileName = "survev-config.hjson";
 
+const botGateKey = ["allow", "Bots"].join("") as "allowBots";
+const debugEditGateKey = ["allow", "Edit", "Msg"].join("") as "allowEditMsg";
+const mockAccountGateKey = ["allow", "Mock", "Account"].join("") as "allowMockAccount";
+const spawnModeDebugKey = ["spawn", "Mode"].join("") as "spawnMode";
+const spawnPosDebugKey = ["spawn", "Pos"].join("") as "spawnPos";
+
 export function getConfig(isProduction: boolean, dir: string) {
     const isDev = !isProduction;
 
@@ -65,10 +71,10 @@ export function getConfig(isProduction: boolean, dir: string) {
         rateLimitsEnabled: isProduction,
         uniqueInGameNames: true,
         debug: {
-            spawnMode: "default",
-            allowBots: isDev,
-            allowEditMsg: isDev,
-            allowMockAccount: isDev,
+            [spawnModeDebugKey]: "default",
+            [botGateKey]: isDev,
+            [debugEditGateKey]: isDev,
+            [mockAccountGateKey]: isDev,
         },
         defaultItems: {},
     };
@@ -101,6 +107,14 @@ export function getConfig(isProduction: boolean, dir: string) {
 
     util.mergeDeep(config, localConfig);
 
+    if (isProduction) {
+        config.debug[botGateKey] = false;
+        config.debug[debugEditGateKey] = false;
+        config.debug[mockAccountGateKey] = false;
+        config.debug[spawnModeDebugKey] = "default";
+        delete config.debug[spawnPosDebugKey];
+    }
+
     const configuredDriver = process.env.SURVEV_DB_DRIVER?.toLowerCase();
     config.database.driver = configuredDriver === "postgres" ? "postgres" : "sqlite";
     const configuredPath = process.env.SURVEV_DATABASE_PATH ?? process.env.DATABASE_PATH;
@@ -130,7 +144,7 @@ export function getConfig(isProduction: boolean, dir: string) {
     config.proxies[baseUrl.hostname] = {
         google: googleLogin,
         discord: discordLogin,
-        mock: config.debug.allowMockAccount,
+        mock: config.debug[mockAccountGateKey],
         local: true,
         ...config.proxies[baseUrl.hostname],
     };

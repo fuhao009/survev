@@ -3267,6 +3267,7 @@ span.ui-stats-header-value {
 /**
  * editor
  */
+/* STRIP_FROM_PROD_CLIENT:START */
 #ui-editor-top-center {
   position: absolute;
   color: #fff;
@@ -3321,6 +3322,7 @@ span.ui-stats-header-value {
   font-size: 16px;
   padding: 8px;
 }
+/* STRIP_FROM_PROD_CLIENT:END */
 
 /*
 * Profiler
@@ -5143,6 +5145,7 @@ span.ui-stats-header-value {
   /**
    * editor
    */
+  /* STRIP_FROM_PROD_CLIENT:START */
   #ui-editor-top-center {
     position: absolute;
     color: #fff;
@@ -5184,6 +5187,7 @@ span.ui-stats-header-value {
     font-family: monospace;
     font-size: 14px;
   }
+  /* STRIP_FROM_PROD_CLIENT:END */
 
   /*
      * Profiler
