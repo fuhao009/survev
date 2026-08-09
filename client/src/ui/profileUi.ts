@@ -626,7 +626,6 @@ export class ProfileUi {
                     })
                     : this.localization.translate("account-no-world-items"),
             );
-        this.loadoutMenu.renderWarehouse(worldItems);
     }
 
     renderUserCenter() {

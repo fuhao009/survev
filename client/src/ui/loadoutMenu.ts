@@ -7,7 +7,6 @@ import type { MeleeDef } from "../../../shared/defs/gameObjects/meleeDefs.ts";
 import type { OutfitDef } from "../../../shared/defs/gameObjects/outfitDefs.ts";
 import { GameObjectDefs } from "../../../shared/defs/register.ts";
 import { EmoteSlot, Rarity } from "../../../shared/gameConfig.ts";
-import type { ItemInstance } from "../../../shared/types/itemInstance.ts";
 import type { Item } from "../../../shared/utils/loadout.ts";
 import { type Crosshair, type Loadout, loadout } from "../../../shared/utils/loadout.ts";
 import { util } from "../../../shared/utils/util.ts";
@@ -16,7 +15,6 @@ import { crosshair } from "../crosshair.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
 import { SDK } from "../sdk/sdk.ts";
-import { getWorldItemLabel, getWorldItemStateLabel } from "../worldSettlement.ts";
 import type { Localization } from "./localization.ts";
 import { MenuModal } from "./menuModal.ts";
 import type { LoadoutDisplay } from "./opponentDisplay.ts";
@@ -197,9 +195,6 @@ export class LoadoutMenu {
     modalCustomizeItemName: JQuery<HTMLElement>;
     modalCustomizeItemLore: JQuery<HTMLElement>;
     modalCustomizeItemSource: JQuery<HTMLElement>;
-    warehouseCount: JQuery<HTMLElement>;
-    warehouseGrid: JQuery<HTMLElement>;
-    warehouseStatus: JQuery<HTMLElement>;
 
     picker: any;
 
@@ -239,9 +234,6 @@ export class LoadoutMenu {
         this.modalCustomizeItemName = $("#modal-customize-item-name");
         this.modalCustomizeItemLore = $("#modal-customize-item-lore");
         this.modalCustomizeItemSource = $("#modal-customize-item-source");
-        this.warehouseCount = $("#warehouse-count");
-        this.warehouseGrid = $("#warehouse-grid");
-        this.warehouseStatus = $("#warehouse-status");
         this.modal = new MenuModal(this.modalCustomize);
         this.modal.onShow(() => {
             this.onShow();
@@ -388,7 +380,6 @@ export class LoadoutMenu {
             }
         }
         this.selectCat(0);
-        this.renderWarehouse(this.account.worldInventory);
         this.tryBeginConfirmingItems();
         $("#start-bottom-right, #start-main").fadeOut(200);
         $("#background").hide();
@@ -565,73 +556,6 @@ export class LoadoutMenu {
             this.confirmingItems = false;
             $("#modal-screen-block").fadeOut(300);
         }
-    }
-
-    renderWarehouse(worldItems: readonly ItemInstance[]) {
-        const warehouseItems = worldItems
-            .filter((item) => item.state === "stash" || item.state === "equipped" || item.state === "listed")
-            .slice()
-            .sort((a, b) => {
-                const stateRank = { stash: 0, equipped: 1, listed: 2 } as Record<string, number>;
-                const stateDiff = (stateRank[a.state] ?? 99) - (stateRank[b.state] ?? 99);
-                if (stateDiff !== 0) return stateDiff;
-                const labelDiff = getWorldItemLabel(a.type).localeCompare(getWorldItemLabel(b.type));
-                if (labelDiff !== 0) return labelDiff;
-                return b.durability - a.durability;
-            });
-        const itemCount = warehouseItems.reduce((total, item) => total + item.quantity, 0);
-
-        this.warehouseCount.text(itemCount.toLocaleString());
-        this.warehouseStatus.text(
-            itemCount > 0
-                ? this.localization.translate("account-world-warehouse-summary", {
-                    count: itemCount.toLocaleString(),
-                })
-                : this.localization.translate("account-no-world-items"),
-        );
-
-        const grid = this.warehouseGrid.empty();
-        if (!grid.length) return;
-        if (warehouseItems.length === 0) {
-            $("<div/>", {
-                class: "warehouse-card warehouse-card-empty",
-                text: this.localization.translate("account-no-world-items"),
-            }).appendTo(grid);
-            return;
-        }
-
-        for (const item of warehouseItems) {
-            const label = getWorldItemLabel(item.type);
-            const quantityText = `×${item.quantity}`;
-            const metaText = item.durabilityMax > 0
-                ? `${item.durability}/${item.durabilityMax}`
-                : quantityText;
-            const stateText = getWorldItemStateLabel(item.state);
-            $("<div/>", {
-                class: "warehouse-card",
-                title: `${label} ${quantityText} · ${metaText} · ${stateText}`,
-            })
-                .append($("<span/>", { class: "warehouse-item-badge", text: quantityText }))
-                .append(this.createWarehouseItemIcon(item.type))
-                .append($("<span/>", { class: "warehouse-item-name", text: label }))
-                .append($("<span/>", { class: "warehouse-item-meta", text: metaText }))
-                .append($("<span/>", { class: "warehouse-item-state", text: stateText }))
-                .appendTo(grid);
-        }
-    }
-
-    private createWarehouseItemIcon(type: string) {
-        const iconSrc = helpers.getSvgFromGameType(type);
-        const icon = $("<span>").addClass("warehouse-item-icon").attr("aria-hidden", "true");
-        if (iconSrc) {
-            icon.append(
-                $("<img>", {
-                    alt: "",
-                    src: iconSrc,
-                }).css("transform", helpers.getCssTransformFromGameType(type)),
-            );
-        }
-        return icon;
     }
 
     sortItems(sort: string) {
@@ -1013,13 +937,6 @@ export class LoadoutMenu {
             "display",
             category.loadoutType == "emote" ? "block" : "none",
         );
-        $("#modal-content-right-warehouse").css(
-            "display",
-            category.loadoutType != "emote" && category.loadoutType != "crosshair" ? "block" : "none",
-        );
-        if (category.loadoutType != "emote" && category.loadoutType != "crosshair") {
-            this.renderWarehouse(this.account.worldInventory);
-        }
         $("#customize-emote-parent").css("display", displayEmoteWheel ? "block" : "none");
         $("#customize-crosshair-parent").css(
             "display",
