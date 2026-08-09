@@ -332,6 +332,17 @@ export interface ConfigType {
     };
 
     /**
+     * Browser-facing API hardening.
+     */
+    security: {
+        /**
+         * Origins allowed to send credentialed browser API requests.
+         * The configured oauthRedirectURI origin is always added at runtime.
+         */
+        allowedOrigins: string[];
+    };
+
+    /**
      * Role ID for users with moderation permissions
      */
     discordRoleId?: string;

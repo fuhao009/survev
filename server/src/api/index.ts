@@ -24,6 +24,7 @@ import { StatsRouter } from "./routes/stats/StatsRouter.ts";
 import { AuthRouter } from "./routes/user/AuthRouter.ts";
 import { UserRouter } from "./routes/user/UserRouter.ts";
 import { WorldRouter } from "./routes/world/WorldRouter.ts";
+import { apiCorsOrigin, shouldRejectApiOrigin } from "./security.ts";
 
 export type Context = {
     Variables: {
@@ -66,7 +67,7 @@ if (server.logger.config.debugLogs) {
 app.use(
     "/api/*",
     cors({
-        origin: "*",
+        origin: apiCorsOrigin,
         credentials: true,
         allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allowHeaders: ["Origin", "Content-Type", "Accept", "X-Requested-With"],
@@ -74,8 +75,18 @@ app.use(
     }),
 );
 
-// @TODO: figure out the origins for this..
-// app.use(csrf())
+app.use("/api/*", async (c, next) => {
+    const origin = c.req.header("Origin");
+    if (shouldRejectApiOrigin(c.req.method, origin)) {
+        server.logger.warn("API request rejected by origin guard", {
+            method: c.req.method,
+            path: c.req.path,
+            origin,
+        });
+        return c.json({ error: "Forbidden" }, 403);
+    }
+    await next();
+});
 
 app.route("/api/user/", UserRouter);
 app.route("/api/world/", WorldRouter);

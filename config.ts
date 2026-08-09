@@ -80,6 +80,9 @@ export function getConfig(isProduction: boolean, dir: string) {
             signatureTtlMs: 60 * 1000,
             nonceCacheMs: 5 * 60 * 1000,
         },
+        security: {
+            allowedOrigins: [],
+        },
         uniqueInGameNames: true,
         debug: {
             [spawnModeDebugKey]: "default",
@@ -141,6 +144,7 @@ export function getConfig(isProduction: boolean, dir: string) {
         config.oauthRedirectURI = `http://${config.vite.host}:${config.vite.port}`;
     }
     const baseUrl = new URL(config.oauthRedirectURI);
+    config.security.allowedOrigins = [...new Set([baseUrl.origin, ...config.security.allowedOrigins])];
 
     if (!config.gameServer.apiServerUrl) {
         // same as above, provide a more accurate default value if not set manually
