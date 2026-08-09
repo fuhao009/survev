@@ -5437,9 +5437,10 @@ input [type="image"]:focus {
   color: #fff;
   font-size: 32px;
   left: 18px;
+  line-height: 1;
   position: absolute;
   text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.75);
-  top: 12px;
+  top: 0;
 }
 
 #modal-customize-sort-wrap {
