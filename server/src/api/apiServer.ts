@@ -5,6 +5,7 @@ import { Config } from "../config.ts";
 import { TeamMenu } from "../teamMenu.ts";
 import { GIT_VERSION } from "../utils/gitRevision.ts";
 import { defaultLogger, ServerLogger } from "../utils/logger.ts";
+import { createPrivateAuthHeaders } from "../utils/privateAuth.ts";
 import type { FindGamePrivateBody, FindGamePrivateRes } from "../utils/types.ts";
 
 class Region {
@@ -19,15 +20,17 @@ class Region {
 
     async fetch<Data extends object>(endPoint: string, body: object) {
         const url = `http${this.data.https ? "s" : ""}://${this.data.address}/${endPoint}`;
+        const requestBody = JSON.stringify(body);
+        const privateHeaders = createPrivateAuthHeaders("POST", `/${endPoint}`, requestBody);
 
         try {
             const res = await fetch(url, {
                 method: "POST",
                 headers: {
                     "content-type": "application/json",
-                    "survev-api-key": Config.secrets.SURVEV_API_KEY,
+                    ...privateHeaders,
                 },
-                body: JSON.stringify(body),
+                body: requestBody,
             });
 
             if (res.ok) {

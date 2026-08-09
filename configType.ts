@@ -246,6 +246,11 @@ export interface ConfigType {
         SURVEV_API_KEY: string;
 
         /**
+         * Previous API key accepted during short rotation windows.
+         */
+        SURVEV_API_KEY_PREVIOUS?: string;
+
+        /**
          * Used to encode IP addresses on the database
          */
         SURVEV_IP_SECRET: string;
@@ -304,6 +309,26 @@ export interface ConfigType {
          */
         SPELLSYNC_PROJECT_ID?: string;
         SPELLSYNC_PUBLIC_TOKEN?: string;
+    };
+
+    /**
+     * Private server-to-server API hardening.
+     */
+    privateApi: {
+        /**
+         * IPs allowed to call private service endpoints. Empty disables the IP check.
+         */
+        allowedIps: string[];
+
+        /**
+         * Maximum clock skew for signed private requests.
+         */
+        signatureTtlMs: number;
+
+        /**
+         * How long signed private request nonces are retained to block replay.
+         */
+        nonceCacheMs: number;
     };
 
     /**

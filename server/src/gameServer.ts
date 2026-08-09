@@ -3,16 +3,16 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { App, SSLApp, type WebSocket } from "uWebSockets.js";
+import { App, type HttpRequest, type HttpResponse, SSLApp, type WebSocket } from "uWebSockets.js";
 import pkgJson from "../../package.json" with { type: "json" };
 import { GameConfig } from "../../shared/gameConfig.ts";
 import type { GameWsDisconnectReason } from "../../shared/types/api.ts";
-import { privateApiKeyMatches } from "./api/auth/middleware.ts";
 import { Config } from "./config.ts";
 import { GameProcessManager, type GameSocketData, ProcState } from "./game/gameProcessManager.ts";
 import { apiPrivateRouter } from "./utils/apiRouter.ts";
 import { GIT_VERSION } from "./utils/gitRevision.ts";
 import { logErrorToWebhook, ServerLogger } from "./utils/logger.ts";
+import { verifyPrivateRequest } from "./utils/privateAuth.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "./utils/rateLimit.ts";
 import {
     type FindGamePrivateBody,
@@ -144,6 +144,36 @@ class GameServer {
 
 const server = new GameServer();
 
+function privatePathWithQuery(req: HttpRequest) {
+    const query = req.getQuery();
+    return `${req.getUrl()}${query ? `?${query}` : ""}`;
+}
+
+function authorizePrivateUwsRequest(
+    res: HttpResponse,
+    req: HttpRequest,
+    method: string,
+    body = "",
+) {
+    const result = verifyPrivateRequest({
+        method,
+        pathWithQuery: privatePathWithQuery(req),
+        body,
+        ip: uwsHelpers.getIp(res, req, Config.gameServer.proxyIPHeader),
+        header: (name) => req.getHeader(name),
+    });
+    if (!result.ok) {
+        server.logger.warn("Private request rejected", {
+            path: req.getUrl(),
+            reason: result.reason,
+            ip: result.ip,
+        });
+        uwsHelpers.forbidden(res);
+        return false;
+    }
+    return true;
+}
+
 if (process.env.NODE_ENV !== "production") {
     server.manager.newGame({ ...Config.modes[0], world: false });
 }
@@ -162,10 +192,7 @@ app.get("/health", (res) => {
 });
 
 app.get("/private/status", (res, req) => {
-    if (!privateApiKeyMatches(req.getHeader("survev-api-key"))) {
-        uwsHelpers.forbidden(res);
-        return;
-    }
+    if (!authorizePrivateUwsRequest(res, req, "GET")) return;
 
     uwsHelpers.returnJson(res, {
         socketCount: server.manager.sockets.size,
@@ -186,13 +213,10 @@ app.post("/api/find_game", async (res, req) => {
         res.aborted = true;
     });
 
-    if (!privateApiKeyMatches(req.getHeader("survev-api-key"))) {
-        uwsHelpers.forbidden(res);
-        return;
-    }
-
     try {
-        const body = await uwsHelpers.getJsonBody(res, zFindGamePrivateBody);
+        const bodyText = await uwsHelpers.getBodyText(res);
+        if (!authorizePrivateUwsRequest(res, req, "POST", bodyText)) return;
+        const body = uwsHelpers.parseJsonBody(res, zFindGamePrivateBody, bodyText);
 
         uwsHelpers.returnJson(res, await server.findGame(body));
     } catch (error) {

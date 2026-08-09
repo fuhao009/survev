@@ -1,9 +1,9 @@
 import { zValidator } from "@hono/zod-validator";
 import type { Context, Next } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
-import { timingSafeEqual } from "node:crypto";
 import type { z } from "zod";
 import { Config } from "../../config.ts";
+import { privateApiKeyMatches, verifyPrivateRequest } from "../../utils/privateAuth.ts";
 import { HTTPRateLimit } from "../../utils/rateLimit.ts";
 import { getHonoIp } from "../apiHelpers.ts";
 import { server } from "../apiServer.ts";
@@ -75,25 +75,26 @@ export async function databaseEnabledMiddleware(c: Context, next: Next) {
     await next();
 }
 
-export function privateApiKeyMatches(provided: string | undefined, expected = Config.secrets.SURVEV_API_KEY) {
-    if (!provided || !expected) return false;
-
-    const expectedBuffer = Buffer.from(expected);
-    if (expectedBuffer.length === 0) return false;
-
-    const providedBuffer = Buffer.from(provided);
-    if (providedBuffer.length !== expectedBuffer.length) {
-        const paddedProvided = Buffer.alloc(expectedBuffer.length);
-        providedBuffer.copy(paddedProvided, 0, 0, Math.min(providedBuffer.length, expectedBuffer.length));
-        timingSafeEqual(paddedProvided, expectedBuffer);
-        return false;
-    }
-
-    return timingSafeEqual(providedBuffer, expectedBuffer);
-}
+export { privateApiKeyMatches };
 
 export async function privateMiddleware(c: Context, next: Next) {
-    if (!privateApiKeyMatches(c.req.header("survev-api-key"))) {
+    const url = new URL(c.req.url);
+    const body = c.req.method === "GET" || c.req.method === "HEAD"
+        ? ""
+        : await c.req.raw.clone().text();
+    const result = verifyPrivateRequest({
+        method: c.req.method,
+        pathWithQuery: `${url.pathname}${url.search}`,
+        body,
+        ip: getHonoIp(c, Config.apiServer.proxyIPHeader),
+        header: (name) => c.req.header(name),
+    });
+    if (!result.ok) {
+        server.logger.warn("/private request rejected", {
+            path: c.req.path,
+            reason: result.reason,
+            ip: result.ip,
+        });
         return c.json({ error: "Forbidden" }, 403);
     }
     await next();

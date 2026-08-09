@@ -21,9 +21,7 @@ export const uwsHelpers = {
         });
     },
 
-    async getJsonBody<T extends ZodObject>(res: HttpResponse, validator: T): Promise<z.infer<T>> {
-        const bodyLimit = 1024 * 1024; // 1 MB
-
+    async getBodyText(res: HttpResponse, bodyLimit = 1024 * 1024): Promise<string> {
         return new Promise((resolve, reject) => {
             res.collectBody(bodyLimit, (fullBody) => {
                 if (res.aborted) return;
@@ -36,18 +34,25 @@ export const uwsHelpers = {
                     return;
                 }
 
-                try {
-                    const body = JSON.parse(new TextDecoder().decode(fullBody));
-                    const parsed = validator.parse(body);
-                    resolve(parsed);
-                } catch (error) {
-                    res.writeStatus("400 Bad Request");
-                    res.write("400 Bad Request");
-                    res.end();
-                    reject(error);
-                }
+                resolve(new TextDecoder().decode(fullBody));
             });
         });
+    },
+
+    parseJsonBody<T extends ZodObject>(res: HttpResponse, validator: T, bodyText: string): z.infer<T> {
+        try {
+            const body = JSON.parse(bodyText);
+            return validator.parse(body);
+        } catch (error) {
+            res.writeStatus("400 Bad Request");
+            res.write("400 Bad Request");
+            res.end();
+            throw error;
+        }
+    },
+
+    async getJsonBody<T extends ZodObject>(res: HttpResponse, validator: T): Promise<z.infer<T>> {
+        return uwsHelpers.parseJsonBody(res, validator, await uwsHelpers.getBodyText(res));
     },
 
     /**

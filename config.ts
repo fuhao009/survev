@@ -75,6 +75,11 @@ export function getConfig(isProduction: boolean, dir: string) {
         captchaEnabled: false,
         cachingEnabled: false,
         rateLimitsEnabled: isProduction,
+        privateApi: {
+            allowedIps: ["127.0.0.1", "::1"],
+            signatureTtlMs: 60 * 1000,
+            nonceCacheMs: 5 * 60 * 1000,
+        },
         uniqueInGameNames: true,
         debug: {
             [spawnModeDebugKey]: "default",
