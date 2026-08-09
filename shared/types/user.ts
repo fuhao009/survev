@@ -20,7 +20,7 @@ export type ProfileResponse =
         };
         loadout: Loadout;
         items: Item[];
-        /** Latest stashed/equipped persistent-world item state for the account center. */
+        /** Latest stashed/equipped/listed persistent-world item state for the account center. */
         worldInventory: ItemInstance[];
     };
 

@@ -927,6 +927,7 @@
                 </select>
                 <a class="btn-world btn-darken menu-option" id="btn-start-world" data-l10n="home-start-world">进入大世界</a>
                 <a id="home-user-center" class="btn-darken menu-option account-details-user" href="#user-center" data-l10n="home-user-center-title">用户中心</a>
+                <a id="home-market" class="btn-darken menu-option account-market-link" href="#market" data-l10n="market-active-listings">交易市场</a>
               </div>
             </div>
             <div id="right-column" class="menu-column">
@@ -1384,6 +1385,18 @@
                     <button id="user-center-refresh" type="button" data-l10n="account-refresh">刷新数据</button>
                   </div>
                 </section>
+                <section class="user-center-market" aria-labelledby="user-center-market-title">
+                  <div class="user-center-market-header">
+                    <span id="user-center-market-title" class="user-center-metric-label" data-l10n="market-active-listings">交易市场</span>
+                    <strong id="user-center-market-count">0</strong>
+                  </div>
+                  <div id="user-center-market-summary" class="user-center-option-caption" data-l10n="market-user-center-summary">收到报价 0 个 · 冻结 0 积分</div>
+                  <ul id="user-center-market-list" class="user-center-market-list"></ul>
+                  <div class="user-center-market-actions">
+                    <button id="user-center-market-refresh" type="button" data-l10n="market-refresh">刷新市场</button>
+                    <button id="user-center-market-open" class="account-market-link" type="button" data-l10n="market-active-listings">交易市场</button>
+                  </div>
+                </section>
               </div>
               <a class="user-center-option account-stats-link" href="#user-center" data-l10n="index-my-stats">我的数据</a>
               <a class="user-center-option account-leaderboard-link" href="/stats" target="_blank" data-l10n="index-leaderboards">排行榜</a>
@@ -1395,6 +1408,136 @@
           <div class="user-center-footer">
             <a class="user-center-danger btn-account-delete" href="#user-center" data-l10n="index-delete-account">删除账号</a>
             <a class="user-center-logout btn-account-logout" href="#user-center" data-l10n="index-log-out">退出登录</a>
+          </div>
+        </div>
+      </div>
+      <div id="modal-market-hub" class="modal modal-account">
+        <div class="modal-content modal-close">
+          <div class="market-hub-shell">
+            <header class="market-hub-header">
+              <span class="close close-corner" data-l10n="index-close" data-l10n-attr="aria-label" aria-label="关闭"></span>
+              <div class="market-hub-heading">
+                <span class="home-menu-kicker" data-l10n="market-hub-kicker">市场终端</span>
+                <h2 data-l10n="market-hub-title">交易市场</h2>
+                <p data-l10n="market-hub-summary">从仓库上架撤离物资，支持一口价、拍卖和点对点报价。</p>
+              </div>
+              <div class="market-hub-stats" aria-label="市场总览" data-l10n="market-hub-overview" data-l10n-attr="aria-label">
+                <div class="market-hub-stat">
+                  <span data-l10n="market-section-feed">公开挂单</span>
+                  <strong id="market-hub-public-count">0</strong>
+                </div>
+                <div class="market-hub-stat">
+                  <span data-l10n="market-section-my-listings">我的挂单</span>
+                  <strong id="market-hub-my-count">0</strong>
+                </div>
+                <div class="market-hub-stat">
+                  <span data-l10n="market-section-holds">冻结资金</span>
+                  <strong id="market-hub-frozen-count">0</strong>
+                </div>
+                <div class="market-hub-stat">
+                  <span data-l10n="market-section-received-offers">收到报价</span>
+                  <strong id="market-hub-offer-count">0</strong>
+                </div>
+              </div>
+            </header>
+            <section class="market-hub-toolbar" aria-label="市场筛选" data-l10n="market-filter-title" data-l10n-attr="aria-label">
+              <div class="market-hub-toolbar-copy">
+                <strong id="market-hub-feed-count" data-l10n="market-feed-count">公开挂单 0 条</strong>
+                <span id="market-hub-warehouse-summary" data-l10n="market-warehouse-summary">仓库可上架 0 件</span>
+              </div>
+              <div class="market-hub-filters">
+                <label class="market-hub-filter">
+                  <span data-l10n="market-filter-mode">模式</span>
+                  <select id="market-hub-mode" class="menu-option">
+                    <option value="" data-l10n="market-filter-mode-all">全部模式</option>
+                    <option value="fixed_price" data-l10n="market-mode-fixed-price">一口价</option>
+                    <option value="auction" data-l10n="market-mode-auction">拍卖</option>
+                    <option value="offers" data-l10n="market-mode-offers">报价</option>
+                  </select>
+                </label>
+                <label class="market-hub-filter">
+                  <span data-l10n="market-filter-sort">排序</span>
+                  <select id="market-hub-sort" class="menu-option">
+                    <option value="newest" data-l10n="market-filter-sort-newest">最新</option>
+                    <option value="price_asc" data-l10n="market-filter-sort-price-asc">价格升序</option>
+                    <option value="price_desc" data-l10n="market-filter-sort-price-desc">价格降序</option>
+                    <option value="durability_desc" data-l10n="market-filter-sort-durability-desc">耐久降序</option>
+                  </select>
+                </label>
+                <label class="market-hub-filter">
+                  <span data-l10n="market-filter-type">物资类型</span>
+                  <select id="market-hub-type" class="menu-option"></select>
+                </label>
+                <fieldset class="market-hub-range">
+                  <legend data-l10n="market-filter-price-range">价格区间</legend>
+                  <label class="market-hub-range-field">
+                    <span data-l10n="market-filter-min-price">最低价</span>
+                    <input id="market-hub-min-price" class="menu-option" type="number" min="1" step="1">
+                  </label>
+                  <label class="market-hub-range-field">
+                    <span data-l10n="market-filter-max-price">最高价</span>
+                    <input id="market-hub-max-price" class="menu-option" type="number" min="1" step="1">
+                  </label>
+                </fieldset>
+                <fieldset class="market-hub-range">
+                  <legend data-l10n="market-filter-durability-range">耐久区间</legend>
+                  <label class="market-hub-range-field">
+                    <span data-l10n="market-filter-min-durability">最低耐久</span>
+                    <input id="market-hub-min-durability" class="menu-option" type="number" min="0" max="1000" step="1">
+                  </label>
+                  <label class="market-hub-range-field">
+                    <span data-l10n="market-filter-max-durability">最高耐久</span>
+                    <input id="market-hub-max-durability" class="menu-option" type="number" min="0" max="1000" step="1">
+                  </label>
+                </fieldset>
+              </div>
+              <div class="market-hub-actions">
+                <button id="market-hub-refresh" type="button" data-l10n="market-refresh">刷新市场</button>
+                <button id="market-hub-apply" type="button" data-l10n="market-filter-apply">应用筛选</button>
+                <button id="market-hub-reset" type="button" data-l10n="market-filter-reset">重置筛选</button>
+                <span id="market-hub-status" role="status" data-l10n="market-market-status">公开挂单来自最新市场状态</span>
+              </div>
+            </section>
+            <div class="market-hub-body">
+              <section class="market-hub-panel market-hub-panel-feed" aria-labelledby="market-hub-feed-title">
+                <div class="market-hub-panel-header">
+                  <h3 id="market-hub-feed-title" data-l10n="market-section-feed">公开挂单</h3>
+                </div>
+                <ul id="market-hub-list" class="market-hub-list"></ul>
+              </section>
+              <aside class="market-hub-side">
+                <section class="market-hub-panel" aria-labelledby="market-hub-my-listings-title">
+                  <div class="market-hub-panel-header">
+                    <h3 id="market-hub-my-listings-title" data-l10n="market-section-my-listings">我的挂单</h3>
+                  </div>
+                  <ul id="market-hub-my-listings" class="market-hub-list"></ul>
+                </section>
+                <section class="market-hub-panel" aria-labelledby="market-hub-received-offers-title">
+                  <div class="market-hub-panel-header">
+                    <h3 id="market-hub-received-offers-title" data-l10n="market-section-received-offers">收到报价</h3>
+                  </div>
+                  <ul id="market-hub-received-offers" class="market-hub-list"></ul>
+                </section>
+                <section class="market-hub-panel" aria-labelledby="market-hub-my-intents-title">
+                  <div class="market-hub-panel-header">
+                    <h3 id="market-hub-my-intents-title" data-l10n="market-section-my-intents">我的出价/报价</h3>
+                  </div>
+                  <ul id="market-hub-my-intents" class="market-hub-list"></ul>
+                </section>
+                <section class="market-hub-panel" aria-labelledby="market-hub-holds-title">
+                  <div class="market-hub-panel-header">
+                    <h3 id="market-hub-holds-title" data-l10n="market-section-holds">冻结资金</h3>
+                  </div>
+                  <ul id="market-hub-holds" class="market-hub-list"></ul>
+                </section>
+                <section class="market-hub-panel" aria-labelledby="market-hub-trades-title">
+                  <div class="market-hub-panel-header">
+                    <h3 id="market-hub-trades-title" data-l10n="market-section-trades">成交记录</h3>
+                  </div>
+                  <ul id="market-hub-trades" class="market-hub-list"></ul>
+                </section>
+              </aside>
+            </div>
           </div>
         </div>
       </div>

@@ -15,6 +15,13 @@
       "when": 1786189903483,
       "tag": "0001_pale_violations",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786272000000,
+      "tag": "0002_market_trading",
+      "breakpoints": true
     }
   ]
 }

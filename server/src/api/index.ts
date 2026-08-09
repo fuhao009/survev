@@ -18,6 +18,8 @@ import { server } from "./apiServer.ts";
 import { deleteExpiredSessions, validateSessionToken } from "./auth/index.ts";
 import { rateLimitMiddleware, validateParams } from "./auth/middleware.ts";
 import type { SessionTableSelect, UsersTableSelect } from "./db/schema.ts";
+import { marketService } from "./market/MarketService.ts";
+import { MarketRouter } from "./routes/market/MarketRouter.ts";
 import { cleanupOldLogs, isBanned } from "./routes/private/ModerationRouter.ts";
 import { PrivateRouter } from "./routes/private/private.ts";
 import { StatsRouter } from "./routes/stats/StatsRouter.ts";
@@ -79,6 +81,9 @@ app.use(
 
 app.route("/api/user/", UserRouter);
 app.route("/api/world/", WorldRouter);
+if (Config.database.driver === "sqlite") {
+    app.route("/api/market/", MarketRouter);
+}
 app.route("/api/auth/", AuthRouter);
 app.route("/api/", StatsRouter);
 app.route("/private/", PrivateRouter);
@@ -299,6 +304,16 @@ new Cron("0 0 * * *", async () => {
         server.logger.error("Failed to run cleanup script", err);
     }
 });
+
+if (Config.database.driver === "sqlite") {
+    new Cron("*/5 * * * *", async () => {
+        try {
+            await marketService.settleExpiredMarket();
+        } catch (err) {
+            server.logger.error("Failed to settle expired market listings", err);
+        }
+    });
+}
 
 server.logger.info(`Survev API Server v${pkgJson.version} - GIT ${GIT_VERSION}`);
 server.logger.info(`Listening on ${Config.apiServer.host}:${Config.apiServer.port}`);

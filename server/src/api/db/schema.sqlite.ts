@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { TeamMode } from "../../../../shared/gameConfig.ts";
 import type { WorldCarriedItems, WorldPosition, WorldSafeZone } from "../../../../shared/types/world.ts";
@@ -191,6 +192,123 @@ export const worldSettlementsTable = sqliteTable(
 );
 
 export type WorldSettlementsTableSelect = typeof worldSettlementsTable.$inferSelect;
+
+export const marketListingsTable = sqliteTable(
+    "market_listings",
+    {
+        listingId: text("listing_id").primaryKey(),
+        sellerId: text("seller_id")
+            .notNull()
+            .references(() => usersTable.id, { onDelete: "cascade", onUpdate: "cascade" }),
+        itemInstanceId: text("item_instance_id")
+            .notNull()
+            .references(() => worldItemInstancesTable.instanceId, { onDelete: "cascade", onUpdate: "cascade" }),
+        mode: text("mode").notNull(),
+        status: text("status").notNull().default("active"),
+        price: integer("price"),
+        currentPrice: integer("current_price"),
+        clientRequestId: text("client_request_id").notNull(),
+        createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().defaultNow(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().defaultNow(),
+        expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    },
+    (table) => [
+        index("market_listings_status_expires_idx").on(table.status, table.expiresAt),
+        index("market_listings_item_status_idx").on(table.itemInstanceId, table.status),
+        index("market_listings_seller_status_idx").on(table.sellerId, table.status),
+        uniqueIndex("market_listings_seller_request_uq").on(table.sellerId, table.clientRequestId),
+        uniqueIndex("market_listings_item_active_uq").on(table.itemInstanceId).where(
+            sql`${table.status} = 'active'`,
+        ),
+    ],
+);
+
+export type MarketListingsTableSelect = typeof marketListingsTable.$inferSelect;
+
+export const marketIntentsTable = sqliteTable(
+    "market_intents",
+    {
+        intentId: text("intent_id").primaryKey(),
+        listingId: text("listing_id")
+            .notNull()
+            .references(() => marketListingsTable.listingId, { onDelete: "cascade", onUpdate: "cascade" }),
+        buyerId: text("buyer_id")
+            .notNull()
+            .references(() => usersTable.id, { onDelete: "cascade", onUpdate: "cascade" }),
+        type: text("type").notNull(),
+        status: text("status").notNull().default("active"),
+        amount: integer("amount").notNull(),
+        clientRequestId: text("client_request_id").notNull(),
+        createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().defaultNow(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().defaultNow(),
+        expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    },
+    (table) => [
+        index("market_intents_listing_status_idx").on(table.listingId, table.status),
+        index("market_intents_buyer_status_idx").on(table.buyerId, table.status),
+        uniqueIndex("market_intents_buyer_request_uq").on(table.buyerId, table.clientRequestId),
+    ],
+);
+
+export type MarketIntentsTableSelect = typeof marketIntentsTable.$inferSelect;
+
+export const marketWalletHoldsTable = sqliteTable(
+    "market_wallet_holds",
+    {
+        holdId: text("hold_id").primaryKey(),
+        userId: text("user_id")
+            .notNull()
+            .references(() => usersTable.id, { onDelete: "cascade", onUpdate: "cascade" }),
+        listingId: text("listing_id")
+            .notNull()
+            .references(() => marketListingsTable.listingId, { onDelete: "cascade", onUpdate: "cascade" }),
+        intentId: text("intent_id").references(() => marketIntentsTable.intentId, {
+            onDelete: "set null",
+            onUpdate: "cascade",
+        }),
+        amount: integer("amount").notNull(),
+        status: text("status").notNull().default("active"),
+        createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().defaultNow(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().defaultNow(),
+    },
+    (table) => [
+        index("market_wallet_holds_user_status_idx").on(table.userId, table.status),
+        index("market_wallet_holds_listing_status_idx").on(table.listingId, table.status),
+        index("market_wallet_holds_intent_idx").on(table.intentId),
+    ],
+);
+
+export type MarketWalletHoldsTableSelect = typeof marketWalletHoldsTable.$inferSelect;
+
+export const marketTradesTable = sqliteTable(
+    "market_trades",
+    {
+        tradeId: text("trade_id").primaryKey(),
+        listingId: text("listing_id")
+            .notNull()
+            .references(() => marketListingsTable.listingId, { onDelete: "cascade", onUpdate: "cascade" }),
+        itemInstanceId: text("item_instance_id")
+            .notNull()
+            .references(() => worldItemInstancesTable.instanceId, { onDelete: "cascade", onUpdate: "cascade" }),
+        buyerId: text("buyer_id")
+            .notNull()
+            .references(() => usersTable.id, { onDelete: "cascade", onUpdate: "cascade" }),
+        sellerId: text("seller_id")
+            .notNull()
+            .references(() => usersTable.id, { onDelete: "cascade", onUpdate: "cascade" }),
+        price: integer("price").notNull(),
+        fee: integer("fee").notNull(),
+        sellerProceeds: integer("seller_proceeds").notNull(),
+        createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().defaultNow(),
+    },
+    (table) => [
+        index("market_trades_buyer_created_idx").on(table.buyerId, table.createdAt),
+        index("market_trades_seller_created_idx").on(table.sellerId, table.createdAt),
+        index("market_trades_listing_idx").on(table.listingId),
+    ],
+);
+
+export type MarketTradesTableSelect = typeof marketTradesTable.$inferSelect;
 
 export const userQuestTable = sqliteTable(
     "user_quest",

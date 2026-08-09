@@ -60,6 +60,10 @@ describe("user center navigation contract", () => {
         expect(warehouseHtml).toContain("class=\"user-center-world-inventory\"");
         expect(warehouseHtml).toContain("id=\"user-center-world-items\"");
         expect(warehouseHtml).toContain("id=\"user-center-refresh\" type=\"button\"");
+        expect(warehouseHtml).toContain("class=\"user-center-market\"");
+        expect(warehouseHtml).toContain("id=\"user-center-market-title\"");
+        expect(warehouseHtml).toContain("id=\"user-center-market-refresh\" type=\"button\"");
+        expect(warehouseHtml).toContain("id=\"user-center-market-list\"");
         expect(warehouseHtml.indexOf("id=\"user-center-refresh\"")).toBeGreaterThan(
             warehouseHtml.indexOf("class=\"user-center-warehouse-link account-loadout-link\""),
         );
