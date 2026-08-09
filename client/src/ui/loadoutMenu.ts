@@ -109,6 +109,7 @@ interface ItemInfo {
     displayName: string;
     displaySource: string;
     displayLore: string;
+    displayQuantity?: number;
     timeAcquired: number;
     idx: number;
     subcat: EmoteCategory;
@@ -124,6 +125,7 @@ interface EquippedItem {
     rarity: number;
     displayName: string;
     displayLore?: string;
+    displayQuantity?: number;
     subcat: EmoteCategory;
     displaySource?: string;
 }
@@ -198,6 +200,7 @@ export class LoadoutMenu {
     selectedCatType: LoadoutCategoryType = "outfit";
     selectedCatItems: ItemInfo[] = [];
     equippedItems: EquippedItem[] = [];
+    itemTooltip: JQuery<HTMLElement> | null = null;
 
     modalCustomize: JQuery<HTMLElement>;
     modalCustomizeList: JQuery<HTMLElement>;
@@ -402,6 +405,7 @@ export class LoadoutMenu {
 
     onHide() {
         this.active = false;
+        this.hideItemTooltip();
         if (loadout.modified(this.loadout, this.account.loadout)) {
             this.account.setLoadout(this.loadout);
         }
@@ -598,6 +602,8 @@ export class LoadoutMenu {
     }
 
     setItemListeners(loadoutType: string) {
+        this.selectableSlots.off("mouseup mouseenter focusin mouseleave focusout");
+
         // listen for ui modifications
         this.selectableSlots.on("mouseup", (e) => {
             const elem = e.currentTarget;
@@ -611,6 +617,21 @@ export class LoadoutMenu {
                 this.updateLoadoutFromDOM();
             }
         });
+
+        this.selectableSlots.on("mouseenter focusin", (e) => {
+            const selector = $(e.currentTarget);
+            if (selector.hasClass("customize-list-item-locked")) {
+                return;
+            }
+            this.showItemTooltip(selector);
+        });
+        this.selectableSlots.on("mouseleave focusout", () => {
+            this.hideItemTooltip();
+        });
+
+        if (loadoutType == "warehouse") {
+            return;
+        }
 
         if (loadoutType == "emote") {
             this.setEmoteDraggable(this.selectableSlots, this);
@@ -773,44 +794,7 @@ export class LoadoutMenu {
             loadoutType: selectedItem.loadoutType,
             subcat: selectedItem.subcat,
         };
-        this.modalCustomizeItemName.html(this.selectedItem.displayName!);
-        const source = this.localization.translate(`loadout-${selectedItem.displaySource}`)
-            || this.localization.translate(`${selectedItem.displaySource}`)
-            || this.selectedItem.displaySource;
-        const sourceTxt = `${this.localization.translate("loadout-acquired")}: ${source}`;
-        this.modalCustomizeItemSource.html(sourceTxt);
-
-        // Use the 2nd line on emotes to display the subcategory
-        const emoteSubcatNames = {
-            [EmoteCategory.Locked]: this.localization.translate("emote-subcat-locked"),
-            [EmoteCategory.Faces]: this.localization.translate("emote-subcat-faces"),
-            [EmoteCategory.Food]: this.localization.translate("emote-subcat-food"),
-            [EmoteCategory.Animals]: this.localization.translate("emote-subcat-animals"),
-            [EmoteCategory.Logos]: this.localization.translate("emote-subcat-logos"),
-            [EmoteCategory.Other]: this.localization.translate("emote-subcat-other"),
-            [EmoteCategory.Flags]: this.localization.translate("emote-subcat-flags"),
-            [EmoteCategory.Default]: this.localization.translate("emote-subcat-default"),
-        };
-        const localizedLore = selectedItem.loadoutType == "emote"
-            ? `${this.localization.translate("loadout-category")}: ${emoteSubcatNames[selectedItem.subcat]}`
-            : this.selectedItem.displayLore;
-        this.modalCustomizeItemLore.html(localizedLore!);
-        const rarityNames = ["stock", "common", "uncommon", "rare", "epic", "mythic"];
-        const Rarities = [
-            "#c5c5c5",
-            "#c5c5c5",
-            "#12ff00",
-            "#00deff",
-            "#f600ff",
-            "#d96100",
-        ];
-        const localizedRarity = this.localization.translate(
-            `loadout-${rarityNames[this.selectedItem.rarity!]}`,
-        );
-        this.modalCustomizeItemRarity.html(localizedRarity);
-        this.modalCustomizeItemRarity.css({
-            color: Rarities[this.selectedItem.rarity!],
-        });
+        this.clearItemDetails();
         if (this.selectedItem.loadoutType == "emote") {
             this.highlightedSlots.css({
                 display: "block",
@@ -878,6 +862,7 @@ export class LoadoutMenu {
         this.modalCustomizeItemSource.html("");
         this.modalCustomizeItemLore.html("");
         this.modalCustomizeItemRarity.html("");
+        this.hideItemTooltip();
     }
 
     updateSlotData(parent: JQuery<HTMLElement>, img: string, type: string) {
@@ -1006,6 +991,7 @@ export class LoadoutMenu {
                     rarity: Rarity.Common,
                     displayName: label,
                     displayLore: detail,
+                    displayQuantity: item.quantity,
                     displaySource: "account-warehouse",
                     timeAcquired: i,
                     idx: i,
@@ -1027,18 +1013,7 @@ export class LoadoutMenu {
                     "data-img": svg ? `url(${svg})` : "none",
                     draggable: false,
                 }).appendTo(outerDiv);
-                $("<span/>", {
-                    class: "world-warehouse-item-quantity",
-                    text: `×${item.quantity}`,
-                }).appendTo(outerDiv);
-                $("<span/>", {
-                    class: "world-warehouse-item-name",
-                    text: label,
-                }).appendTo(outerDiv);
-                $("<span/>", {
-                    class: "world-warehouse-item-meta",
-                    text: detail,
-                }).appendTo(outerDiv);
+                outerDiv.attr("aria-label", `${label} ×${item.quantity} ${detail}`);
                 listItems.append(outerDiv);
                 itemInfo.outerDiv = outerDiv;
                 this.selectedCatItems.push(itemInfo);
@@ -1196,6 +1171,154 @@ export class LoadoutMenu {
             }
         }
         this.onResize();
+    }
+
+    private clearItemDetails() {
+        this.modalCustomizeItemName.html("");
+        this.modalCustomizeItemSource.html("");
+        this.modalCustomizeItemLore.html("");
+        this.modalCustomizeItemRarity.html("");
+    }
+
+    private getItemTooltip() {
+        if (!this.itemTooltip || this.itemTooltip.length == 0) {
+            this.itemTooltip = $("<div/>", {
+                id: "modal-customize-item-tooltip",
+                "aria-hidden": "true",
+                role: "tooltip",
+            }).appendTo(document.body);
+        }
+        return this.itemTooltip;
+    }
+
+    private showItemTooltip(selector: JQuery<HTMLElement>) {
+        const selectorIdx = selector.data("idx");
+        const itemInfo = selector.data("slot")
+            ? this.equippedItems[selectorIdx]
+            : this.selectedCatItems[selectorIdx];
+        if (!itemInfo) {
+            this.hideItemTooltip();
+            return;
+        }
+        const detail = this.getTooltipDetail(itemInfo);
+        const tooltip = this.getItemTooltip();
+        const content = tooltip
+            .empty()
+            .append($("<div/>", {
+                class: "customize-item-tooltip-name",
+                text: itemInfo.displayName,
+            }));
+        if (itemInfo.displayQuantity) {
+            content.append($("<div/>", {
+                class: "customize-item-tooltip-quantity",
+                text: `×${itemInfo.displayQuantity}`,
+            }));
+        }
+        content
+            .append($("<div/>", {
+                class: "customize-item-tooltip-source",
+                text: this.getTooltipSource(itemInfo),
+            }))
+            .append($("<div/>", {
+                class: "customize-item-tooltip-detail",
+                text: detail,
+            }))
+            .attr("aria-hidden", "false")
+            .show();
+        this.positionItemTooltip(selector);
+    }
+
+    private getTooltipSource(itemInfo: ItemInfo | EquippedItem) {
+        if (itemInfo.displaySource == "account-warehouse") {
+            return this.localization.translate("loadout-acquired")
+                + ": "
+                + this.localization.translate("loadout-title-warehouse");
+        }
+        const itemSource = itemInfo.displaySource || "Unknown";
+        const source = this.localization.translate(`loadout-${itemSource}`)
+            || this.localization.translate(`${itemSource}`)
+            || itemSource;
+        return `${this.localization.translate("loadout-acquired")}: ${source}`;
+    }
+
+    private getTooltipDetail(itemInfo: ItemInfo | EquippedItem) {
+        if (itemInfo.loadoutType == "emote") {
+            const emoteSubcatNames = {
+                [EmoteCategory.Locked]: this.localization.translate("emote-subcat-locked"),
+                [EmoteCategory.Faces]: this.localization.translate("emote-subcat-faces"),
+                [EmoteCategory.Food]: this.localization.translate("emote-subcat-food"),
+                [EmoteCategory.Animals]: this.localization.translate("emote-subcat-animals"),
+                [EmoteCategory.Logos]: this.localization.translate("emote-subcat-logos"),
+                [EmoteCategory.Other]: this.localization.translate("emote-subcat-other"),
+                [EmoteCategory.Flags]: this.localization.translate("emote-subcat-flags"),
+                [EmoteCategory.Default]: this.localization.translate("emote-subcat-default"),
+            };
+            return `${this.localization.translate("loadout-category")}: ${emoteSubcatNames[itemInfo.subcat]}`;
+        }
+        return itemInfo.displayLore || "";
+    }
+
+    private positionItemTooltip(selector: JQuery<HTMLElement>) {
+        if (!this.itemTooltip || this.itemTooltip.is(":hidden")) {
+            return;
+        }
+        const anchor = selector.get(0);
+        if (!anchor) {
+            return;
+        }
+        const tooltip = this.itemTooltip;
+        const gutter = 12;
+        const width = tooltip.outerWidth() ?? 180;
+        const height = tooltip.outerHeight() ?? 82;
+        const anchorRect = anchor.getBoundingClientRect();
+        const itemRects = Array.from(document.querySelectorAll("#modal-customize-list .customize-list-item")).map((
+            item,
+        ) => item.getBoundingClientRect());
+        const minLeft = Math.min(...itemRects.map((rect) => rect.left), anchorRect.left);
+        const maxRight = Math.max(...itemRects.map((rect) => rect.right), anchorRect.right);
+        const minTop = Math.min(...itemRects.map((rect) => rect.top), anchorRect.top);
+        const maxBottom = Math.max(...itemRects.map((rect) => rect.bottom), anchorRect.bottom);
+        const clampTop = (top: number) =>
+            Math.max(
+                gutter,
+                Math.min(top, window.innerHeight - height - gutter),
+            );
+        const candidates = [
+            { left: maxRight + gutter, top: clampTop(anchorRect.top) },
+            { left: minLeft - width - gutter, top: clampTop(anchorRect.top) },
+            { left: anchorRect.left, top: maxBottom + gutter },
+            { left: anchorRect.left, top: minTop - height - gutter },
+        ];
+        const fitsViewport = (left: number, top: number) =>
+            left >= gutter
+            && top >= gutter
+            && left + width + gutter <= window.innerWidth
+            && top + height + gutter <= window.innerHeight;
+        const overlapsItems = (left: number, top: number) =>
+            itemRects.some((rect) =>
+                !(left + width <= rect.left
+                    || left >= rect.right
+                    || top + height <= rect.top
+                    || top >= rect.bottom)
+            );
+        const candidate = candidates.find(({ left, top }) => fitsViewport(left, top) && !overlapsItems(left, top));
+        if (candidate) {
+            tooltip.css(candidate);
+            return;
+        }
+        tooltip.css({
+            left: Math.max(gutter, Math.min(maxRight + gutter, window.innerWidth - width - gutter)),
+            top: clampTop(anchorRect.top),
+        });
+    }
+
+    private hideItemTooltip() {
+        if (!this.itemTooltip) {
+            return;
+        }
+        this.itemTooltip
+            .attr("aria-hidden", "true")
+            .hide();
     }
 
     private getWarehouseItems(): ItemInstance[] {

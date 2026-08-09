@@ -5156,49 +5156,49 @@ input [type="image"]:focus {
 
 .customize-list-item-world {
   box-sizing: border-box;
-  padding: 6px 6px 5px;
+  overflow: visible;
+  padding: 0;
 }
 
 .customize-list-item-world > .customize-item-image {
-  background-size: contain;
-  height: 44px;
-  margin: 0 auto 2px;
-  max-width: 62px;
-  width: 62px;
+  background-size: 68px;
+  height: 100%;
+  width: 100%;
 }
 
-.world-warehouse-item-quantity {
-  background: rgba(0, 0, 0, 0.68);
-  color: #fff2d0;
-  display: block;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 11px;
-  margin: 0 auto 2px;
-  max-width: max-content;
-  padding: 1px 4px;
-}
-
-.world-warehouse-item-name,
-.world-warehouse-item-meta {
-  display: block;
-  overflow: hidden;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.world-warehouse-item-name {
+#modal-customize-item-tooltip {
+  background: rgba(8, 16, 9, 0.96);
+  border: 2px solid #9ad450;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
+  box-sizing: border-box;
   color: #fff;
-  font-size: 11px;
+  display: none;
   font-weight: 700;
-  line-height: 13px;
+  max-width: 220px;
+  min-width: 136px;
+  padding: 8px 10px;
+  pointer-events: none;
+  position: fixed;
+  z-index: 10000;
 }
 
-.world-warehouse-item-meta {
+.customize-item-tooltip-name {
+  color: #fff;
+  font-size: 18px;
+  line-height: 22px;
+}
+
+.customize-item-tooltip-quantity,
+.customize-item-tooltip-source {
+  color: #fff2d0;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.customize-item-tooltip-detail {
   color: #d2ff7b;
-  font-size: 9px;
-  line-height: 11px;
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .customize-list-empty-world {
