@@ -80,10 +80,58 @@ export class ClientBarn {
         const client = new Client(this.game, socket, joinData.userId, joinData.findGameIp);
         this.clients.push(client);
 
+        const reconnectPlayer = this.findReconnectPlayer(joinData.userId);
+        if (reconnectPlayer) {
+            this.reattachPlayer(reconnectPlayer, client);
+            return client;
+        }
+
         const player = this.game.playerBarn.addPlayer(client, joinMsg, joinData);
         client.player = player;
 
         return client;
+    }
+
+    private findReconnectPlayer(userId: string | null): Player | undefined {
+        if (!userId) return undefined;
+
+        return this.game.playerBarn.players.find((player) => {
+            return player.userId === userId && !player.dead;
+        });
+    }
+
+    private reattachPlayer(player: Player, client: Client): void {
+        const previousClient = player.client;
+        if (previousClient !== client) {
+            previousClient.spectating = undefined;
+            previousClient.player = undefined;
+            previousClient.disconnected = true;
+            util.removeFrom(this.clients, previousClient);
+
+            if (!previousClient.socket.closed()) {
+                previousClient.disconnect();
+            }
+        }
+
+        player.client = client;
+        client.player = player;
+        client.disconnected = false;
+
+        this.resetPlayerConnectionState(player);
+        player.setPartDirty();
+        player.group?.checkPlayers();
+        player.setGroupStatuses();
+        this.game.updateData();
+    }
+
+    private resetPlayerConnectionState(player: Player): void {
+        player.dirNew = v2.create(1, 0);
+        player.moveLeft = false;
+        player.moveRight = false;
+        player.moveUp = false;
+        player.moveDown = false;
+        player.shootHold = false;
+        player.touchMoveActive = false;
     }
 
     deserializeMsg(buff: ArrayBuffer): {
@@ -227,15 +275,7 @@ export class ClientBarn {
         const player = client.player;
         this.game.logger.info(`"${player.name}" left`);
 
-        // reset direction and movement
-        player.dirNew = v2.create(1, 0);
-        player.moveLeft = false;
-        player.moveRight = false;
-        player.moveUp = false;
-        player.moveDown = false;
-        player.shootHold = false;
-        player.touchMoveActive = false;
-
+        this.resetPlayerConnectionState(player);
         player.setPartDirty();
         player.group?.checkPlayers();
         player.setGroupStatuses();
