@@ -1,3 +1,0 @@
-/Volumes/RAID/survev/outputs/cartoon-map-multiplayer-login_20260803_212948/images/02-bridge-rush.png
-  pixelWidth: 1672
-  pixelHeight: 941

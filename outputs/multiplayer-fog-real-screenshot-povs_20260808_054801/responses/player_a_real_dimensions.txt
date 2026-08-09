@@ -1,3 +1,0 @@
-/Volumes/RAID/survev/outputs/multiplayer-fog-real-screenshot-povs_20260808_054801/images/player_a_real_screenshot.png
-  pixelWidth: 1672
-  pixelHeight: 941

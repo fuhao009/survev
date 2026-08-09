@@ -52,6 +52,9 @@ jobs:
         working-directory: ./client
         if: always()
 
+      - name: Check Production Artifacts
+        run: pnpm check:production-artifacts
+
       - name: Save Atlas Cache
         id: cache-atlases-save
         uses: actions/cache/save@v5

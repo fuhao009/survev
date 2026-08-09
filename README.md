@@ -60,10 +60,10 @@ pnpm run db:studio
 To wipe the database and start over:
 ```sh
 # Wipe database.
-pnpm run db:wipe
+SURVEV_CONFIRM_DB_WIPE=WIPE_SURVEV_DATABASE pnpm run db:wipe
 ```
 
-**NOTE:** Do not run this in production!
+**NOTE:** This command is blocked when `NODE_ENV=production`.
 
 ### Caching
 Caching is disabled by default. Set `cachingEnabled` to `true` in `config.ts` to use it.

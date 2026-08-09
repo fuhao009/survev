@@ -40,3 +40,6 @@ jobs:
       - name: Build Server
         run: pnpm run build
         working-directory: ./server
+
+      - name: Check Production Artifacts
+        run: pnpm check:production-artifacts

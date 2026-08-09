@@ -3,6 +3,26 @@ import fs from "node:fs";
 import pg from "pg";
 import { Config } from "../../config.ts";
 
+const confirmationValue = "WIPE_SURVEV_DATABASE";
+
+function quoteIdent(value: string) {
+    return `"${value.replaceAll("\"", "\"\"")}"`;
+}
+
+function requireWipeConfirmation() {
+    if (process.env.NODE_ENV === "production") {
+        throw new Error("Refusing to wipe database while NODE_ENV=production");
+    }
+
+    if (process.env.SURVEV_CONFIRM_DB_WIPE !== confirmationValue) {
+        throw new Error(
+            `Refusing to wipe database; set SURVEV_CONFIRM_DB_WIPE=${confirmationValue} to confirm`,
+        );
+    }
+}
+
+requireWipeConfirmation();
+
 if (Config.database.driver === "sqlite") {
     const sqlite = new Database(Config.database.path);
     sqlite.close();
@@ -14,17 +34,21 @@ if (Config.database.driver === "sqlite") {
 } else {
     const pool = new pg.Pool({
         host: Config.database.host,
-        user: "postgres",
-        password: "postgres",
-        database: "postgres",
+        user: process.env.SURVEV_DB_WIPE_USER ?? "postgres",
+        password: process.env.SURVEV_DB_WIPE_PASSWORD ?? "postgres",
+        database: process.env.SURVEV_DB_WIPE_DATABASE ?? "postgres",
         port: Config.database.port,
     });
 
     try {
-        await pool.query(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'survev'`);
-        await pool.query(`DROP DATABASE IF EXISTS survev`);
-        await pool.query(`CREATE DATABASE survev OWNER survev`);
-        console.log("PostgreSQL database wiped successfully");
+        await pool.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1", [
+            Config.database.database,
+        ]);
+        await pool.query(`DROP DATABASE IF EXISTS ${quoteIdent(Config.database.database)}`);
+        await pool.query(
+            `CREATE DATABASE ${quoteIdent(Config.database.database)} OWNER ${quoteIdent(Config.database.user)}`,
+        );
+        console.log(`PostgreSQL database wiped successfully: ${Config.database.database}`);
     } catch (error) {
         console.error("Error dropping database:", error);
     } finally {

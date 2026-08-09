@@ -60,6 +60,9 @@ jobs:
         run: pnpm run build
         working-directory: ./client
 
+      - name: Check Production Artifacts
+        run: pnpm check:production-artifacts
+
       - name: Save Atlas Cache
         id: cache-atlases-save
         uses: actions/cache/save@v5

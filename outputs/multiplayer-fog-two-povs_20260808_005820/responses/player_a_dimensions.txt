@@ -1,3 +1,0 @@
-/Volumes/RAID/survev/outputs/multiplayer-fog-two-povs_20260808_005820/images/player_a.png
-  pixelWidth: 1672
-  pixelHeight: 941

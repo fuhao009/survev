@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
@@ -30,6 +31,21 @@ const blockedPatterns = [
 ];
 const textFilePattern = /\.(?:html|css|js|json|map)$/;
 
+function trackedGeneratedArtifacts() {
+    try {
+        return execFileSync("git", ["ls-files", "outputs"], {
+            cwd: repoRoot,
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+        })
+            .trim()
+            .split("\n")
+            .filter(Boolean);
+    } catch {
+        return [];
+    }
+}
+
 function walk(directory, files = []) {
     let entries;
     try {
@@ -51,6 +67,10 @@ function walk(directory, files = []) {
 }
 
 const failures = [];
+for (const file of trackedGeneratedArtifacts()) {
+    failures.push(`${file}: generated validation artifacts must not be tracked`);
+}
+
 for (const root of scanRoots) {
     for (const file of walk(join(repoRoot, root))) {
         const displayPath = relative(repoRoot, file);

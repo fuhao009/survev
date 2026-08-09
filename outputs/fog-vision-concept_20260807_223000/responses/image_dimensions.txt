@@ -1,3 +1,0 @@
-/Volumes/RAID/survev/outputs/fog-vision-concept_20260807_223000/images/fog-vision-concept.png
-  pixelWidth: 1672
-  pixelHeight: 941
