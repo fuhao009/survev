@@ -402,15 +402,10 @@ export class WorldService {
         };
     }
 
-    private async ensureStarterItems(userId: string) {
-        // World lives no longer synthesize starter gear here; only pre-existing
-        // stash/equipped items should be carried into the next life.
-        return db.select().from(worldItemInstancesTable).where(
-            and(
-                eq(worldItemInstancesTable.userId, userId),
-                inArray(worldItemInstancesTable.state, ["stash", "equipped"]),
-            ),
-        );
+    private async ensureStarterItems(_userId: string) {
+        // Fresh world lives start empty. Warehouse items stay in the warehouse
+        // until a dedicated loadout/equip flow explicitly moves them.
+        return [];
     }
 
     private async walletBalance(userId: string) {
@@ -580,13 +575,6 @@ export class WorldService {
                 carriedItems: carried,
                 startedAt: Date.now(),
             });
-            await db.update(worldItemInstancesTable).set({ state: "carried", lifeId, updatedAt: new Date() })
-                .where(
-                    and(
-                        eq(worldItemInstancesTable.userId, userId),
-                        inArray(worldItemInstancesTable.state, ["stash", "equipped"]),
-                    ),
-                );
             const snapshot = await this.snapshot(userId, shard);
             this.trace("enter:created", {
                 userId,

@@ -1,12 +1,24 @@
 import { describe, expect, test, vi } from "vitest";
 
+const dbMocks = vi.hoisted(() => {
+    const selectWhere = vi.fn(async () => []);
+    const selectFrom = vi.fn(() => ({
+        where: selectWhere,
+    }));
+    const select = vi.fn(() => ({
+        from: selectFrom,
+    }));
+
+    return {
+        select,
+        selectFrom,
+        selectWhere,
+    };
+});
+
 vi.mock("../../server/src/api/db/index.ts", () => ({
     db: {
-        select: () => ({
-            from: () => ({
-                where: async () => [],
-            }),
-        }),
+        select: dbMocks.select,
     },
 }));
 
@@ -88,8 +100,13 @@ describe("world service initial items", () => {
     });
 
     test("does not seed starter world items for a new life", async () => {
-        await expect((worldService as typeof worldService & {
+        dbMocks.select.mockClear();
+        dbMocks.selectFrom.mockClear();
+        dbMocks.selectWhere.mockClear();
+
+        await expect((worldService as unknown as {
             ensureStarterItems(userId: string): Promise<unknown[]>;
         }).ensureStarterItems("player-1")).resolves.toEqual([]);
+        expect(dbMocks.select).not.toHaveBeenCalled();
     });
 });

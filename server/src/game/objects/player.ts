@@ -108,6 +108,23 @@ function positiveInt(value: number): number {
     return Math.max(0, Math.trunc(value));
 }
 
+function createEmptyWorldCarriedItemsSnapshot(ownerId: string): WorldCarriedItemsSnapshot {
+    return {
+        kind: "carried_items_snapshot",
+        ownerId,
+        revision: 0,
+        stacks: [],
+        weapons: [],
+        equipment: {
+            outfit: "outfitBase",
+            backpack: "backpack00",
+            helmet: "",
+            chest: "",
+            perks: [],
+        },
+    };
+}
+
 export class PlayerBarn {
     players: Player[] = [];
     livingPlayers: Player[] = [];
@@ -237,8 +254,10 @@ export class PlayerBarn {
             joinData.loadout ? joinData.loadout : joinMsg.loadout,
             !joinData.loadout,
         );
-        if (this.game.world && joinData.worldItems) {
-            player.applyWorldItems(joinData.worldItems);
+        if (this.game.world) {
+            player.applyWorldItems(
+                joinData.worldItems ?? createEmptyWorldCarriedItemsSnapshot(joinData.userId ?? player.name),
+            );
         }
 
         return player;
@@ -316,6 +335,10 @@ export class PlayerBarn {
         client.player = player;
 
         this.activatePlayer(player, group, team);
+
+        if (this.game.world) {
+            player.applyWorldItems(createEmptyWorldCarriedItemsSnapshot(params.userId ?? player.name));
+        }
 
         return player;
     }
@@ -1463,6 +1486,10 @@ export class Player extends BaseGameObject {
     }
 
     applyWorldItems(snapshot: WorldCarriedItemsSnapshot) {
+        this.invManager.wipeInventory();
+        this.scope = "1xscope";
+        this.zoom = this.scopeZoomRadius[this.scope];
+
         for (let slot = 0; slot < GameConfig.WeaponSlot.Count; slot++) {
             const fallback = slot === GameConfig.WeaponSlot.Melee ? "fists" : "";
             this.weaponManager.setWeapon(slot, fallback, 0);

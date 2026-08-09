@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
+import { Client } from "../../server/src/game/client.ts";
 import { Game } from "../../server/src/game/game.ts";
+import { NoOpSocket } from "../../server/src/game/socket.ts";
 import { GameConfig, GasMode, TeamMode } from "../../shared/gameConfig.ts";
+import * as net from "../../shared/net/net.ts";
 import {
     gameMapPositionToWorld,
     getWorldExtractionQuote,
@@ -80,6 +83,49 @@ describe("open-world survival loop", () => {
         expect(player.helmet).toBe("helmet01");
         expect(player.chest).toBe("chest01");
         expect(player.inventory["9mm"]).toBe(30);
+    });
+
+    test("does not leak default spawn gear into world players without an authoritative snapshot", () => {
+        const game = new Game("world-empty-entry-test", {
+            mapName: "main",
+            teamMode: TeamMode.Solo,
+            world: true,
+        });
+        game.playerBarn.defaultItems.weapons[GameConfig.WeaponSlot.Primary] = { type: "ak47", ammo: 30 };
+        game.playerBarn.defaultItems.weapons[GameConfig.WeaponSlot.Secondary] = { type: "m9", ammo: 15 };
+        game.playerBarn.defaultItems.weapons[GameConfig.WeaponSlot.Throwable] = { type: "frag", ammo: 0 };
+        game.playerBarn.defaultItems.inventory["9mm"] = 90;
+        game.playerBarn.defaultItems.inventory.frag = 2;
+        game.playerBarn.defaultItems.scope = "4xscope";
+        game.playerBarn.defaultItems.inventory["4xscope"] = 1;
+
+        const joinMsg = new net.JoinMsg();
+        joinMsg.name = "world-player";
+        const client = new Client(game, new NoOpSocket(), "world-player", "");
+        game.clientBarn.clients.push(client);
+
+        const player = game.playerBarn.addPlayer(client, joinMsg, {
+            expiresAt: Date.now() + 1000,
+            userId: "world-player",
+            findGameIp: "",
+            groupData: {
+                autoFill: true,
+                playerCount: 1,
+                groupHashToJoin: "",
+            },
+        });
+
+        expect(player.weapons[GameConfig.WeaponSlot.Primary]).toMatchObject({ type: "", ammo: 0 });
+        expect(player.weapons[GameConfig.WeaponSlot.Secondary]).toMatchObject({ type: "", ammo: 0 });
+        expect(player.weapons[GameConfig.WeaponSlot.Throwable]).toMatchObject({ type: "", ammo: 0 });
+        expect(player.weapons[GameConfig.WeaponSlot.Melee]).toMatchObject({ type: "fists", ammo: 0 });
+        expect(player.inventory["9mm"]).toBe(0);
+        expect(player.inventory.frag).toBe(0);
+        expect(player.inventory["4xscope"]).toBe(0);
+        expect(player.scope).toBe("1xscope");
+        expect(player.backpack).toBe("backpack00");
+        expect(player.helmet).toBe("");
+        expect(player.chest).toBe("");
     });
 
     test("emits the picked-up gun in the authoritative inventory snapshot", () => {
