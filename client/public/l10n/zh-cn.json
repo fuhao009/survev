@@ -48,6 +48,7 @@
   "account-warehouse": "仓库",
   "account-acquired-items": "已获取物品",
   "account-world-gear": "大世界装备",
+  "account-world-warehouse-summary": "右侧仓库已入库 {count} 件",
   "account-latest-state": "数据来自最新账号状态",
   "account-refreshing": "正在刷新数据...",
   "account-refresh-success": "数据已更新",

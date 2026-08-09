@@ -1201,6 +1201,19 @@
               </div>
             </div>
           </div>
+          <div id="modal-content-right-warehouse" class="modal-content-right modal-content-shadow">
+            <div class="warehouse-panel">
+              <div class="warehouse-panel-header">
+                <div>
+                  <span class="home-menu-kicker" data-l10n="account-warehouse">仓库</span>
+                  <h3 data-l10n="account-world-gear">大世界装备</h3>
+                </div>
+                <strong id="warehouse-count">0</strong>
+              </div>
+              <div id="warehouse-grid" class="warehouse-grid"></div>
+              <div id="warehouse-status" class="warehouse-status" role="status" data-l10n="account-no-world-items">暂无大世界装备</div>
+            </div>
+          </div>
         </div>
       </div>
       <div id="modal-settings" class="modal">
@@ -1372,7 +1385,7 @@
                     <span id="user-center-world-inventory-title" class="user-center-metric-label" data-l10n="account-world-gear">大世界装备</span>
                     <strong id="user-center-world-item-count">0</strong>
                   </div>
-                  <ul id="user-center-world-items" class="user-center-world-items"></ul>
+                  <div id="user-center-world-items" class="user-center-world-items" data-l10n="account-no-world-items">暂无大世界装备</div>
                   <div class="user-center-refresh-row">
                     <span id="user-center-refresh-status" role="status" data-l10n="account-latest-state">数据来自最新账号状态</span>
                     <button id="user-center-refresh" type="button" data-l10n="account-refresh">刷新数据</button>

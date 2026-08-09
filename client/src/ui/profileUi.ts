@@ -1,4 +1,5 @@
 import $ from "jquery";
+import type { ItemInstance } from "../../../shared/types/itemInstance.ts";
 import loadout, { type Item } from "../../../shared/utils/loadout.ts";
 import type { Account } from "../account.ts";
 import { api } from "../api.ts";
@@ -6,7 +7,6 @@ import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
 import { proxy } from "../proxy.ts";
 import { SDK } from "../sdk/sdk.ts";
-import { getWorldItemLabel, getWorldItemStateLabel } from "../worldSettlement.ts";
 import type { LoadoutMenu } from "./loadoutMenu.ts";
 import type { Localization } from "./localization.ts";
 import { MenuModal } from "./menuModal.ts";
@@ -615,6 +615,20 @@ export class ProfileUi {
         );
     }
 
+    private renderWorldInventory(worldItems: ItemInstance[]) {
+        const itemCount = worldItems.reduce((count, item) => count + item.quantity, 0);
+        $("#user-center-world-items")
+            .toggleClass("user-center-world-items-empty", itemCount === 0)
+            .text(
+                itemCount > 0
+                    ? this.localization.translate("account-world-warehouse-summary", {
+                        count: itemCount.toLocaleString(),
+                    })
+                    : this.localization.translate("account-no-world-items"),
+            );
+        this.loadoutMenu.renderWarehouse(worldItems);
+    }
+
     renderUserCenter() {
         const username = this.account.profile.username || this.localization.translate("index-log-in-desc");
         const nickname = this.account.profile.nickname || username;
@@ -629,43 +643,12 @@ export class ProfileUi {
         $("#user-center-points").text(walletBalance.toLocaleString());
         $("#user-center-item-count").text(inventorySize.toLocaleString());
         const worldItems = this.account.worldInventory.filter((item) =>
-            item.state === "stash" || item.state === "equipped"
+            item.state === "stash" || item.state === "equipped" || item.state === "listed"
         );
         $("#user-center-world-item-count").text(
             worldItems.reduce((count, item) => count + item.quantity, 0).toLocaleString(),
         );
-        const worldItemsList = $("#user-center-world-items").empty();
-        if (worldItems.length == 0) {
-            $("<li>")
-                .addClass("user-center-world-items-empty")
-                .text(this.localization.translate("account-no-world-items"))
-                .appendTo(worldItemsList);
-        } else {
-            for (const item of worldItems) {
-                const detail = item.durabilityMax > 0
-                    ? `${item.durability}/${item.durabilityMax} · ${getWorldItemStateLabel(item.state)}`
-                    : `${item.quantity} 件`;
-                const iconSrc = helpers.getSvgFromGameType(item.type);
-                const icon = $("<span>").addClass("user-center-world-item-icon").attr("aria-hidden", "true");
-                if (iconSrc) {
-                    icon.append(
-                        $("<img>", {
-                            alt: "",
-                            src: iconSrc,
-                        }).css("transform", helpers.getCssTransformFromGameType(item.type)),
-                    );
-                }
-                $("<li>")
-                    .append(icon)
-                    .append(
-                        $("<span>").addClass("user-center-world-item-name").text(
-                            `${getWorldItemLabel(item.type)} ×${item.quantity}`,
-                        ),
-                    )
-                    .append($("<span>").addClass("user-center-world-item-detail").text(detail))
-                    .appendTo(worldItemsList);
-            }
-        }
+        this.renderWorldInventory(worldItems);
         $("#account-player-id").text(
             `${this.localization.translate("home-account-id")} · ${accountId}`,
         );

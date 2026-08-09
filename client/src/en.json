@@ -49,6 +49,7 @@
   "account-warehouse": "Warehouse",
   "account-acquired-items": "Acquired items",
   "account-world-gear": "World gear",
+  "account-world-warehouse-summary": "Warehouse has {count} stored items",
   "account-latest-state": "Latest account state",
   "account-refreshing": "Refreshing data...",
   "account-refresh-success": "Data updated",
