@@ -11,6 +11,7 @@ export const Constants = {
     MaxPosition: 1024,
     MapNameMaxLen: 24,
     PlayerNameMaxLen: 16,
+    PlayerNameMaxBytes: 48,
     MouseMaxDist: 64,
     SmokeMaxRad: 10,
     ActionMaxDuration: 8.5,
@@ -50,6 +51,14 @@ export class BitStream extends bb.BitStream {
 
     readString(len?: number) {
         return this.readASCIIString(len);
+    }
+
+    writePlayerName(name: string, len = Constants.PlayerNameMaxBytes) {
+        this.writeUTF8String(name, len);
+    }
+
+    readPlayerName(len = Constants.PlayerNameMaxBytes) {
+        return this.readUTF8String(len);
     }
 
     writeFloat(f: number, min: number, max: number, bits: number) {

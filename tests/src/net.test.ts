@@ -162,6 +162,62 @@ test("Map Msg", () => {
     }
 });
 
+test("Join Msg preserves UTF-8 player names", () => {
+    const inMsg = new net.JoinMsg();
+    inMsg.protocol = GameConfig.protocolVersion;
+    inMsg.matchPriv = "join-token";
+    inMsg.name = "昵称测试成功";
+
+    stream.serializeMsg(net.MsgType.Join, inMsg);
+
+    stream.stream.index = 0;
+    expect(stream.deserializeMsgType()).toBe(net.MsgType.Join);
+
+    const outMsg = new net.JoinMsg();
+    outMsg.deserialize(stream.getStream());
+
+    expect(outMsg.protocol).toBe(GameConfig.protocolVersion);
+    expect(outMsg.matchPriv).toBe(inMsg.matchPriv);
+    expect(outMsg.name).toBe(inMsg.name);
+});
+
+test("Update Msg preserves UTF-8 player info names", () => {
+    const inMsg = new net.UpdateMsg();
+    inMsg.activePlayerData = {
+        healthDirty: false,
+        boostDirty: false,
+        zoomDirty: false,
+        actionDirty: false,
+        inventoryDirty: false,
+        weapsDirty: false,
+        spectatorCountDirty: false,
+    } as typeof inMsg.activePlayerData;
+    inMsg.playerInfos = [{
+        playerId: 321,
+        teamId: 2,
+        groupId: 7,
+        name: "我是无敌人才",
+        loadout: {
+            heal: "heal_basic",
+            boost: "boost_basic",
+        },
+    }];
+
+    stream.serializeMsg(net.MsgType.Update, inMsg);
+
+    stream.stream.index = 0;
+    expect(stream.deserializeMsgType()).toBe(net.MsgType.Update);
+
+    const outMsg = new net.UpdateMsg();
+    outMsg.deserialize(stream.getStream(), {
+        m_getTypeById() {
+            return ObjectType.Invalid;
+        },
+    });
+
+    expect(outMsg.playerInfos).toEqual(inMsg.playerInfos);
+});
+
 test("Update Msg", () => {
     const inMsg = new net.UpdateMsg();
 

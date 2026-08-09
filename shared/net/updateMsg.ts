@@ -180,7 +180,7 @@ function serializePlayerInfo(s: BitStream, data: PlayerInfo) {
     s.writeUint16(data.playerId);
     s.writeUint8(data.teamId);
     s.writeUint8(data.groupId);
-    s.writeString(data.name);
+    s.writePlayerName(data.name);
 
     s.writeGameType(data.loadout.heal);
     s.writeGameType(data.loadout.boost);
@@ -192,7 +192,7 @@ function deserializePlayerInfo(s: BitStream, data: PlayerInfo) {
     data.playerId = s.readUint16();
     data.teamId = s.readUint8();
     data.groupId = s.readUint8();
-    data.name = s.readString();
+    data.name = s.readPlayerName();
     data.loadout = {} as PlayerInfo["loadout"];
     data.loadout.heal = s.readGameType();
     data.loadout.boost = s.readGameType();

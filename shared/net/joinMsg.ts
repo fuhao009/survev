@@ -21,7 +21,7 @@ export class JoinMsg implements AbstractMsg {
         s.writeUint32(this.protocol);
         s.writeString(this.matchPriv);
 
-        s.writeString(this.name, Constants.PlayerNameMaxLen);
+        s.writePlayerName(this.name);
         s.writeBoolean(this.useTouch);
         s.writeBoolean(this.isMobile);
         s.writeBoolean(this.bot);
@@ -40,7 +40,7 @@ export class JoinMsg implements AbstractMsg {
         this.protocol = s.readUint32();
         this.matchPriv = s.readString();
 
-        this.name = s.readString(Constants.PlayerNameMaxLen);
+        this.name = s.readPlayerName();
         this.useTouch = s.readBoolean();
         this.isMobile = s.readBoolean();
         this.bot = s.readBoolean();

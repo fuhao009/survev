@@ -423,7 +423,18 @@ export class BitStream {
     }
 
     writeUTF8String(string: string, bytes?: number) {
-        const byteArray = encoder.encode(string);
+        let byteArray = encoder.encode(string);
+        if (bytes && byteArray.length > bytes) {
+            const chars: string[] = [];
+            for (const char of string) {
+                const next = [...chars, char].join("");
+                const nextBytes = encoder.encode(next);
+                if (nextBytes.length > bytes) break;
+                chars.push(char);
+                byteArray = nextBytes;
+            }
+            byteArray = encoder.encode(chars.join(""));
+        }
 
         const length = bytes || byteArray.length + 1; // + 1 for NULL
         for (let i = 0; i < length; i++) {

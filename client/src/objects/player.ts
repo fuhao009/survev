@@ -879,7 +879,7 @@ export class Player implements AbstractObject {
         const playerInfo = playerBarn.getPlayerInfo(this.__id);
         const inSameGroup = playerInfo.groupId == activeGroupId;
         this.nameText.text = playerInfo.name;
-        this.nameText.visible = !isActivePlayer && inSameGroup;
+        this.nameText.visible = inSameGroup;
 
         // Locate nearby obstacles that may play interaction effects
         let insideObstacle: Obstacle | null = null;
