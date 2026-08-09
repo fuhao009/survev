@@ -67,7 +67,8 @@ export function checkForBadWords(name: string) {
     return matcher.hasMatch(name);
 }
 
-const allowedCharsRegex = /[^A-Za-z 0-9 .,?""!@#$%^&*()-_=+;:<>/\\|}{[\]`~]*/g;
+const allowedNameCharacters = "\\p{L}\\p{N} .,?\"!@#$%^&*()\\-_+=;:<>\"/\\\\|{}\\[\\]`~";
+const disallowedCharsRegex = new RegExp(`[^${allowedNameCharacters}]`, "gu");
 
 export function validateUserName(name: string): {
     originalWasInvalid: boolean;
@@ -85,8 +86,7 @@ export function validateUserName(name: string): {
     name = name
         .trim()
         .substring(0, Constants.PlayerNameMaxLen)
-        // remove extended ascii etc
-        .replace(allowedCharsRegex, "")
+        .replace(disallowedCharsRegex, "")
         .trim();
 
     if (!name.length || checkForBadWords(name)) {
